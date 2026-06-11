@@ -15,7 +15,7 @@
 | Frontend | **SvelteKit** (Svelte 5, TypeScript strict), adapter-node | SSR for SEO on race/listing pages (this product lives off search traffic); learning goal; small bundle |
 | UI | **Tailwind CSS v4**, hand-rolled components, superforms + zod for forms | Fast to build, no component-library lock-in |
 | i18n | **Paraglide JS** (inlang) | Type-safe messages, tree-shaken per locale, SvelteKit-native |
-| Backend | **Go 1.24+**, `net/http` + **chi v5** router | stdlib-compatible, tiny, middleware ecosystem; Go's concurrency fits chat/webhooks naturally |
+| Backend | **Go 1.25+**, `net/http` + **chi v5** router | stdlib-compatible, tiny, middleware ecosystem; Go's concurrency fits chat/webhooks naturally |
 | DB access | **sqlc** (compile-time generated, type-safe) + **pgx/v5** pool | Real SQL, zero runtime magic, compiler catches schema drift — no ORM |
 | Migrations | **goose** | Plain numbered SQL files, no DSL |
 | Database | **PostgreSQL 16** | The default answer; FTS covers search; advisory locks coordinate jobs |
@@ -111,33 +111,16 @@ bibseller/
 
 ## Dev environment
 
-```yaml
-# docker-compose.yml — infrastructure only; both apps run natively for hot reload
-services:
-  db:
-    image: postgres:16
-    environment: { POSTGRES_PASSWORD: dev, POSTGRES_DB: bibseller }
-    ports: ["5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    ports: ["9000:9000", "9001:9001"]
-    volumes: [miniodata:/data]
-  mailpit:                       # catches all dev email; web UI on :8025
-    image: axllent/mailpit
-    ports: ["1025:1025", "8025:8025"]
-volumes: { pgdata: {}, miniodata: {} }
-```
+`docker-compose.yml` (repo root) runs **infrastructure only** — Postgres 16, MinIO (S3-compatible), Mailpit (dev email UI on `:8025`) — with healthchecks so `docker compose up -d --wait` blocks until everything is ready. Both apps run natively for hot reload.
 
-Daily loop (or `make dev` with a process runner):
+Daily loop — `make dev` does all of this, or run pieces by hand:
 
-1. `docker compose up -d`
-2. `cd backend && air` — recompiles on save; Go builds fast enough to feel like Python
+1. `docker compose up -d --wait`
+2. `cd backend && air` — recompiles on save; Go builds fast enough to feel like Python (falls back to `go run ./cmd/api` if air isn't installed)
 3. `cd frontend && npm run dev` — Vite proxies `/api/*` → `localhost:8080`
 4. When working on payments: `stripe listen --forward-to localhost:8080/webhooks/stripe`
 
-Toolchain (once): Go 1.24+, Node 20+, `sqlc`, `goose`, `air`, Stripe CLI. Nothing else — no Kubernetes, no Terraform.
+Toolchain (once): Go 1.25+, Node 22+, Docker. Optional: `air`, `golangci-lint`, Stripe CLI (M6+). `goose` and `sqlc` need no install — the Makefile runs **pinned versions** via `go run pkg@version`, deliberately outside `go.mod` (sqlc's dependency tree forces `go`-directive bumps that break linters). Nothing else — no Kubernetes, no Terraform.
 
 `Makefile` targets: `dev`, `migrate`, `migrate-down`, `sqlc`, `seed`, `test`, `lint`.
 
@@ -184,5 +167,6 @@ Grounding math: 2M MAU at marketplace engagement ≈ hundreds of RPS peak on cat
 | Jobs | In-process ticker + advisory lock | Zero infra; correct under multiple instances | Jobs need retries/visibility → River |
 | Search | Postgres FTS | One datastore | Relevance complaints at scale → Meilisearch |
 | Sessions | Own implementation in Postgres | Cost, control, EU data, learning value | — |
+| Tool versioning | `go run pkg@version` pinned in Makefile, not `tool` directives | Keeps sqlc/goose's huge trees out of `go.mod`/`go.sum`; their go-version requirements stop dictating ours | golangci-lint reliably supports current Go targets |
 | Currency | EUR-only v1 (column exists) | EU launch focus | Demand from SEK/PLN/DKK markets |
 | Caching | CDN + HTTP cache headers only | No invalidation complexity | Measured p95 on hot reads |

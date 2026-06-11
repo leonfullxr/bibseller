@@ -33,16 +33,27 @@ SvelteKit (Svelte 5, TypeScript) · Go · PostgreSQL 16 · sqlc + goose · Strip
 
 ## Status
 
-**Planning.** Implementation starts with the [M0 scaffold (#1)](https://github.com/leonfullxr/bibseller/issues/1); overall progress is tracked in [#13](https://github.com/leonfullxr/bibseller/issues/13).
+**M0 scaffold done** ([#1](https://github.com/leonfullxr/bibseller/issues/1)) — next up: the M1 schema ([#2](https://github.com/leonfullxr/bibseller/issues/2)). Overall progress is tracked in [#13](https://github.com/leonfullxr/bibseller/issues/13).
 
-## Development (lands with M0)
+## Development
+
+Prereqs: **Go 1.25+**, **Node 22+**, **Docker**. Optional: [`air`](https://github.com/air-verse/air) for Go hot-reload (`make dev` falls back to `go run`), `golangci-lint`, Stripe CLI (M6+). No install needed for `goose`/`sqlc` — the Makefile runs pinned versions via `go run`.
 
 ```sh
-docker compose up -d   # Postgres + MinIO + Mailpit
-make dev               # Go API (air hot-reload) + SvelteKit (vite)
+cp .env.example .env    # optional — defaults work without it
+make dev                # Postgres/MinIO/Mailpit + Go API :8080 + SvelteKit :5173
 ```
 
-Toolchain: Go 1.24+, Node 20+, `sqlc`, `goose`, `air`, Stripe CLI. See [docs/ARCHITECTURE.md → Dev environment](docs/ARCHITECTURE.md#dev-environment).
+Verify: <http://localhost:5173> shows “API connected”, and `curl localhost:5173/api/healthz` returns `{"status":"ok"}` through the Vite proxy.
+
+| Target | Does |
+|---|---|
+| `make dev` | infra (compose) + both apps with hot reload |
+| `make migrate` / `make migrate-down` | goose migrations (M1+) |
+| `make sqlc` | regenerate type-safe query code (M1+) |
+| `make test` / `make lint` | both halves |
+
+Mailpit UI: `localhost:8025` · MinIO console: `localhost:9001` (minioadmin / minioadmin). More detail: [docs/ARCHITECTURE.md → Dev environment](docs/ARCHITECTURE.md#dev-environment).
 
 ## License
 

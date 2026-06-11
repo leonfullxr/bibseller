@@ -1,0 +1,37 @@
+# Dev infrastructure only — both apps run natively for hot reload.
+# See docs/ARCHITECTURE.md → Dev environment.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: bibseller
+    ports: ['5432:5432']
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d bibseller']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  minio: # S3-compatible — mirrors prod object storage locally
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ['9000:9000', '9001:9001'] # 9001 = web console
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  mailpit: # catches all dev email — web UI on :8025
+    image: axllent/mailpit
+    ports: ['1025:1025', '8025:8025']
+
+volumes:
+  pgdata:
+  miniodata:
