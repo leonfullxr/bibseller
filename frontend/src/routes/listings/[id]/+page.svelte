@@ -24,20 +24,17 @@
 	<title>Bib for {race.name} — Bibseller</title>
 </svelte:head>
 
-<nav class="text-sm">
-	<a
-		href={resolve('/races/[slug]', { slug: race.slug })}
-		class="text-slate-500 hover:text-slate-900"
-	>
+<nav>
+	<a href={resolve('/races/[slug]', { slug: race.slug })}>
 		← {race.name}
 	</a>
 </nav>
 
-<div class="mt-4 rounded-lg border border-slate-200 bg-white p-6 {available ? '' : 'opacity-75'}">
-	<div class="flex flex-wrap items-start justify-between gap-4">
+<div class="panel" class:unavailable={!available}>
+	<div class="head">
 		<div>
-			<h1 class="text-2xl font-bold">Bib for {race.name}</h1>
-			<p class="mt-1 text-slate-600">
+			<h1>Bib for {race.name}</h1>
+			<p class="meta">
 				{formatDate(race.event_date)} · {race.city}, {race.country}
 				{#if race.distance}· {race.distance}{/if}
 			</p>
@@ -46,35 +43,142 @@
 	</div>
 
 	{#if !available}
-		<div class="mt-4 rounded-md bg-slate-100 p-3 text-sm font-semibold text-slate-700">
+		<div class="gone">
 			This listing is no longer available ({listing.status}).
 		</div>
 	{/if}
 
-	<div class="mt-6 flex items-baseline gap-3">
-		<span class="text-4xl font-extrabold tracking-tight">{price ?? 'Price on request'}</span>
+	<div class="price-row">
+		<span class="price">{price ?? 'Price on request'}</span>
 		{#if belowFace && original}
-			<span class="text-lg text-slate-400 line-through">{original}</span>
-			<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-				below face value
-			</span>
+			<span class="original">{original}</span>
+			<span class="deal">below face value</span>
 		{/if}
 	</div>
 
 	{#if listing.description}
-		<p class="mt-4 max-w-prose text-slate-700">{listing.description}</p>
+		<p class="desc">{listing.description}</p>
 	{/if}
-	<p class="mt-4 text-sm text-slate-500">
+	<p class="listed-by">
 		Listed by {listing.seller_name} on {formatDate(listing.created_at.slice(0, 10))}
 	</p>
 
 	{#if available}
-		<div class="mt-6">
+		<div class="cta-wrap">
 			<ListingCTA policy={race.transfer_policy} officialUrl={race.official_transfer_url} />
 		</div>
 	{/if}
 </div>
 
-<div class="mt-6">
+<div class="callout-wrap">
 	<PolicyCallout policy={race.transfer_policy} officialUrl={race.official_transfer_url} />
 </div>
+
+<style>
+	nav {
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+	}
+
+	nav a {
+		color: var(--slate-500);
+	}
+
+	nav a:hover {
+		color: var(--slate-900);
+	}
+
+	.panel {
+		margin-top: 1rem;
+		border-radius: 0.5rem;
+		border: 1px solid var(--slate-200);
+		background: white;
+		padding: 1.5rem;
+	}
+
+	.panel.unavailable {
+		opacity: 0.75;
+	}
+
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	h1 {
+		font-size: 1.5rem;
+		line-height: 2rem;
+		font-weight: 700;
+	}
+
+	.meta {
+		margin-top: 0.25rem;
+		color: var(--slate-600);
+	}
+
+	.gone {
+		margin-top: 1rem;
+		border-radius: 0.375rem;
+		background: var(--slate-100);
+		padding: 0.75rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 600;
+		color: var(--slate-700);
+	}
+
+	.price-row {
+		margin-top: 1.5rem;
+		display: flex;
+		align-items: baseline;
+		gap: 0.75rem;
+	}
+
+	.price {
+		font-size: 2.25rem;
+		line-height: 2.5rem;
+		font-weight: 800;
+		letter-spacing: -0.025em;
+	}
+
+	.original {
+		font-size: 1.125rem;
+		line-height: 1.75rem;
+		color: var(--slate-400);
+		text-decoration: line-through;
+	}
+
+	.deal {
+		border-radius: 9999px;
+		background: var(--emerald-100);
+		padding: 0.125rem 0.5rem;
+		font-size: 0.75rem;
+		line-height: 1rem;
+		font-weight: 600;
+		color: var(--emerald-800);
+	}
+
+	.desc {
+		margin-top: 1rem;
+		max-width: 65ch;
+		color: var(--slate-700);
+	}
+
+	.listed-by {
+		margin-top: 1rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-500);
+	}
+
+	.cta-wrap {
+		margin-top: 1.5rem;
+	}
+
+	.callout-wrap {
+		margin-top: 1.5rem;
+	}
+</style>

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
@@ -41,11 +40,11 @@ type Handler struct {
 	q *sqlcgen.Queries
 }
 
-func Routes(q *sqlcgen.Queries) func(chi.Router) {
+func Routes(q *sqlcgen.Queries) func(*http.ServeMux) {
 	h := &Handler{q: q}
-	return func(r chi.Router) {
-		r.Get("/races", h.list)
-		r.Get("/races/{slug}", h.get)
+	return func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /races", h.list)
+		mux.HandleFunc("GET /races/{slug}", h.get)
 	}
 }
 
@@ -173,7 +172,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	row, err := h.q.GetRaceBySlug(r.Context(), chi.URLParam(r, "slug"))
+	row, err := h.q.GetRaceBySlug(r.Context(), r.PathValue("slug"))
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.Status != "published") {
 		httpx.Error(w, http.StatusNotFound, "not_found", "race not found")
 		return

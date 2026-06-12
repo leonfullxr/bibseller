@@ -18,33 +18,28 @@
 	/>
 </svelte:head>
 
-<nav class="text-sm">
-	<a href={resolve('/races')} class="text-slate-500 hover:text-slate-900">← All races</a>
+<nav>
+	<a href={resolve('/races')}>← All races</a>
 </nav>
 
-<header class="mt-4">
-	<div class="flex flex-wrap items-center gap-3">
-		<h1 class="text-3xl font-bold tracking-tight">{race.name}</h1>
+<header>
+	<div class="title-row">
+		<h1>{race.name}</h1>
 		<PolicyBadge policy={race.transfer_policy} />
 	</div>
-	<p class="mt-2 text-slate-600">
+	<p class="meta">
 		{formatDate(race.event_date)} · {race.city}, {race.country}
 		{#if race.distance}· {race.distance}{/if}
-		· <span class="capitalize">{race.sport}</span>
+		· <span class="sport">{race.sport}</span>
 	</p>
 	{#if race.website_url}
-		<a
-			href={race.website_url}
-			rel="external nofollow noopener"
-			target="_blank"
-			class="mt-1 inline-block text-sm text-emerald-700 underline"
-		>
+		<a href={race.website_url} rel="external nofollow noopener" target="_blank" class="website">
 			Race website ↗
 		</a>
 	{/if}
 </header>
 
-<div class="mt-6">
+<div class="callout-wrap">
 	<PolicyCallout
 		policy={race.transfer_policy}
 		officialUrl={race.official_transfer_url}
@@ -52,21 +47,125 @@
 	/>
 </div>
 
-<section class="mt-8">
-	<h2 class="text-lg font-semibold">
+<section>
+	<h2>
 		{race.active_listings}
 		{race.active_listings === 1 ? 'bib' : 'bibs'} for sale
 	</h2>
 	{#if data.listings.length === 0}
-		<div class="mt-4 rounded-lg border border-dashed border-slate-300 p-10 text-center">
-			<p class="font-medium text-slate-600">No bibs listed for this race yet.</p>
-			<p class="mt-1 text-sm text-slate-500">Selling yours? Listing opens soon.</p>
+		<div class="empty">
+			<p>No bibs listed for this race yet.</p>
+			<p class="hint">Selling yours? Listing opens soon.</p>
 		</div>
 	{:else}
-		<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+		<div class="grid">
 			{#each data.listings as listing (listing.id)}
 				<ListingCard {listing} />
 			{/each}
 		</div>
 	{/if}
 </section>
+
+<style>
+	nav {
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+	}
+
+	nav a {
+		color: var(--slate-500);
+	}
+
+	nav a:hover {
+		color: var(--slate-900);
+	}
+
+	header {
+		margin-top: 1rem;
+	}
+
+	.title-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	h1 {
+		font-size: 1.875rem;
+		line-height: 2.25rem;
+		font-weight: 700;
+		letter-spacing: -0.025em;
+	}
+
+	.meta {
+		margin-top: 0.5rem;
+		color: var(--slate-600);
+	}
+
+	.sport {
+		text-transform: capitalize;
+	}
+
+	.website {
+		margin-top: 0.25rem;
+		display: inline-block;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--emerald-700);
+		text-decoration: underline;
+	}
+
+	.callout-wrap {
+		margin-top: 1.5rem;
+	}
+
+	section {
+		margin-top: 2rem;
+	}
+
+	h2 {
+		font-size: 1.125rem;
+		line-height: 1.75rem;
+		font-weight: 600;
+	}
+
+	.empty {
+		margin-top: 1rem;
+		border-radius: 0.5rem;
+		border: 1px dashed var(--slate-300);
+		padding: 2.5rem;
+		text-align: center;
+	}
+
+	.empty p {
+		font-weight: 500;
+		color: var(--slate-600);
+	}
+
+	.empty .hint {
+		margin-top: 0.25rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 400;
+		color: var(--slate-500);
+	}
+
+	.grid {
+		margin-top: 1rem;
+		display: grid;
+		gap: 1rem;
+	}
+
+	@media (min-width: 640px) {
+		.grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.grid {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+</style>

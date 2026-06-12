@@ -7,25 +7,89 @@
 	let { race }: { race: RaceSummary } = $props();
 </script>
 
-<a
-	href={resolve('/races/[slug]', { slug: race.slug })}
-	class="block rounded-lg border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
->
-	<div class="flex items-start justify-between gap-2">
-		<h3 class="font-semibold text-slate-900">{race.name}</h3>
+<a href={resolve('/races/[slug]', { slug: race.slug })} class="card">
+	<div class="top">
+		<h3>{race.name}</h3>
 		<PolicyBadge policy={race.transfer_policy} />
 	</div>
-	<p class="mt-1 text-sm text-slate-600">
+	<p class="meta">
 		{formatDate(race.event_date)} · {race.city}, {race.country}
 	</p>
-	<div class="mt-3 flex items-center gap-2 text-xs text-slate-500">
+	<div class="tags">
 		{#if race.distance}
-			<span class="rounded bg-slate-100 px-1.5 py-0.5 font-medium">{race.distance}</span>
+			<span class="tag">{race.distance}</span>
 		{/if}
-		<span class="rounded bg-slate-100 px-1.5 py-0.5 font-medium capitalize">{race.sport}</span>
-		<span class="ml-auto font-medium {race.active_listings > 0 ? 'text-emerald-700' : ''}">
+		<span class="tag sport">{race.sport}</span>
+		<span class="count" class:active={race.active_listings > 0}>
 			{race.active_listings}
 			{race.active_listings === 1 ? 'bib' : 'bibs'} listed
 		</span>
 	</div>
 </a>
+
+<style>
+	.card {
+		display: block;
+		border: 1px solid var(--slate-200);
+		border-radius: 0.5rem;
+		background: white;
+		padding: 1rem;
+		transition:
+			border-color 150ms,
+			box-shadow 150ms;
+	}
+
+	.card:hover {
+		border-color: var(--slate-300);
+		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	}
+
+	.top {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	h3 {
+		font-weight: 600;
+		color: var(--slate-900);
+	}
+
+	.meta {
+		margin-top: 0.25rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
+	}
+
+	.tags {
+		margin-top: 0.75rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.75rem;
+		line-height: 1rem;
+		color: var(--slate-500);
+	}
+
+	.tag {
+		border-radius: 0.25rem;
+		background: var(--slate-100);
+		padding: 0.125rem 0.375rem;
+		font-weight: 500;
+	}
+
+	.sport {
+		text-transform: capitalize;
+	}
+
+	.count {
+		margin-left: auto;
+		font-weight: 500;
+	}
+
+	.count.active {
+		color: var(--emerald-700);
+	}
+</style>

@@ -13,9 +13,9 @@
 | Layer | Choice | Why |
 |---|---|---|
 | Frontend | **SvelteKit** (Svelte 5, TypeScript strict), adapter-node | SSR for SEO on race/listing pages (this product lives off search traffic); learning goal; small bundle |
-| UI | **Tailwind CSS v4**, hand-rolled components, superforms + zod for forms | Fast to build, no component-library lock-in |
-| i18n | **Paraglide JS** (inlang) | Type-safe messages, tree-shaken per locale, SvelteKit-native |
-| Backend | **Go 1.25+**, `net/http` + **chi v5** router | stdlib-compatible, tiny, middleware ecosystem; Go's concurrency fits chat/webhooks naturally |
+| UI | Hand-rolled components, **scoped Svelte CSS** (design tokens in `layout.css`); forms via **SvelteKit form actions + native HTML5 validation** | Core-primitives learning goal — no CSS framework or form library (D14) |
+| i18n | Hand-rolled message dictionaries, no i18n library | en+es only at beta; revisit if locale count grows (D14) |
+| Backend | **Go 1.25+**, stdlib `net/http` `ServeMux` (Go 1.22 method + wildcard patterns) | Zero router dependency (D14); Go's concurrency fits chat/webhooks naturally |
 | DB access | **sqlc** (compile-time generated, type-safe) + **pgx/v5** pool | Real SQL, zero runtime magic, compiler catches schema drift — no ORM |
 | Migrations | **goose** | Plain numbered SQL files, no DSL |
 | Database | **PostgreSQL 16** | The default answer; FTS covers search; advisory locks coordinate jobs |

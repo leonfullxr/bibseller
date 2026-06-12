@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
@@ -26,11 +25,11 @@ type Handler struct {
 	q *sqlcgen.Queries
 }
 
-func Routes(q *sqlcgen.Queries) func(chi.Router) {
+func Routes(q *sqlcgen.Queries) func(*http.ServeMux) {
 	h := &Handler{q: q}
-	return func(r chi.Router) {
-		r.Get("/races/{slug}/listings", h.listByRace)
-		r.Get("/listings/{id}", h.get)
+	return func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /races/{slug}/listings", h.listByRace)
+		mux.HandleFunc("GET /listings/{id}", h.get)
 	}
 }
 
@@ -67,7 +66,7 @@ type listResponse struct {
 }
 
 func (h *Handler) listByRace(w http.ResponseWriter, r *http.Request) {
-	race, err := h.q.GetRaceBySlug(r.Context(), chi.URLParam(r, "slug"))
+	race, err := h.q.GetRaceBySlug(r.Context(), r.PathValue("slug"))
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && race.Status != "published") {
 		httpx.Error(w, http.StatusNotFound, "not_found", "race not found")
 		return
@@ -126,7 +125,7 @@ func (h *Handler) listByRace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "not_found", "listing not found")
 		return
