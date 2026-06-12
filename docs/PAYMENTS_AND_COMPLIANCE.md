@@ -2,7 +2,7 @@
 
 ## Principles
 
-1. **Zero commission.** The platform earns nothing on any transaction. At most, payment-processor fees are passed through at cost ([Decision 1](https://github.com/leonfullxr/bibseller/issues/3)).
+1. **Zero commission.** The platform earns nothing on any transaction. Payment-processor fees are passed through to the buyer at cost, itemized at checkout (decided — [D1](CONTEXT.md#founder-decisions-log)).
 2. **Payments are optional and narrow.** They exist only for `platform_sale` races, only when the seller has completed Stripe onboarding, and only if the pair chooses them. Every other mode is chat-only — the platform never touches money there, structurally.
 3. **Held funds, not "escrow".** We use Stripe Connect with delayed transfers — buyer's money sits on the platform account until the bib transfer is confirmed. We avoid the word *escrow* in legal copy: regulated term, different thing.
 
@@ -37,7 +37,7 @@ Failure paths: TTL/abort → order `cancelled`, listing back to `active`. Proble
 
 Stripe is not free even when we are: EU consumer cards run ≈ **1.5% + €0.25** per charge, plus Connect payout-leg fees (≈ 0.25% + €0.10 per payout) and a possible per-active-account fee — *verify current pricing at implementation time; treat all rates as config constants.*
 
-With pass-through ON (recommended), the buyer sees an itemized "payment processing" line and the gross-up formula keeps the platform at net ≈ €0:
+With pass-through ON (decided — D1), the buyer sees an itemized "payment processing" line and the gross-up formula keeps the platform at net ≈ €0:
 
 ```
 total = (item_price + fixed_fees) / (1 − percentage_fees)

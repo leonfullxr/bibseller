@@ -136,7 +136,7 @@ CREATE INDEX listings_race_active_idx ON listings (race_id) WHERE status = 'acti
 CREATE INDEX listings_seller_idx ON listings (seller_id);
 ```
 
-Listing lifecycle: `active → reserved` (checkout holds it) `→ sold` | back to `active` (TTL lapse); `active → cancelled` (seller) | `expired` (race date job) | `removed` (moderation). Price-cap rule (`price_cents ≤ original_price_cents` when face value known) per [Decision 2](https://github.com/leonfullxr/bibseller/issues/3) — enforced in the service layer + tests (cross-row context makes a CHECK awkward).
+Listing lifecycle: `active → reserved` (checkout holds it) `→ sold` | back to `active` (TTL lapse); `active → cancelled` (seller) | `expired` (race date job) | `removed` (moderation). Price-cap rule (`price_cents ≤ original_price_cents` when face value known) per [D2 — decided: hard cap](CONTEXT.md#founder-decisions-log) — enforced in the M4 service layer + tests (cross-row context makes a CHECK awkward).
 
 ### chat_threads / messages / policy_acks
 

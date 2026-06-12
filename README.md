@@ -25,6 +25,7 @@ SvelteKit (Svelte 5, TypeScript) · Go · PostgreSQL 16 · sqlc + goose · Strip
 
 | Doc | Contents |
 |---|---|
+| [docs/CONTEXT.md](docs/CONTEXT.md) | **Decision log, working agreements, verification protocol — read first** |
 | [docs/PRODUCT.md](docs/PRODUCT.md) | Mission, personas, user journeys, the policy matrix as UX |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack & rationale, repo layout, dev environment, API conventions, auth design, scaling path |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | Schema, constraints, state machines, indexes, retention |
@@ -33,7 +34,7 @@ SvelteKit (Svelte 5, TypeScript) · Go · PostgreSQL 16 · sqlc + goose · Strip
 
 ## Status
 
-**M0 scaffold done** ([#1](https://github.com/leonfullxr/bibseller/issues/1)) — next up: the M1 schema ([#2](https://github.com/leonfullxr/bibseller/issues/2)). Overall progress is tracked in [#13](https://github.com/leonfullxr/bibseller/issues/13).
+**Done so far:** M0 scaffold ([#1](https://github.com/leonfullxr/bibseller/issues/1)), M1 schema ([#2](https://github.com/leonfullxr/bibseller/issues/2)), M2 public catalog ([#4](https://github.com/leonfullxr/bibseller/issues/4)). Next: M3 auth ([#5](https://github.com/leonfullxr/bibseller/issues/5)). Live status: [#13](https://github.com/leonfullxr/bibseller/issues/13).
 
 ## Development
 
@@ -49,9 +50,12 @@ Verify: <http://localhost:5173> shows “API connected”, and `curl localhost:5
 | Target | Does |
 |---|---|
 | `make dev` | infra (compose) + both apps with hot reload |
-| `make migrate` / `make migrate-down` | goose migrations (M1+) |
-| `make sqlc` | regenerate type-safe query code (M1+) |
+| `make migrate` / `make migrate-down` | goose migrations |
+| `make sqlc` | regenerate type-safe query code |
+| `make seed` | wipe + load dev data (20 races, all policy modes) |
 | `make test` / `make lint` | both halves |
+| `make verify` | pre-commit gate: lint + typecheck + tests + sqlc drift |
+| `make smoke` | end-to-end assertions against the seeded stack (wipes dev data) |
 
 Mailpit UI: `localhost:8025` · MinIO console: `localhost:9001` (minioadmin / minioadmin). More detail: [docs/ARCHITECTURE.md → Dev environment](docs/ARCHITECTURE.md#dev-environment).
 

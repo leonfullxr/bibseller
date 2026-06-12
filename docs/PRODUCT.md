@@ -6,7 +6,7 @@ Race bibs go to waste every season: injured or busy runners eat the entry fee wh
 
 **Founding stance:**
 
-- **We take no cut.** Where payments exist they run at cost; the only money the platform may pass through is the payment processor's own fee (pending [Decision 1](https://github.com/leonfullxr/bibseller/issues/3)).
+- **We take no cut.** Where payments exist they run at cost; the only money the platform passes through is the payment processor's own fee, itemized to the buyer (decided — [D1](CONTEXT.md#founder-decisions-log)).
 - **We respect race rules.** Each race's transfer policy is researched, sourced, and encoded; the platform structurally refuses to move money for races that don't allow resale.
 - **We are a venue, not a party.** For non-`platform_sale` races, the platform connects people and nothing more; this is stated in the UI, acknowledged by users, and recorded.
 
@@ -14,7 +14,7 @@ Race bibs go to waste every season: injured or busy runners eat the entry fee wh
 
 - No revenue, no ads, no premium tiers.
 - No race-organizer SaaS (bib management, official transfer tooling) — possible later.
-- No scalping venue: price caps near face value are the default posture ([Decision 2](https://github.com/leonfullxr/bibseller/issues/3)).
+- No scalping venue: prices are hard-capped at face value when the original price is known (decided — [D2](CONTEXT.md#founder-decisions-log)).
 - No native mobile apps — the site is responsive; a PWA pass can come later.
 - No anonymous contact: chatting requires a verified account (anti-spam, traceability).
 
@@ -83,7 +83,7 @@ Two structural guarantees follow:
 - Verified email required to list or chat.
 - Policy acknowledgments recorded with timestamps.
 - Report listing / report message → moderation queue; block user.
-- Price caps near face value (pending Decision 2) — removes most scalper incentive.
+- Hard price cap at face value when known, warning banner otherwise ([D2](CONTEXT.md#founder-decisions-log)) — removes most scalper incentive.
 - For paid orders: funds held until buyer confirmation; itemized fees; full order event log.
 
 ## Launch strategy

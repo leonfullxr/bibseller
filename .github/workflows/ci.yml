@@ -16,7 +16,7 @@ jobs:
       run:
         working-directory: backend
     services:
-      postgres: # unused until M1's integration tests, configured per issue #1
+      postgres: # used by the migrations round-trip and integration tests below
         image: postgres:16
         env:
           POSTGRES_PASSWORD: dev
@@ -50,12 +50,8 @@ jobs:
       - run: go test ./... # includes schema constraint tests against the migrated service DB
       - name: sqlc generated code is current
         run: |
-          if ls db/queries/*.sql >/dev/null 2>&1; then
-            go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
-            git diff --exit-code -- internal/platform/db/sqlcgen
-          else
-            echo "no queries yet (M1) — skipping"
-          fi
+          go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+          git diff --exit-code -- internal/platform/db/sqlcgen
 
   frontend:
     runs-on: ubuntu-latest

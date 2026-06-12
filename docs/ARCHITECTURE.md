@@ -81,7 +81,7 @@ bibseller/
     │   │   ├── sell/
     │   │   └── account/        # listings, inbox, settings
     │   └── hooks.server.ts     # session → locals.user, locale detection
-    ├── svelte.config.js
+    ├── vite.config.ts          # Vite + SvelteKit config (incl. adapter-node) — no separate svelte.config.js
     └── package.json
 ```
 
