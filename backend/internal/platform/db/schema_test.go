@@ -8,14 +8,11 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/leonfullxr/bibseller/backend/internal/platform/config"
-	"github.com/leonfullxr/bibseller/backend/internal/platform/db"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/db/testdb"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
 )
 
@@ -24,21 +21,7 @@ import (
 func tx(t *testing.T) pgx.Tx {
 	t.Helper()
 	ctx := context.Background()
-
-	pool, err := db.NewPool(ctx, config.Load().DatabaseURL)
-	if err != nil {
-		t.Fatalf("pool config: %v", err)
-	}
-	t.Cleanup(pool.Close)
-
-	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	if err := pool.Ping(pingCtx); err != nil {
-		t.Skipf("postgres not reachable, skipping schema tests: %v", err)
-	}
-	if !migrated(ctx, pool) {
-		t.Skip("schema not migrated — run `make migrate` first")
-	}
+	pool := testdb.Pool(t)
 
 	transaction, err := pool.Begin(ctx)
 	if err != nil {
@@ -46,12 +29,6 @@ func tx(t *testing.T) pgx.Tx {
 	}
 	t.Cleanup(func() { _ = transaction.Rollback(ctx) })
 	return transaction
-}
-
-func migrated(ctx context.Context, pool *pgxpool.Pool) bool {
-	var ok bool
-	err := pool.QueryRow(ctx, `SELECT to_regclass('races') IS NOT NULL`).Scan(&ok)
-	return err == nil && ok
 }
 
 func wantConstraint(t *testing.T, err error, constraint string) {

@@ -1,11 +1,23 @@
-import { apiFetch } from '$lib/api/server';
+import { apiFetch, apiGet } from '$lib/api/server';
+import type { Page, RaceSummary } from '$lib/api/types';
+import { todayISO } from '$lib/format';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ fetch }) => {
+	let apiStatus: 'ok' | 'down' = 'down';
+	let upcoming: RaceSummary[] = [];
 	try {
 		const res = await apiFetch('/api/healthz', { signal: AbortSignal.timeout(1500) });
-		return { apiStatus: res.ok ? ('ok' as const) : ('down' as const) };
+		apiStatus = res.ok ? 'ok' : 'down';
+		if (res.ok) {
+			const data = await apiGet<Page<RaceSummary>>(
+				`/api/v1/races?date_from=${todayISO()}&limit=6`,
+				fetch
+			);
+			upcoming = data.items;
+		}
 	} catch {
-		return { apiStatus: 'down' as const };
+		// The landing page must render even with the API down.
 	}
+	return { apiStatus, upcoming };
 };

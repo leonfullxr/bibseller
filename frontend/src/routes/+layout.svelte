@@ -14,8 +14,10 @@
 			<a href={resolve('/')} class="text-lg font-bold tracking-tight">
 				bib<span class="text-emerald-600">seller</span>
 			</a>
-			<nav class="text-sm text-slate-400">
-				<span title="Coming with M2">Races — soon</span>
+			<nav class="text-sm">
+				<a href={resolve('/races')} class="font-medium text-slate-600 hover:text-slate-900">
+					Races
+				</a>
 			</nav>
 		</div>
 	</header>

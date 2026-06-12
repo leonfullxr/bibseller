@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import RaceCard from '$lib/components/RaceCard.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -36,18 +38,51 @@
 		and buyers of race bibs — always within each race's own rules.
 	</p>
 
-	<div class="mt-6 flex items-center justify-center gap-2 text-sm">
-		{#if data.apiStatus === 'ok'}
-			<span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
-			<span class="text-slate-600">API connected</span>
-		{:else}
+	<form
+		method="GET"
+		action={resolve('/races')}
+		class="mx-auto mt-8 flex max-w-md items-center gap-2"
+	>
+		<input
+			type="search"
+			name="q"
+			placeholder="Search a race or city…"
+			class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+		/>
+		<button
+			type="submit"
+			class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold whitespace-nowrap text-white hover:bg-emerald-700"
+		>
+			Search
+		</button>
+	</form>
+	<a href={resolve('/races')} class="mt-3 inline-block text-sm text-emerald-700 underline">
+		or browse all races
+	</a>
+
+	{#if data.apiStatus !== 'ok'}
+		<div class="mt-6 flex items-center justify-center gap-2 text-sm">
 			<span class="inline-block h-2 w-2 rounded-full bg-amber-500"></span>
 			<span class="text-slate-600">
 				API unreachable — run <code class="rounded bg-slate-200 px-1 py-0.5">make dev</code>
 			</span>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </section>
+
+{#if data.upcoming.length > 0}
+	<section class="py-8">
+		<div class="flex items-baseline justify-between">
+			<h2 class="text-lg font-semibold">Upcoming races</h2>
+			<a href={resolve('/races')} class="text-sm text-emerald-700 underline">See all</a>
+		</div>
+		<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			{#each data.upcoming as race (race.id)}
+				<RaceCard {race} />
+			{/each}
+		</div>
+	</section>
+{/if}
 
 <section class="grid gap-4 py-8 sm:grid-cols-3">
 	{#each modes as mode (mode.name)}
