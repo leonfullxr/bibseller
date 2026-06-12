@@ -103,3 +103,36 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	)
 	return i, err
 }
+
+const updateUserDisplayName = `-- name: UpdateUserDisplayName :one
+UPDATE users
+SET display_name = $2, updated_at = now()
+WHERE id = $1
+RETURNING id, email, email_verified_at, password_hash, display_name, locale, country, role, stripe_account_id, stripe_customer_id, anonymized_at, created_at, updated_at
+`
+
+type UpdateUserDisplayNameParams struct {
+	ID          uuid.UUID `json:"id"`
+	DisplayName string    `json:"display_name"`
+}
+
+func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDisplayNameParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserDisplayName, arg.ID, arg.DisplayName)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.EmailVerifiedAt,
+		&i.PasswordHash,
+		&i.DisplayName,
+		&i.Locale,
+		&i.Country,
+		&i.Role,
+		&i.StripeAccountID,
+		&i.StripeCustomerID,
+		&i.AnonymizedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
