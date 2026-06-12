@@ -1,0 +1,19 @@
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# dependencies & build output
+node_modules/
+dist/
+build/
+.svelte-kit/
+backend/tmp/
+backend/bin/
+
+# OS / editor noise
+.DS_Store
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
