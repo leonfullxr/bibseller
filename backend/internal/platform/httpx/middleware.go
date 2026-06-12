@@ -82,6 +82,30 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
+// csrfGuard rejects browser-issued cross-site mutations using fetch metadata
+// (docs/ARCHITECTURE.md → Auth & sessions). Browsers attach Sec-Fetch-Site to
+// every request they make: "cross-site" means another origin's page triggered
+// it, which is never legitimate for a state change here. Server-to-server
+// callers (the SvelteKit actions) and curl send no such header and pass —
+// CSRF is only about riding the *browser's* ambient cookie; a client that
+// sets its own headers holds the credential anyway. This is defense in depth
+// on top of SameSite=Lax, which already keeps the session cookie off
+// cross-site POSTs.
+func csrfGuard(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			next.ServeHTTP(w, r) // safe methods must not mutate; nothing to guard
+			return
+		}
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			Error(w, http.StatusForbidden, "cross_site_request", "cross-site requests are not allowed")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // recoverer converts handler panics into 500s instead of dropped connections.
 func recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

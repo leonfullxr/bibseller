@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/leonfullxr/bibseller/backend/internal/auth"
 	"github.com/leonfullxr/bibseller/backend/internal/listing"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/config"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db"
@@ -44,7 +45,8 @@ func run() error {
 	queries := sqlcgen.New(pool)
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           httpx.NewRouter(logger, pool, race.Routes(queries), listing.Routes(queries), user.Routes(queries)),
+		Handler: httpx.NewRouter(logger, pool,
+			race.Routes(queries), listing.Routes(queries), user.Routes(queries), auth.Routes(queries)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,
