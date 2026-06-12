@@ -44,7 +44,7 @@ func run() error {
 
 	queries := sqlcgen.New(pool)
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
+		Addr: ":" + cfg.Port,
 		Handler: httpx.NewRouter(logger, pool,
 			race.Routes(queries), listing.Routes(queries), user.Routes(queries), auth.Routes(queries)),
 		ReadHeaderTimeout: 5 * time.Second,
