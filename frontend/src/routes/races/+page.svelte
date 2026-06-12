@@ -29,81 +29,173 @@
 	<meta name="description" content="Find race bibs for sale across EU running events." />
 </svelte:head>
 
-<h1 class="text-2xl font-bold">Browse races</h1>
+<h1>Browse races</h1>
 
-<form method="GET" action={resolve('/races')} class="mt-4 flex flex-wrap items-end gap-3">
-	<label class="flex flex-col gap-1 text-xs font-medium text-slate-600">
+<form method="GET" action={resolve('/races')} class="filters">
+	<label>
 		Search
-		<input
-			type="search"
-			name="q"
-			value={data.filters.q}
-			placeholder="Race or city…"
-			class="w-44 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
-		/>
+		<input type="search" name="q" value={data.filters.q} placeholder="Race or city…" />
 	</label>
-	<label class="flex flex-col gap-1 text-xs font-medium text-slate-600">
+	<label>
 		Country
-		<select
-			name="country"
-			value={data.filters.country}
-			class="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-		>
+		<select name="country" value={data.filters.country}>
 			<option value="">All</option>
 			{#each countries as c (c)}<option value={c}>{c}</option>{/each}
 		</select>
 	</label>
-	<label class="flex flex-col gap-1 text-xs font-medium text-slate-600">
+	<label>
 		Sport
-		<select
-			name="sport"
-			value={data.filters.sport}
-			class="rounded-md border border-slate-300 px-2 py-1.5 text-sm capitalize"
-		>
+		<select name="sport" value={data.filters.sport} class="sport">
 			<option value="">All</option>
 			{#each sports as s (s)}<option value={s}>{s}</option>{/each}
 		</select>
 	</label>
-	<label class="flex flex-col gap-1 text-xs font-medium text-slate-600">
+	<label>
 		Transfer policy
-		<select
-			name="policy"
-			value={data.filters.policy}
-			class="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-		>
+		<select name="policy" value={data.filters.policy}>
 			<option value="">All</option>
 			{#each policies as p (p.value)}<option value={p.value}>{p.label}</option>{/each}
 		</select>
 	</label>
-	<button
-		type="submit"
-		class="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-semibold text-white hover:bg-slate-700"
-	>
-		Filter
-	</button>
+	<button type="submit">Filter</button>
 </form>
 
 {#if data.races.length === 0}
-	<div class="mt-12 rounded-lg border border-dashed border-slate-300 p-10 text-center">
-		<p class="font-medium text-slate-600">No races match those filters.</p>
-		<a href={resolve('/races')} class="mt-2 inline-block text-sm text-emerald-700 underline">
-			Clear filters
-		</a>
+	<div class="empty">
+		<p>No races match those filters.</p>
+		<a href={resolve('/races')}>Clear filters</a>
 	</div>
 {:else}
-	<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+	<div class="grid">
 		{#each data.races as race (race.id)}
 			<RaceCard {race} />
 		{/each}
 	</div>
 	{#if nextQuery}
-		<div class="mt-8 text-center">
-			<a
-				href="{resolve('/races')}?{nextQuery}"
-				class="inline-block rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-			>
-				Next page →
-			</a>
+		<div class="more">
+			<a href="{resolve('/races')}?{nextQuery}">Next page →</a>
 		</div>
 	{/if}
 {/if}
+
+<style>
+	h1 {
+		font-size: 1.5rem;
+		line-height: 2rem;
+		font-weight: 700;
+	}
+
+	.filters {
+		margin-top: 1rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		gap: 0.75rem;
+	}
+
+	.filters label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.75rem;
+		line-height: 1rem;
+		font-weight: 500;
+		color: var(--slate-600);
+	}
+
+	.filters input,
+	.filters select {
+		border-radius: 0.375rem;
+		border: 1px solid var(--slate-300);
+		background: white;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+	}
+
+	.filters input {
+		width: 11rem;
+		padding: 0.375rem 0.625rem;
+	}
+
+	.filters select {
+		padding: 0.375rem 0.5rem;
+	}
+
+	.sport {
+		text-transform: capitalize;
+	}
+
+	.filters button {
+		border-radius: 0.375rem;
+		background: var(--slate-900);
+		padding: 0.375rem 1rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 600;
+		color: white;
+	}
+
+	.filters button:hover {
+		background: var(--slate-700);
+	}
+
+	.empty {
+		margin-top: 3rem;
+		border-radius: 0.5rem;
+		border: 1px dashed var(--slate-300);
+		padding: 2.5rem;
+		text-align: center;
+	}
+
+	.empty p {
+		font-weight: 500;
+		color: var(--slate-600);
+	}
+
+	.empty a {
+		margin-top: 0.5rem;
+		display: inline-block;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--emerald-700);
+		text-decoration: underline;
+	}
+
+	.grid {
+		margin-top: 1.5rem;
+		display: grid;
+		gap: 1rem;
+	}
+
+	@media (min-width: 640px) {
+		.grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.grid {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
+	.more {
+		margin-top: 2rem;
+		text-align: center;
+	}
+
+	.more a {
+		display: inline-block;
+		border-radius: 0.375rem;
+		border: 1px solid var(--slate-300);
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 600;
+		color: var(--slate-700);
+	}
+
+	.more a:hover {
+		background: white;
+	}
+</style>

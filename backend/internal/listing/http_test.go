@@ -41,7 +41,9 @@ func seed(t *testing.T, pool *pgxpool.Pool, raceStatus string) fixture {
 	race, err := q.CreateRace(ctx, sqlcgen.CreateRaceParams{
 		ID: raceID, Slug: "t-" + raceID.String(), Name: "Fixture Race",
 		Sport: "running", EventDate: time.Date(2027, 6, 1, 0, 0, 0, 0, time.UTC),
-		City: "Testville", Country: "ZZ", TransferPolicy: "platform_sale",
+		// "ZX", not "ZZ": the race package filters on country=zz and its tests
+		// run in parallel with this package under `go test ./...`.
+		City: "Testville", Country: "ZX", TransferPolicy: "platform_sale",
 		PolicySourceUrl: &src, Status: raceStatus,
 	})
 	if err != nil {

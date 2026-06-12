@@ -3,18 +3,44 @@
 
 	let { policy }: { policy: TransferPolicy } = $props();
 
-	const styles: Record<TransferPolicy, { label: string; classes: string }> = {
-		platform_sale: { label: 'Resale allowed', classes: 'bg-emerald-100 text-emerald-800' },
-		official_only: { label: 'Official transfer', classes: 'bg-sky-100 text-sky-800' },
-		connect_only: { label: 'Chat only', classes: 'bg-amber-100 text-amber-800' },
-		unknown: { label: 'Policy unverified', classes: 'bg-slate-200 text-slate-700' }
+	const labels: Record<TransferPolicy, string> = {
+		platform_sale: 'Resale allowed',
+		official_only: 'Official transfer',
+		connect_only: 'Chat only',
+		unknown: 'Policy unverified'
 	};
 </script>
 
-<span
-	class="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap {styles[
-		policy
-	].classes}"
->
-	{styles[policy].label}
-</span>
+<span class="badge {policy}">{labels[policy]}</span>
+
+<style>
+	.badge {
+		display: inline-block;
+		border-radius: 9999px;
+		padding: 0.125rem 0.625rem;
+		font-size: 0.75rem;
+		line-height: 1rem;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+
+	.platform_sale {
+		background: var(--emerald-100);
+		color: var(--emerald-800);
+	}
+
+	.official_only {
+		background: var(--sky-100);
+		color: var(--sky-800);
+	}
+
+	.connect_only {
+		background: var(--amber-100);
+		color: var(--amber-800);
+	}
+
+	.unknown {
+		background: var(--slate-200);
+		color: var(--slate-700);
+	}
+</style>

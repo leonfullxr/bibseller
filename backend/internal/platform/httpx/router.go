@@ -10,42 +10,42 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewRouter(logger *slog.Logger, pool *pgxpool.Pool, apiV1 ...func(chi.Router)) http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(requestLogger(logger))
-	r.Use(middleware.Recoverer)
+func NewRouter(logger *slog.Logger, pool *pgxpool.Pool, apiV1 ...func(*http.ServeMux)) http.Handler {
+	mux := http.NewServeMux()
 
-	r.Route("/api", func(r chi.Router) {
-		// Liveness: the process is up.
-		r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-			JSON(w, http.StatusOK, map[string]string{"status": "ok"})
-		})
-		// Readiness: dependencies are reachable.
-		r.Get("/readyz", func(w http.ResponseWriter, req *http.Request) {
-			ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
-			defer cancel()
-			if err := pool.Ping(ctx); err != nil {
-				JSON(w, http.StatusServiceUnavailable,
-					map[string]string{"status": "unavailable", "reason": "database unreachable"})
-				return
-			}
-			JSON(w, http.StatusOK, map[string]string{"status": "ok"})
-		})
-
-		r.Route("/v1", func(v1 chi.Router) {
-			for _, mount := range apiV1 {
-				mount(v1)
-			}
-		})
+	// Liveness: the process is up.
+	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+	// Readiness: dependencies are reachable.
+	mux.HandleFunc("GET /api/readyz", func(w http.ResponseWriter, req *http.Request) {
+		ctx, cancel := context.WithTimeout(req.Context(), 2*time.Second)
+		defer cancel()
+		if err := pool.Ping(ctx); err != nil {
+			JSON(w, http.StatusServiceUnavailable,
+				map[string]string{"status": "unavailable", "reason": "database unreachable"})
+			return
+		}
+		JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	return r
+	// Domain routes register method+pattern routes relative to /api/v1;
+	// StripPrefix rebases incoming paths onto that sub-mux.
+	v1 := http.NewServeMux()
+	for _, mount := range apiV1 {
+		mount(v1)
+	}
+	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", v1))
+
+	// Outermost first: tag the request, log it, convert panics to 500s.
+	var h http.Handler = mux
+	h = recoverer(logger)(h)
+	h = requestLogger(logger)(h)
+	h = requestID(h)
+	return h
 }
 
 // JSON writes v as a JSON response with the given status.

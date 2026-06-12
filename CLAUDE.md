@@ -12,7 +12,7 @@ Zero-commission, EU-wide P2P marketplace for race bibs. **Everything derives fro
 
 ### Stack & layout
 
-Go 1.25 (chi, pgx, sqlc — **no ORM**) · SvelteKit (Svelte 5 runes, TS strict, Tailwind v4, adapter-node) · Postgres 16 · goose migrations. Monorepo: `backend/` (package-by-domain under `internal/`, shared infra in `internal/platform/`), `frontend/`. Heavy tools run as pinned `go run pkg@version` from the Makefile, deliberately not in `go.mod`.
+Go 1.25 (stdlib `net/http` ServeMux, pgx, sqlc — **no ORM**) · SvelteKit (Svelte 5 runes, TS strict, scoped component CSS, adapter-node) · Postgres 16 · goose migrations. Monorepo: `backend/` (package-by-domain under `internal/`, shared infra in `internal/platform/`), `frontend/`. Heavy tools run as pinned `go run pkg@version` from the Makefile, deliberately not in `go.mod`.
 
 ### Commands
 
