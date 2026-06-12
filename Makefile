@@ -39,8 +39,8 @@ sqlc-check: ## fail if committed sqlc output is stale (no-op until M1 adds queri
 		cd backend && $(SQLC) generate && git diff --exit-code -- internal/platform/db/sqlcgen; \
 	else echo "sqlc: no queries yet (M1, issue #2) — skipping"; fi
 
-seed: ## load dev seed data
-	@echo "seed data arrives with M1 (issue #2)"
+seed: ## wipe + load dev seed data (dev-only)
+	cd backend && go run ./cmd/seed
 
 test: test-backend test-frontend ## run all tests
 test-backend:

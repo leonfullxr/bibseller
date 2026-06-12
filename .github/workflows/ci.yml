@@ -41,7 +41,13 @@ jobs:
         with:
           version: latest
           working-directory: backend
-      - run: go test ./...
+      - name: migrations round-trip (up → 0 → up)
+        run: |
+          GOOSE="go run github.com/pressly/goose/v3/cmd/goose@v3.27.1"
+          $GOOSE -dir db/migrations postgres "$DATABASE_URL" up
+          $GOOSE -dir db/migrations postgres "$DATABASE_URL" down-to 0
+          $GOOSE -dir db/migrations postgres "$DATABASE_URL" up
+      - run: go test ./... # includes schema constraint tests against the migrated service DB
       - name: sqlc generated code is current
         run: |
           if ls db/queries/*.sql >/dev/null 2>&1; then
