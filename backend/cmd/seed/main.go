@@ -47,19 +47,24 @@ func main() {
 
 const noLoginHash = "*seeded-account-no-login*"
 
+// marta keeps a fixed id across reseeds: the pre-auth settings demo hardcodes
+// it (frontend/src/routes/settings/+page.server.ts). Remove with M3 sessions.
+var martaID = uuid.MustParse("00000000-0000-7000-8000-000000000001")
+
 func seedUsers(ctx context.Context, q *sqlcgen.Queries, pool *pgxpool.Pool) map[string]uuid.UUID {
 	out := map[string]uuid.UUID{}
 	for _, u := range []struct {
 		key, email, name, locale, country string
+		id                                uuid.UUID
 	}{
-		{"admin", "admin@bibseller.dev", "Admin", "en", "ES"},
-		{"marta", "marta@example.com", "Marta R.", "es", "ES"},
-		{"jonas", "jonas@example.com", "Jonas K.", "en", "DE"},
-		{"claire", "claire@example.com", "Claire D.", "fr", "FR"},
-		{"luca", "luca@example.com", "Luca B.", "en", "IT"},
+		{"admin", "admin@bibseller.dev", "Admin", "en", "ES", ids.New()},
+		{"marta", "marta@example.com", "Marta R.", "es", "ES", martaID},
+		{"jonas", "jonas@example.com", "Jonas K.", "en", "DE", ids.New()},
+		{"claire", "claire@example.com", "Claire D.", "fr", "FR", ids.New()},
+		{"luca", "luca@example.com", "Luca B.", "en", "IT", ids.New()},
 	} {
 		row, err := q.CreateUser(ctx, sqlcgen.CreateUserParams{
-			ID: ids.New(), Email: u.email, PasswordHash: noLoginHash,
+			ID: u.id, Email: u.email, PasswordHash: noLoginHash,
 			DisplayName: u.name, Locale: u.locale, Country: ptr(u.country),
 		})
 		must(err)
