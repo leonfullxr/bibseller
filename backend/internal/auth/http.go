@@ -39,25 +39,30 @@ const (
 )
 
 type Handler struct {
-	q *sqlcgen.Queries
+	q      *sqlcgen.Queries
+	mailer Mailer
+	appURL string // frontend base, for building verification links
 }
 
-func Routes(q *sqlcgen.Queries) func(*http.ServeMux) {
-	h := &Handler{q: q}
+func Routes(q *sqlcgen.Queries, mailer Mailer, appURL string) func(*http.ServeMux) {
+	h := &Handler{q: q, mailer: mailer, appURL: appURL}
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /auth/register", h.register)
 		mux.HandleFunc("POST /auth/login", h.login)
 		mux.HandleFunc("POST /auth/logout", h.logout)
 		mux.HandleFunc("GET /auth/me", h.me)
+		mux.HandleFunc("POST /auth/verify", h.verify)
+		mux.HandleFunc("POST /auth/verify/resend", h.resendVerification)
 	}
 }
 
 // Account is the authenticated user's own view — email is fine here (it is
 // their account), unlike the public user.Profile DTO.
 type Account struct {
-	ID          uuid.UUID `json:"id"`
-	Email       string    `json:"email"`
-	DisplayName string    `json:"display_name"`
+	ID            uuid.UUID `json:"id"`
+	Email         string    `json:"email"`
+	DisplayName   string    `json:"display_name"`
+	EmailVerified bool      `json:"email_verified"`
 }
 
 // sessionResponse is returned to the SvelteKit server, which translates
@@ -124,7 +129,10 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.respondWithSession(w, r, http.StatusCreated, row.ID, row.Email, row.DisplayName)
+	// Fire off the verification email; never blocks or fails registration
+	// (the user can resend). A fresh account is always unverified.
+	h.startEmailVerification(r.Context(), row.ID, row.Email)
+	h.respondWithSession(w, r, http.StatusCreated, row.ID, row.Email, row.DisplayName, false)
 }
 
 type loginRequest struct {
@@ -166,7 +174,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		_ = h.q.DeleteSession(r.Context(), hashToken(old))
 	}
 
-	h.respondWithSession(w, r, http.StatusOK, user.ID, user.Email, user.DisplayName)
+	h.respondWithSession(w, r, http.StatusOK, user.ID, user.Email, user.DisplayName, user.EmailVerifiedAt != nil)
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
@@ -190,10 +198,13 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	httpx.JSON(w, http.StatusOK, Account{ID: row.ID, Email: row.Email, DisplayName: row.DisplayName})
+	httpx.JSON(w, http.StatusOK, Account{
+		ID: row.ID, Email: row.Email, DisplayName: row.DisplayName,
+		EmailVerified: row.EmailVerifiedAt != nil,
+	})
 }
 
-func (h *Handler) respondWithSession(w http.ResponseWriter, r *http.Request, status int, id uuid.UUID, email, name string) {
+func (h *Handler) respondWithSession(w http.ResponseWriter, r *http.Request, status int, id uuid.UUID, email, name string, emailVerified bool) {
 	token, expiresAt, err := issueSession(r.Context(), h.q, id, r)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not create session")
@@ -202,7 +213,7 @@ func (h *Handler) respondWithSession(w http.ResponseWriter, r *http.Request, sta
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.JSON(w, status, sessionResponse{
 		Token: token, ExpiresAt: expiresAt,
-		User: Account{ID: id, Email: email, DisplayName: name},
+		User: Account{ID: id, Email: email, DisplayName: name, EmailVerified: emailVerified},
 	})
 }
 

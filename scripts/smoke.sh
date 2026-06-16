@@ -8,6 +8,7 @@ set -u
 
 API=http://localhost:8080
 WEB=http://localhost:5173
+MAILPIT=http://localhost:8025
 FAILURES=0
 
 say() { printf '%s\n' "$*"; }
@@ -77,8 +78,9 @@ fi
 say "── auth (M3): sessions gate profile mutations"
 # The API returns the raw token in the JSON body (it never sets the cookie —
 # that's the SvelteKit layer's job), so we present it manually as the cookie.
+AUTH_EMAIL="smoke-$(date +%s)-$$@test.local"
 REG=$(curl -s -X POST "$API/api/v1/auth/register" -H 'Content-Type: application/json' \
-	-d "{\"email\":\"smoke-$(date +%s)-$$@test.local\",\"password\":\"correct horse battery staple\",\"display_name\":\"Smoke Tester\"}")
+	-d "{\"email\":\"$AUTH_EMAIL\",\"password\":\"correct horse battery staple\",\"display_name\":\"Smoke Tester\"}")
 TOKEN=$(printf '%s' "$REG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' 2>/dev/null)
 USER_ID=$(printf '%s' "$REG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["user"]["id"])' 2>/dev/null)
 SEEDED_OTHER="00000000-0000-7000-8000-000000000001" # marta, from cmd/seed
@@ -96,6 +98,37 @@ if [ -n "$TOKEN" ] && [ -n "$USER_ID" ]; then
 	[ "$(patch_status "$USER_ID" "$TOKEN")" = "200" ] && pass "owner renames self (200)" || fail "self PATCH not 200"
 	[ "$(patch_status "$USER_ID" "")" = "401" ] && pass "no session → PATCH 401" || fail "unauth PATCH not 401"
 	[ "$(patch_status "$SEEDED_OTHER" "$TOKEN")" = "403" ] && pass "cannot rename another user (403)" || fail "cross-user PATCH not 403"
+
+	# Email verification end-to-end: registration sent a real email to Mailpit;
+	# pull the token back out of it and consume it. This is the only place SMTP
+	# is exercised (unit tests stub the mailer).
+	VTOKEN=""
+	for _ in $(seq 1 20); do
+		mid=$(curl -s "$MAILPIT/api/v1/messages?limit=50" | python3 -c '
+import json, sys
+addr = sys.argv[1].lower()
+for m in json.load(sys.stdin).get("messages", []):
+    if addr in [t.get("Address", "").lower() for t in m.get("To", [])]:
+        print(m["ID"]); break
+' "$AUTH_EMAIL" 2>/dev/null)
+		if [ -n "$mid" ]; then
+			VTOKEN=$(curl -s "$MAILPIT/api/v1/message/$mid" |
+				python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("Text","") or d.get("HTML",""))' 2>/dev/null |
+				grep -oE 'token=[A-Za-z0-9_-]+' | head -1 | cut -d= -f2)
+		fi
+		[ -n "$VTOKEN" ] && break
+		sleep 0.3
+	done
+	if [ -n "$VTOKEN" ]; then
+		vcode=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/v1/auth/verify" \
+			-H 'Content-Type: application/json' -d "{\"token\":\"$VTOKEN\"}")
+		[ "$vcode" = "204" ] && pass "emailed link verifies the account (204)" || fail "verify (got $vcode, want 204)"
+		curl -s -H "Cookie: __Host-session=$TOKEN" "$API/api/v1/auth/me" | grep -q '"email_verified":true' &&
+			pass "/auth/me reports email_verified after verifying" || fail "email_verified not true after verify"
+	else
+		fail "no verification email reached Mailpit for $AUTH_EMAIL"
+	fi
+
 	curl -s -o /dev/null -X POST -H "Cookie: __Host-session=$TOKEN" "$API/api/v1/auth/logout"
 else
 	fail "could not register a smoke user (token/user id missing)"

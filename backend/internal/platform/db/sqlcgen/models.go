@@ -31,6 +31,13 @@ type ChatThread struct {
 	SellerLastReadAt *time.Time `json:"seller_last_read_at"`
 }
 
+type EmailVerification struct {
+	TokenHash []byte    `json:"token_hash"`
+	UserID    uuid.UUID `json:"user_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Listing struct {
 	ID                 uuid.UUID `json:"id"`
 	RaceID             uuid.UUID `json:"race_id"`

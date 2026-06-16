@@ -14,6 +14,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/config"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/email"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 	"github.com/leonfullxr/bibseller/backend/internal/race"
 	"github.com/leonfullxr/bibseller/backend/internal/user"
@@ -43,11 +44,13 @@ func run() error {
 	defer pool.Close()
 
 	queries := sqlcgen.New(pool)
+	mailer := email.SMTPMailer{Addr: cfg.SMTPAddr, From: cfg.EmailFrom}
 	srv := &http.Server{
 		Addr: ":" + cfg.Port,
 		Handler: httpx.NewRouter(logger, pool,
 			[]httpx.Middleware{auth.RateLimit(), auth.ResolveUser(queries)},
-			race.Routes(queries), listing.Routes(queries), user.Routes(queries), auth.Routes(queries)),
+			race.Routes(queries), listing.Routes(queries), user.Routes(queries),
+			auth.Routes(queries, mailer, cfg.AppURL)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,
