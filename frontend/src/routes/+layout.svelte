@@ -27,6 +27,15 @@
 		</div>
 	</header>
 
+	{#if data.user && !data.user.email_verified}
+		<div class="verify-banner">
+			<span>Verify your email to unlock selling and chat.</span>
+			<form method="POST" action={resolve('/verify/resend')}>
+				<button type="submit">Resend email</button>
+			</form>
+		</div>
+	{/if}
+
 	<main>
 		{@render children()}
 	</main>
@@ -107,6 +116,38 @@
 		background: none;
 		padding: 0;
 		font: inherit;
+	}
+
+	.verify-banner {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		background: var(--amber-50);
+		border-bottom: 1px solid var(--amber-300);
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		color: var(--amber-900);
+	}
+
+	.verify-banner form {
+		display: contents;
+	}
+
+	.verify-banner button {
+		cursor: pointer;
+		border: 1px solid var(--amber-300);
+		border-radius: 0.375rem;
+		background: white;
+		padding: 0.25rem 0.625rem;
+		font: inherit;
+		font-weight: 600;
+		color: var(--amber-900);
+	}
+
+	.verify-banner button:hover {
+		background: var(--amber-100);
 	}
 
 	main {

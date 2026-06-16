@@ -9,6 +9,11 @@ type Config struct {
 	Env         string // "development" or "production"
 	Port        string
 	DatabaseURL string
+
+	// Email (M3 verification). Dev defaults target Mailpit (docker-compose).
+	SMTPAddr  string // host:port of the SMTP server
+	EmailFrom string // From header on transactional mail
+	AppURL    string // frontend base URL, for building verification links
 }
 
 func Load() Config {
@@ -16,6 +21,9 @@ func Load() Config {
 		Env:         getenv("ENV", "development"),
 		Port:        getenv("PORT", "8080"),
 		DatabaseURL: getenv("DATABASE_URL", "postgres://postgres:dev@localhost:5432/bibseller?sslmode=disable"),
+		SMTPAddr:    getenv("SMTP_ADDR", "localhost:1025"),
+		EmailFrom:   getenv("EMAIL_FROM", "Bibseller <noreply@bibseller.dev>"),
+		AppURL:      getenv("APP_URL", "http://localhost:5173"),
 	}
 }
 

@@ -19,10 +19,16 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
 )
 
+// noopMailer satisfies auth.Mailer without sending anything — the verification
+// flow is exercised by seeding a token row directly, not by parsing email.
+type noopMailer struct{}
+
+func (noopMailer) SendVerification(_, _ string) error { return nil }
+
 func handler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)
 	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool,
-		[]httpx.Middleware{auth.ResolveUser(q)}, auth.Routes(q))
+		[]httpx.Middleware{auth.ResolveUser(q)}, auth.Routes(q, noopMailer{}, "http://test.local"))
 }
 
 type sessionResponse struct {
@@ -137,6 +143,53 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 	if rec := post(t, h, "/api/v1/auth/logout", "", login.Token); rec.Code != http.StatusNoContent {
 		t.Errorf("repeated logout: status = %d, want 204", rec.Code)
+	}
+}
+
+func TestEmailVerification(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+	q := sqlcgen.New(pool)
+	reg := register(t, h, pool, "correct horse battery staple")
+
+	// A fresh account is unverified.
+	if me := getMe(t, h, reg.Token); me.Code == http.StatusOK {
+		var acc auth.Account
+		_ = json.Unmarshal(me.Body.Bytes(), &acc)
+		if acc.EmailVerified {
+			t.Fatal("freshly registered account is already email_verified")
+		}
+	}
+
+	// A bogus token is rejected.
+	if rec := post(t, h, "/api/v1/auth/verify", `{"token":"not-a-real-token"}`, ""); rec.Code != http.StatusBadRequest {
+		t.Errorf("bogus token: status = %d, want 400", rec.Code)
+	}
+
+	// Seed a known token for this user (we control the raw value; the DB only
+	// ever holds its hash), then consume it.
+	token := "verify-" + ids.New().String()
+	sum := sha256.Sum256([]byte(token))
+	if _, err := q.CreateEmailVerification(context.Background(), sqlcgen.CreateEmailVerificationParams{
+		TokenHash: sum[:], UserID: reg.User.ID,
+	}); err != nil {
+		t.Fatalf("seed verification token: %v", err)
+	}
+
+	if rec := post(t, h, "/api/v1/auth/verify", `{"token":"`+token+`"}`, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("verify: status = %d, body = %s", rec.Code, rec.Body)
+	}
+
+	// The account is now verified, and /auth/me reflects it.
+	me := getMe(t, h, reg.Token)
+	var acc auth.Account
+	if err := json.Unmarshal(me.Body.Bytes(), &acc); err != nil || !acc.EmailVerified {
+		t.Errorf("me.email_verified = %v after verify (err=%v)", acc.EmailVerified, err)
+	}
+
+	// The token is single-use: replaying it fails.
+	if rec := post(t, h, "/api/v1/auth/verify", `{"token":"`+token+`"}`, ""); rec.Code != http.StatusBadRequest {
+		t.Errorf("replayed token: status = %d, want 400", rec.Code)
 	}
 }
 
