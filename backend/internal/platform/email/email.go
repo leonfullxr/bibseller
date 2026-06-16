@@ -33,4 +33,3 @@ func (m SMTPMailer) SendVerification(to, link string) error {
 		m.From, to, link)
 	return smtp.SendMail(m.Addr, nil, envelopeFrom, []string{to}, []byte(msg))
 }
-
