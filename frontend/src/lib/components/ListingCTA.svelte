@@ -1,19 +1,21 @@
 <script lang="ts">
 	import type { TransferPolicy } from '$lib/api/types';
+	import { policyView } from '$lib/policy';
 
 	let { policy, officialUrl = null }: { policy: TransferPolicy; officialUrl?: string | null } =
 		$props();
 
 	// The buy path exists ONLY for platform_sale - and even there it ships
 	// with M6. Chat ships with M5. Until then: honest disabled stubs.
+	const action = $derived(policyView[policy].primaryAction);
 </script>
 
 <div class="cta">
-	{#if policy === 'platform_sale'}
+	{#if action === 'buy'}
 		<button type="button" disabled class="buy" title="Secure checkout arrives with payments (M6)">
 			Buy securely - coming soon
 		</button>
-	{:else if policy === 'official_only' && officialUrl}
+	{:else if action === 'official' && officialUrl}
 		<a href={officialUrl} rel="external nofollow noopener" target="_blank" class="official">
 			Official transfer process
 		</a>

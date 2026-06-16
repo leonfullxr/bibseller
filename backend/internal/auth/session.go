@@ -90,12 +90,12 @@ func requestToken(r *http.Request) (string, bool) {
 	return c.Value, true
 }
 
-// Authenticate resolves a presented token to its user, enforcing expiry and
+// authenticate resolves a presented token to its user, enforcing expiry and
 // sliding the 30-day idle window (throttled by touchInterval). Returns
 // ok=false for missing, unknown, or expired tokens - the caller answers 401.
-// Exported so other domains (e.g. user profile mutations) can gate a handler
-// to the signed-in user; promote to middleware once many routes need it.
-func Authenticate(ctx context.Context, q *sqlcgen.Queries, r *http.Request) (sqlcgen.GetSessionWithUserRow, bool) {
+// Internal to the package: ResolveUser runs it once per request as v1
+// middleware, and handlers read the result via UserFromContext.
+func authenticate(ctx context.Context, q *sqlcgen.Queries, r *http.Request) (sqlcgen.GetSessionWithUserRow, bool) {
 	token, ok := requestToken(r)
 	if !ok {
 		return sqlcgen.GetSessionWithUserRow{}, false

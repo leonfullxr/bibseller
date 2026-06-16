@@ -3,18 +3,14 @@
 	import { page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import RaceCard from '$lib/components/RaceCard.svelte';
+	import { policyLabel } from '$lib/policy';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const countries = ['AT', 'BE', 'DE', 'ES', 'FR', 'IT', 'NL', 'PL', 'PT'];
 	const sports = ['running', 'trail', 'triathlon', 'cycling', 'obstacle', 'other'];
-	const policies = [
-		{ value: 'platform_sale', label: 'Resale allowed' },
-		{ value: 'official_only', label: 'Official transfer' },
-		{ value: 'connect_only', label: 'Chat only' },
-		{ value: 'unknown', label: 'Unverified' }
-	];
+	const policies = Object.entries(policyLabel).map(([value, label]) => ({ value, label }));
 
 	const nextQuery = $derived.by(() => {
 		if (!data.nextCursor) return null;

@@ -5,7 +5,6 @@ package listing
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,12 +12,7 @@ import (
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
-)
-
-const (
-	defaultPageSize = 24
-	maxPageSize     = 100
-	cacheControl    = "public, max-age=60, stale-while-revalidate=300"
+	"github.com/leonfullxr/bibseller/backend/internal/race"
 )
 
 type Handler struct {
@@ -66,8 +60,8 @@ type listResponse struct {
 }
 
 func (h *Handler) listByRace(w http.ResponseWriter, r *http.Request) {
-	race, err := h.q.GetRaceBySlug(r.Context(), r.PathValue("slug"))
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && race.Status != "published") {
+	rc, err := h.q.GetRaceBySlug(r.Context(), r.PathValue("slug"))
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !race.IsPublic(rc.Status)) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "race not found")
 		return
 	}
@@ -76,17 +70,14 @@ func (h *Handler) listByRace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := sqlcgen.ListActiveListingsByRaceParams{
-		RaceID:   race.ID,
-		PageSize: defaultPageSize,
+	limit, err := httpx.ParseLimit(r.URL.Query())
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
+		return
 	}
-	if v := r.URL.Query().Get("limit"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > maxPageSize {
-			httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "invalid limit")
-			return
-		}
-		params.PageSize = int32(n)
+	params := sqlcgen.ListActiveListingsByRaceParams{
+		RaceID:   rc.ID,
+		PageSize: limit,
 	}
 	if v := r.URL.Query().Get("cursor"); v != "" {
 		id, err := uuid.Parse(v)
@@ -120,7 +111,7 @@ func (h *Handler) listByRace(w http.ResponseWriter, r *http.Request) {
 		resp.NextCursor = &c
 	}
 
-	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
 	httpx.JSON(w, http.StatusOK, resp)
 }
 
@@ -133,7 +124,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 
 	row, err := h.q.GetListingByID(r.Context(), id)
 	// Listings on unpublished races are not public.
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.Race.Status != "published") {
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !race.IsPublic(row.Race.Status)) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "listing not found")
 		return
 	}
@@ -142,7 +133,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
 	httpx.JSON(w, http.StatusOK, Detail{
 		Summary: Summary{
 			ID: row.Listing.ID, Status: row.Listing.Status,
