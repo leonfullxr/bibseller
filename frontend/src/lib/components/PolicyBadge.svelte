@@ -1,17 +1,11 @@
 <script lang="ts">
 	import type { TransferPolicy } from '$lib/api/types';
+	import { policyLabel } from '$lib/policy';
 
 	let { policy }: { policy: TransferPolicy } = $props();
-
-	const labels: Record<TransferPolicy, string> = {
-		platform_sale: 'Resale allowed',
-		official_only: 'Official transfer',
-		connect_only: 'Chat only',
-		unknown: 'Policy unverified'
-	};
 </script>
 
-<span class="badge {policy}">{labels[policy]}</span>
+<span class="badge {policy}">{policyLabel[policy]}</span>
 
 <style>
 	.badge {

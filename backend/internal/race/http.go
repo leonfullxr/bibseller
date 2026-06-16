@@ -4,9 +4,7 @@ package race
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,14 +13,6 @@ import (
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
-)
-
-const (
-	defaultPageSize = 24
-	maxPageSize     = 100
-
-	// Anonymous catalog responses are CDN/browser cacheable.
-	cacheControl = "public, max-age=60, stale-while-revalidate=300"
 )
 
 var (
@@ -35,6 +25,14 @@ var (
 		"connect_only": true, "unknown": true,
 	}
 )
+
+// IsPublic reports whether a race with this status is visible in the public
+// catalog. "published" is the only public status; drafts and anything else are
+// hidden. Centralized here so race detail and listing reads share one
+// definition instead of each testing the string.
+func IsPublic(status string) bool {
+	return status == "published"
+}
 
 type Handler struct {
 	q *sqlcgen.Queries
@@ -77,7 +75,12 @@ type listResponse struct {
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	qp := r.URL.Query()
-	params := sqlcgen.ListRacesParams{PageSize: defaultPageSize}
+	limit, err := httpx.ParseLimit(qp)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
+		return
+	}
+	params := sqlcgen.ListRacesParams{PageSize: limit}
 
 	if v := qp.Get("country"); v != "" {
 		c := strings.ToUpper(v)
@@ -124,15 +127,6 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		}
 		params.Search = &v
 	}
-	if v := qp.Get("limit"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > maxPageSize {
-			httpx.Error(w, http.StatusBadRequest, "invalid_parameter",
-				fmt.Sprintf("limit must be 1..%d", maxPageSize))
-			return
-		}
-		params.PageSize = int32(n)
-	}
 	if v := qp.Get("cursor"); v != "" {
 		date, id, err := parseCursor(v)
 		if err != nil {
@@ -167,7 +161,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		resp.NextCursor = &c
 	}
 
-	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
 	httpx.JSON(w, http.StatusOK, resp)
 }
 
@@ -182,7 +176,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
 	httpx.JSON(w, http.StatusOK, Detail{
 		Summary: Summary{
 			ID: row.ID, Slug: row.Slug, Name: row.Name, Series: row.Series,

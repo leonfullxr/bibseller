@@ -11,6 +11,10 @@ Race bibs go to waste while runners refresh sold-out registration pages. Bibsell
 
 Every race carries a `transfer_policy` (`platform_sale | official_only | connect_only | unknown`). Every behavior - which buttons exist, whether money can flow, which disclaimers render, what liability posture applies - derives from that one field, enforced server-side and in the database, never just hidden in UI. If a change can't answer "what does this do in each of the four modes?", it isn't done.
 
+## Language
+
+Policy view - the frontend's single derivation of a race's `transfer_policy` into presentation facts: the CTA affordance, the disclaimer block and its tone, and the badge label. Lives in `$lib/policy.ts`; components read it instead of branching on the policy string, and the words it labels sit in a separate table (the M8 i18n seed). Avoid: policy descriptor, policy config, policy helper.
+
 ## Founder decisions log
 
 | # | Date | Decision | Choice | Rationale / consequences |
