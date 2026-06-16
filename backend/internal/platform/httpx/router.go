@@ -78,7 +78,7 @@ type errorDetail struct {
 
 // Error writes the API's standard error envelope: stable code strings the
 // frontend can switch on, human message for debugging (docs/ARCHITECTURE.md
-// → API conventions).
+// -> API conventions).
 func Error(w http.ResponseWriter, status int, code, message string) {
 	JSON(w, status, errorBody{Error: errorDetail{Code: code, Message: message}})
 }

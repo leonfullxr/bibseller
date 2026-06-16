@@ -1,5 +1,5 @@
 // Package auth owns password hashing, the session lifecycle, and the
-// /auth/* endpoints (docs/ARCHITECTURE.md → Auth & sessions, decision D12).
+// /auth/* endpoints (docs/ARCHITECTURE.md -> Auth & sessions, decision D12).
 //
 // Follow-ups tracked for M3 completion: per-IP rate limiting on these
 // endpoints and email verification (which gates listing/chat, not browsing).
@@ -28,7 +28,7 @@ const (
 	minNameLen = 2
 	maxNameLen = 50
 
-	// NIST/OWASP guidance: length is the strength factor — minimum 8, no
+	// NIST/OWASP guidance: length is the strength factor - minimum 8, no
 	// composition rules (they push users toward predictable patterns). The
 	// upper bound exists only so an attacker cannot post megabytes into a
 	// memory-hard hash function.
@@ -56,7 +56,7 @@ func Routes(q *sqlcgen.Queries, mailer Mailer, appURL string) func(*http.ServeMu
 	}
 }
 
-// Account is the authenticated user's own view — email is fine here (it is
+// Account is the authenticated user's own view - email is fine here (it is
 // their account), unlike the public user.Profile DTO.
 type Account struct {
 	ID            uuid.UUID `json:"id"`
@@ -67,7 +67,7 @@ type Account struct {
 
 // sessionResponse is returned to the SvelteKit server, which translates
 // Token into the __Host-session cookie. The raw token exists exactly twice:
-// in this response body and in the browser's cookie jar — never in our
+// in this response body and in the browser's cookie jar - never in our
 // database, which holds only its SHA-256.
 type sessionResponse struct {
 	Token     string    `json:"token"`
@@ -115,7 +115,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		ID: ids.New(), Email: email, PasswordHash: hash,
 		DisplayName: name, Locale: "en",
 	})
-	// The citext UNIQUE constraint is the source of truth for "email taken" —
+	// The citext UNIQUE constraint is the source of truth for "email taken" -
 	// a prior SELECT would be a race. 409 admits the account exists, which is
 	// an enumeration tradeoff every register endpoint makes; the mitigation
 	// is rate limiting, not a lie the user can't act on.
@@ -179,7 +179,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	// Idempotent: logging out without (or with a dead) session is success,
-	// not an error — the end state "no session" is what was asked for.
+	// not an error - the end state "no session" is what was asked for.
 	if token, ok := requestToken(r); ok {
 		if err := h.q.DeleteSession(r.Context(), hashToken(token)); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "internal", "could not log out")
@@ -189,7 +189,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// me resolves the presented session cookie to the account — the endpoint the
+// me resolves the presented session cookie to the account - the endpoint the
 // SvelteKit server hook will call to populate locals.user on each request.
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	row, ok := UserFromContext(r.Context())
@@ -218,7 +218,7 @@ func (h *Handler) respondWithSession(w http.ResponseWriter, r *http.Request, sta
 }
 
 // validEmail accepts what net/mail parses as a single bare address. This is
-// deliberately shallow — the only proof of a deliverable address is the
+// deliberately shallow - the only proof of a deliverable address is the
 // verification email (M3 follow-up), not a cleverer regex.
 func validEmail(email string) bool {
 	addr, err := mail.ParseAddress(email)

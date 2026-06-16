@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end smoke: boots API + frontend against a migrated+seeded local
-# Postgres and asserts the behaviors that define the product — above all,
+# Postgres and asserts the behaviors that define the product - above all,
 # the transfer-policy gating matrix. Wipes dev data (runs `make seed`).
 #
 # Usage: make smoke   (requires Postgres reachable; `make infra` or local PG)
@@ -12,8 +12,8 @@ MAILPIT=http://localhost:8025
 FAILURES=0
 
 say() { printf '%s\n' "$*"; }
-pass() { say "  ✓ $1"; }
-fail() { say "  ✗ $1"; FAILURES=$((FAILURES + 1)); }
+pass() { say "  PASS $1"; }
+fail() { say "  FAIL $1"; FAILURES=$((FAILURES + 1)); }
 
 expect_status() { # url want desc
 	local got
@@ -29,7 +29,7 @@ expect_not_contains() { # url pattern desc
 
 say "── prepare database (migrate + seed)"
 if ! make -s migrate >/dev/null 2>&1 || ! make -s seed >/dev/null 2>&1; then
-	say "✗ Postgres not reachable or migrate/seed failed — run 'make infra' first"
+	say "FAIL Postgres not reachable or migrate/seed failed - run 'make infra' first"
 	exit 2
 fi
 
@@ -45,8 +45,8 @@ wait_for() {
 	for _ in $(seq 1 60); do curl -sf "$1" >/dev/null 2>&1 && return 0; sleep 0.5; done
 	return 1
 }
-wait_for "$API/api/healthz" || { say "✗ API never became healthy (see /tmp/bibseller-smoke-api.log)"; exit 2; }
-wait_for "$WEB/" || { say "✗ frontend never came up (see /tmp/bibseller-smoke-web.log)"; exit 2; }
+wait_for "$API/api/healthz" || { say "FAIL API never became healthy (see /tmp/bibseller-smoke-api.log)"; exit 2; }
+wait_for "$WEB/" || { say "FAIL frontend never came up (see /tmp/bibseller-smoke-web.log)"; exit 2; }
 
 say "── api basics"
 expect_status "$API/api/readyz" 200 "readyz reports ready (DB reachable)"
@@ -76,7 +76,7 @@ else
 fi
 
 say "── auth (M3): sessions gate profile mutations"
-# The API returns the raw token in the JSON body (it never sets the cookie —
+# The API returns the raw token in the JSON body (it never sets the cookie -
 # that's the SvelteKit layer's job), so we present it manually as the cookie.
 AUTH_EMAIL="smoke-$(date +%s)-$$@test.local"
 REG=$(curl -s -X POST "$API/api/v1/auth/register" -H 'Content-Type: application/json' \
@@ -94,9 +94,9 @@ if [ -n "$TOKEN" ] && [ -n "$USER_ID" ]; then
 	}
 	code=$(curl -s -o /dev/null -w '%{http_code}' -H "Cookie: __Host-session=$TOKEN" "$API/api/v1/auth/me")
 	[ "$code" = "200" ] && pass "session cookie resolves /auth/me" || fail "auth/me with cookie (got $code, want 200)"
-	expect_status "$API/api/v1/auth/me" 401 "no session → /auth/me 401"
+	expect_status "$API/api/v1/auth/me" 401 "no session -> /auth/me 401"
 	[ "$(patch_status "$USER_ID" "$TOKEN")" = "200" ] && pass "owner renames self (200)" || fail "self PATCH not 200"
-	[ "$(patch_status "$USER_ID" "")" = "401" ] && pass "no session → PATCH 401" || fail "unauth PATCH not 401"
+	[ "$(patch_status "$USER_ID" "")" = "401" ] && pass "no session -> PATCH 401" || fail "unauth PATCH not 401"
 	[ "$(patch_status "$SEEDED_OTHER" "$TOKEN")" = "403" ] && pass "cannot rename another user (403)" || fail "cross-user PATCH not 403"
 
 	# Email verification end-to-end: registration sent a real email to Mailpit;

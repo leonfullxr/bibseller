@@ -23,7 +23,7 @@ type Mailer interface {
 
 // startEmailVerification mints a verification token, persists its hash, and
 // emails the link. Best-effort by design: a mail (or token) failure is logged
-// but never fails the surrounding request — the user can always resend. The
+// but never fails the surrounding request - the user can always resend. The
 // token row is written synchronously so the link works the instant the email
 // lands; the SMTP send, which can block on the network, runs in the background.
 func (h *Handler) startEmailVerification(ctx context.Context, userID uuid.UUID, email string) {
@@ -61,7 +61,7 @@ func (h *Handler) verify(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := h.q.GetEmailVerificationUser(r.Context(), hashToken(req.Token))
 	if errors.Is(err, pgx.ErrNoRows) {
-		// Unknown, already-consumed, or expired — indistinguishable to the caller.
+		// Unknown, already-consumed, or expired - indistinguishable to the caller.
 		httpx.Error(w, http.StatusBadRequest, "invalid_token", "this verification link is invalid or has expired")
 		return
 	}

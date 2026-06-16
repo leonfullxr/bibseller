@@ -2,7 +2,7 @@
 //
 // GET /users/{id} is public: it returns only id + display_name, the same
 // non-PII the catalog already exposes as a listing's seller_name. PATCH is
-// gated to the signed-in user — you may rename yourself, no one else
+// gated to the signed-in user - you may rename yourself, no one else
 // (401/403 per docs/ARCHITECTURE.md).
 package user
 

@@ -21,12 +21,12 @@
 </script>
 
 <svelte:head>
-	<title>Bib for {race.name} — Bibseller</title>
+	<title>Bib for {race.name} - Bibseller</title>
 </svelte:head>
 
 <nav>
 	<a href={resolve('/races/[slug]', { slug: race.slug })}>
-		← {race.name}
+		Back to {race.name}
 	</a>
 </nav>
 
@@ -35,8 +35,9 @@
 		<div>
 			<h1>Bib for {race.name}</h1>
 			<p class="meta">
-				{formatDate(race.event_date)} · {race.city}, {race.country}
-				{#if race.distance}· {race.distance}{/if}
+				{formatDate(race.event_date)} - {race.city}, {race.country}
+				{#if race.distance}
+					- {race.distance}{/if}
 			</p>
 		</div>
 		<PolicyBadge policy={race.transfer_policy} />

@@ -15,7 +15,7 @@ export default defineConfig({
 	],
 	server: {
 		// Same-origin API in dev: the browser hits /api/* here and Vite
-		// forwards to the Go server — no CORS anywhere (docs/ARCHITECTURE.md).
+		// forwards to the Go server - no CORS anywhere (docs/ARCHITECTURE.md).
 		proxy: {
 			'/api': 'http://localhost:8080'
 		}

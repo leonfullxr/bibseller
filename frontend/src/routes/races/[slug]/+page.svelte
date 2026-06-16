@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>{race.name} — bibs for sale — Bibseller</title>
+	<title>{race.name} - bibs for sale - Bibseller</title>
 	<meta
 		name="description"
 		content="Bibs for {race.name} ({formatDate(race.event_date)}, {race.city})."
@@ -19,7 +19,7 @@
 </svelte:head>
 
 <nav>
-	<a href={resolve('/races')}>← All races</a>
+	<a href={resolve('/races')}>Back to all races</a>
 </nav>
 
 <header>
@@ -28,13 +28,14 @@
 		<PolicyBadge policy={race.transfer_policy} />
 	</div>
 	<p class="meta">
-		{formatDate(race.event_date)} · {race.city}, {race.country}
-		{#if race.distance}· {race.distance}{/if}
-		· <span class="sport">{race.sport}</span>
+		{formatDate(race.event_date)} - {race.city}, {race.country}
+		{#if race.distance}
+			- {race.distance}{/if}
+		- <span class="sport">{race.sport}</span>
 	</p>
 	{#if race.website_url}
 		<a href={race.website_url} rel="external nofollow noopener" target="_blank" class="website">
-			Race website ↗
+			Race website
 		</a>
 	{/if}
 </header>

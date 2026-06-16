@@ -48,7 +48,7 @@ func main() {
 const noLoginHash = "*seeded-account-no-login*"
 
 // marta keeps a fixed id across reseeds so the smoke test can target a known
-// "other" user for its cross-user 403 check (scripts/smoke.sh → auth block).
+// "other" user for its cross-user 403 check (scripts/smoke.sh -> auth block).
 var martaID = uuid.MustParse("00000000-0000-7000-8000-000000000001")
 
 func seedUsers(ctx context.Context, q *sqlcgen.Queries, pool *pgxpool.Pool) map[string]uuid.UUID {
@@ -87,28 +87,28 @@ type raceSeed struct {
 
 func seedRaces(ctx context.Context, q *sqlcgen.Queries, admin uuid.UUID) map[string]sqlcgen.Race {
 	seeds := []raceSeed{
-		// platform_sale — resale allowed, payments possible (source required)
+		// platform_sale - resale allowed, payments possible (source required)
 		{key: "munich", slug: "munich-marathon-2026", name: "Munich Marathon 2026", sport: "running", distance: "marathon", city: "Munich", country: "DE", date: "2026-10-11", policy: "platform_sale", sourceURL: "https://example.org/munich-tos#transfers", notes: "T&C §7: bib transfer permitted until race week."},
 		{key: "granada", slug: "granada-half-2027", name: "Granada Media Maratón 2027", sport: "running", distance: "half", city: "Granada", country: "ES", date: "2027-03-28", policy: "platform_sale", sourceURL: "https://example.org/granada-reglamento#cesion"},
 		{key: "brussels", slug: "brussels-20km-2027", name: "Brussels 20km 2027", sport: "running", distance: "20k", city: "Brussels", country: "BE", date: "2027-05-30", policy: "platform_sale", sourceURL: "https://example.org/brussels-rules#transfer"},
 		{key: "garda", slug: "garda-trail-42k-2026", name: "Garda Trail 42K 2026", sport: "trail", distance: "42k", city: "Riva del Garda", country: "IT", date: "2026-09-19", policy: "platform_sale", sourceURL: "https://example.org/garda-regolamento#cambio"},
 		{key: "mallorca", slug: "mallorca-70-3-2027", name: "Mallorca 70.3 Triathlon 2027", sport: "triathlon", distance: "70.3", city: "Alcúdia", country: "ES", date: "2027-05-08", policy: "platform_sale", sourceURL: "https://example.org/mallorca-athlete-guide#slot-transfer"},
 
-		// official_only — the race runs its own name-change process
+		// official_only - the race runs its own name-change process
 		{key: "valencia", slug: "valencia-marathon-2026", name: "Valencia Marathon 2026", sport: "running", distance: "marathon", city: "Valencia", country: "ES", date: "2026-12-06", policy: "official_only", officialURL: "https://example.org/valencia/name-change"},
 		{key: "valencia-half", slug: "valencia-half-2026", name: "Valencia Half Marathon 2026", sport: "running", distance: "half", city: "Valencia", country: "ES", date: "2026-10-25", policy: "official_only", officialURL: "https://example.org/valencia-half/name-change"},
 		{key: "paris", slug: "paris-marathon-2027", name: "Paris Marathon 2027", sport: "running", distance: "marathon", city: "Paris", country: "FR", date: "2027-04-11", policy: "official_only", officialURL: "https://example.org/paris/official-resale"},
 		{key: "amsterdam", slug: "amsterdam-marathon-2026", name: "Amsterdam Marathon 2026", sport: "running", distance: "marathon", city: "Amsterdam", country: "NL", date: "2026-10-18", policy: "official_only", officialURL: "https://example.org/amsterdam/transfer"},
 		{key: "vienna", slug: "vienna-city-marathon-2027", name: "Vienna City Marathon 2027", sport: "running", distance: "marathon", city: "Vienna", country: "AT", date: "2027-04-18", policy: "official_only", officialURL: "https://example.org/vienna/name-change"},
 
-		// connect_only — transfers restricted; chat only, strong disclaimer
+		// connect_only - transfers restricted; chat only, strong disclaimer
 		{key: "berlin", slug: "berlin-marathon-2026", name: "Berlin Marathon 2026", sport: "running", distance: "marathon", city: "Berlin", country: "DE", date: "2026-09-27", policy: "connect_only", notes: "Organizer forbids bib transfers."},
 		{key: "porto", slug: "porto-marathon-2026", name: "Porto Marathon 2026", sport: "running", distance: "marathon", city: "Porto", country: "PT", date: "2026-11-08", policy: "connect_only"},
 		{key: "frankfurt", slug: "frankfurt-marathon-2026", name: "Frankfurt Marathon 2026", sport: "running", distance: "marathon", city: "Frankfurt", country: "DE", date: "2026-10-25", policy: "connect_only"},
 		{key: "milano", slug: "milano-marathon-2027", name: "Milano Marathon 2027", sport: "running", distance: "marathon", city: "Milan", country: "IT", date: "2027-04-04", policy: "connect_only"},
 		{key: "rotterdam", slug: "rotterdam-marathon-2027", name: "Rotterdam Marathon 2027", sport: "running", distance: "marathon", city: "Rotterdam", country: "NL", date: "2027-04-11", policy: "connect_only"},
 
-		// unknown — not yet verified; treated as connect_only with a badge
+		// unknown - not yet verified; treated as connect_only with a badge
 		{key: "sevilla", slug: "sevilla-marathon-2027", name: "Sevilla Marathon 2027", sport: "running", distance: "marathon", city: "Sevilla", country: "ES", date: "2027-02-21", policy: "unknown"},
 		{key: "lisbon", slug: "lisbon-half-2027", name: "Lisbon Half Marathon 2027", sport: "running", distance: "half", city: "Lisbon", country: "PT", date: "2027-03-21", policy: "unknown"},
 		{key: "krakow", slug: "krakow-marathon-2027", name: "Kraków Marathon 2027", sport: "running", distance: "marathon", city: "Kraków", country: "PL", date: "2027-04-18", policy: "unknown"},
@@ -168,7 +168,7 @@ func seedListings(ctx context.Context, q *sqlcgen.Queries, races map[string]sqlc
 		{race: "berlin", seller: "jonas", price: 15000, orig: 15000, desc: "Contact me to discuss options."},
 		{race: "berlin", seller: "marta", price: 14000, orig: 15000},
 		{race: "porto", seller: "luca", price: 5500, orig: 6000, finalStatus: "cancelled"},
-		{race: "sevilla", seller: "marta", price: 5000, orig: 5500, desc: "Policy still unverified — chat first."},
+		{race: "sevilla", seller: "marta", price: 5000, orig: 5500, desc: "Policy still unverified - chat first."},
 		{race: "bilbao", seller: "claire", price: 3500, orig: 4000, finalStatus: "expired"},
 	}
 

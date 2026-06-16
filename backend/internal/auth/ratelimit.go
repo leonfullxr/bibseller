@@ -20,7 +20,7 @@ const (
 )
 
 // rateLimiter is a per-key fixed-window counter. In-process, no external store
-// (docs/ARCHITECTURE.md → no new infra): v1 runs a single API instance, and a
+// (docs/ARCHITECTURE.md -> no new infra): v1 runs a single API instance, and a
 // fixed window resets without per-request bookkeeping. The trigger to revisit
 // (Redis-backed) is horizontal scaling of the API.
 type rateLimiter struct {
@@ -40,7 +40,7 @@ func newRateLimiter(limit int, w time.Duration) *rateLimiter {
 }
 
 // allow reports whether key may proceed at time now, and (when it may not) the
-// whole seconds until its window resets — the Retry-After hint.
+// whole seconds until its window resets - the Retry-After hint.
 func (rl *rateLimiter) allow(key string, now time.Time) (bool, int) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -50,7 +50,7 @@ func (rl *rateLimiter) allow(key string, now time.Time) (bool, int) {
 		return true, 0
 	}
 	if w.count >= rl.limit {
-		// Whole seconds (rounded up, ≥1) until this window resets.
+		// Whole seconds (rounded up, >=1) until this window resets.
 		return false, int(math.Ceil((rl.window - now.Sub(w.start)).Seconds()))
 	}
 	w.count++

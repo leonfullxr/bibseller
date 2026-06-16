@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 
 /**
  * Landing page for the emailed verification link (GET /verify?token=...).
- * Consumes the token against the API server-to-server — the raw token never
+ * Consumes the token against the API server-to-server - the raw token never
  * touches client JS.
  */
 export const load: PageServerLoad = async ({ url }) => {

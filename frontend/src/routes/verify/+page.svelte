@@ -5,12 +5,12 @@
 	let { data }: PageProps = $props();
 </script>
 
-<svelte:head><title>Verify email — Bibseller</title></svelte:head>
+<svelte:head><title>Verify email - Bibseller</title></svelte:head>
 
 <section class="verify">
 	{#if data.status === 'ok'}
 		<h1>Email verified</h1>
-		<p>Your email address is confirmed — you're all set.</p>
+		<p>Your email address is confirmed - you're all set.</p>
 		<a href={resolve('/')}>Continue</a>
 	{:else if data.status === 'invalid'}
 		<h1>Link invalid or expired</h1>

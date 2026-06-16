@@ -1,6 +1,6 @@
 // Package email sends transactional mail over SMTP. In dev/CI this targets
 // Mailpit (docker-compose, no auth); prod points SMTP_ADDR at a real relay.
-// No dependency — net/smtp is enough for the one message we send.
+// No dependency - net/smtp is enough for the one message we send.
 package email
 
 import (

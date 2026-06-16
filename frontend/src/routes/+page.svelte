@@ -22,7 +22,7 @@
 </script>
 
 <svelte:head>
-	<title>Bibseller — race bibs find new runners</title>
+	<title>Bibseller - race bibs find new runners</title>
 	<meta
 		name="description"
 		content="Non-profit, EU-wide marketplace connecting runners who can't start with runners who missed registration."
@@ -33,7 +33,7 @@
 	<h1>Race bibs find <span>new runners</span></h1>
 	<p class="tagline">
 		Injured? Plans changed? Missed registration? A zero-commission marketplace that connects sellers
-		and buyers of race bibs — always within each race's own rules.
+		and buyers of race bibs - always within each race's own rules.
 	</p>
 
 	<form method="GET" action={resolve('/races')} class="search">
@@ -46,7 +46,7 @@
 		<div class="api-status">
 			<span class="dot"></span>
 			<span class="api-msg">
-				API unreachable — run <code>make dev</code>
+				API unreachable - run <code>make dev</code>
 			</span>
 		</div>
 	{/if}
@@ -76,7 +76,7 @@
 </section>
 
 <p class="construction">
-	Under construction — follow the
+	Under construction - follow the
 	<a href="https://github.com/leonfullxr/bibseller/issues/13" rel="external">roadmap</a>.
 </p>
 

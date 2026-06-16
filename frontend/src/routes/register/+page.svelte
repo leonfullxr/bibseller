@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Create account — Bibseller</title>
+	<title>Create account - Bibseller</title>
 </svelte:head>
 
 <section class="panel">

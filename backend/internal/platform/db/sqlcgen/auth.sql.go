@@ -28,7 +28,7 @@ type CreateSessionParams struct {
 }
 
 // Session lifecycle. The session TTL (30-day idle expiry, docs/ARCHITECTURE.md
-// → Auth & sessions) lives in this file: both INSERT and touch use the same
+// -> Auth & sessions) lives in this file: both INSERT and touch use the same
 // interval literal.
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (time.Time, error) {
 	row := q.db.QueryRow(ctx, createSession,

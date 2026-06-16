@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Log in — Bibseller</title>
+	<title>Log in - Bibseller</title>
 </svelte:head>
 
 <section class="panel">

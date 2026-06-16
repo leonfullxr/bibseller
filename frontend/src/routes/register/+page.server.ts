@@ -21,7 +21,7 @@ export const actions: Actions = {
 		const values = { email, display_name: displayName };
 
 		// Server-side mirror of the HTML5 constraints (the attributes are UX,
-		// not enforcement). The Go API re-validates again — it can't trust us.
+		// not enforcement). The Go API re-validates again - it can't trust us.
 		if (!email.includes('@')) {
 			return fail(400, { ...values, error: 'Enter a valid email address.' });
 		}
@@ -44,8 +44,8 @@ export const actions: Actions = {
 		}
 
 		if (!res.ok) {
-			// Surface the API's error-envelope message ("email_taken" → 409,
-			// validation → 400) into the form.
+			// Surface the API's error-envelope message ("email_taken" -> 409,
+			// validation -> 400) into the form.
 			const body = (await res.json().catch(() => null)) as {
 				error?: { message?: string };
 			} | null;

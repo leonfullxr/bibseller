@@ -1,5 +1,5 @@
 -- Session lifecycle. The session TTL (30-day idle expiry, docs/ARCHITECTURE.md
--- → Auth & sessions) lives in this file: both INSERT and touch use the same
+-- -> Auth & sessions) lives in this file: both INSERT and touch use the same
 -- interval literal.
 
 -- name: CreateSession :one
