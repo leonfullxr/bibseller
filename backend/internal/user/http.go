@@ -72,7 +72,7 @@ type updateRequest struct {
 }
 
 func (h *Handler) updateDisplayName(w http.ResponseWriter, r *http.Request) {
-	caller, ok := auth.Authenticate(r.Context(), h.q, r)
+	caller, ok := auth.UserFromContext(r.Context())
 	if !ok {
 		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
 		return

@@ -43,7 +43,8 @@ func seedUser(t *testing.T, pool *pgxpool.Pool) sqlcgen.User {
 // session, so tests need a real registration flow to obtain a token.
 func handler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)
-	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool, user.Routes(q), auth.Routes(q))
+	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool,
+		[]httpx.Middleware{auth.ResolveUser(q)}, user.Routes(q), auth.Routes(q))
 }
 
 type session struct {

@@ -100,6 +100,18 @@ if [ -n "$TOKEN" ] && [ -n "$USER_ID" ]; then
 else
 	fail "could not register a smoke user (token/user id missing)"
 fi
+
+# The limiter lives only in the real server (not the test router), so this is
+# its end-to-end proof: rapid logins from one IP must start returning 429.
+RL_429=0
+for _ in $(seq 1 12); do
+	code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/api/v1/auth/login" \
+		-H 'Content-Type: application/json' \
+		-d '{"email":"ratelimit-probe@test.local","password":"wrong-password-guess"}')
+	[ "$code" = "429" ] && RL_429=1
+done
+[ "$RL_429" = "1" ] && pass "login throttles to 429 past the per-IP limit" || fail "no 429 after 12 rapid logins"
+
 expect_contains "$WEB/" "Log in" "anonymous nav shows Log in / Register"
 
 say "──"
