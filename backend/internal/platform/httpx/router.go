@@ -40,8 +40,10 @@ func NewRouter(logger *slog.Logger, pool *pgxpool.Pool, apiV1 ...func(*http.Serv
 	}
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", v1))
 
-	// Outermost first: tag the request, log it, convert panics to 500s.
+	// Outermost first: tag the request, log it, convert panics to 500s,
+	// block cross-site mutations.
 	var h http.Handler = mux
+	h = csrfGuard(h)
 	h = recoverer(logger)(h)
 	h = requestLogger(logger)(h)
 	h = requestID(h)

@@ -3,7 +3,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
-	let { children } = $props();
+	let { children, data } = $props();
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -14,6 +14,15 @@
 			<a href={resolve('/')} class="brand">bib<span>seller</span></a>
 			<nav>
 				<a href={resolve('/races')}>Races</a>
+				{#if data.user}
+					<a href={resolve('/settings')}>{data.user.display_name}</a>
+					<form method="POST" action={resolve('/logout')}>
+						<button type="submit">Log out</button>
+					</form>
+				{:else}
+					<a href={resolve('/login')}>Log in</a>
+					<a href={resolve('/register')}>Register</a>
+				{/if}
 			</nav>
 		</div>
 	</header>
@@ -70,17 +79,34 @@
 	}
 
 	nav {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
 	}
 
-	nav a {
+	nav a,
+	nav button {
 		font-weight: 500;
 		color: var(--slate-600);
 	}
 
-	nav a:hover {
+	nav a:hover,
+	nav button:hover {
 		color: var(--slate-900);
+	}
+
+	nav form {
+		display: contents;
+	}
+
+	nav button {
+		cursor: pointer;
+		border: none;
+		background: none;
+		padding: 0;
+		font: inherit;
 	}
 
 	main {
