@@ -167,7 +167,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	row, err := h.q.GetRaceBySlug(r.Context(), r.PathValue("slug"))
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.Status != "published") {
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !IsPublic(row.Status)) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "race not found")
 		return
 	}
