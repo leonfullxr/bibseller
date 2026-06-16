@@ -74,6 +74,34 @@ else
 	fail "could not resolve listing ids from the API"
 fi
 
+say "── auth (M3): sessions gate profile mutations"
+# The API returns the raw token in the JSON body (it never sets the cookie —
+# that's the SvelteKit layer's job), so we present it manually as the cookie.
+REG=$(curl -s -X POST "$API/api/v1/auth/register" -H 'Content-Type: application/json' \
+	-d "{\"email\":\"smoke-$(date +%s)-$$@test.local\",\"password\":\"correct horse battery staple\",\"display_name\":\"Smoke Tester\"}")
+TOKEN=$(printf '%s' "$REG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' 2>/dev/null)
+USER_ID=$(printf '%s' "$REG" | python3 -c 'import json,sys; print(json.load(sys.stdin)["user"]["id"])' 2>/dev/null)
+SEEDED_OTHER="00000000-0000-7000-8000-000000000001" # marta, from cmd/seed
+
+if [ -n "$TOKEN" ] && [ -n "$USER_ID" ]; then
+	patch_status() { # id cookie-or-empty -> http code
+		local hdr=()
+		[ -n "$2" ] && hdr=(-H "Cookie: __Host-session=$2")
+		curl -s -o /dev/null -w '%{http_code}' -X PATCH "${hdr[@]}" \
+			-H 'Content-Type: application/json' -d '{"display_name":"Probe Name"}' "$API/api/v1/users/$1"
+	}
+	code=$(curl -s -o /dev/null -w '%{http_code}' -H "Cookie: __Host-session=$TOKEN" "$API/api/v1/auth/me")
+	[ "$code" = "200" ] && pass "session cookie resolves /auth/me" || fail "auth/me with cookie (got $code, want 200)"
+	expect_status "$API/api/v1/auth/me" 401 "no session → /auth/me 401"
+	[ "$(patch_status "$USER_ID" "$TOKEN")" = "200" ] && pass "owner renames self (200)" || fail "self PATCH not 200"
+	[ "$(patch_status "$USER_ID" "")" = "401" ] && pass "no session → PATCH 401" || fail "unauth PATCH not 401"
+	[ "$(patch_status "$SEEDED_OTHER" "$TOKEN")" = "403" ] && pass "cannot rename another user (403)" || fail "cross-user PATCH not 403"
+	curl -s -o /dev/null -X POST -H "Cookie: __Host-session=$TOKEN" "$API/api/v1/auth/logout"
+else
+	fail "could not register a smoke user (token/user id missing)"
+fi
+expect_contains "$WEB/" "Log in" "anonymous nav shows Log in / Register"
+
 say "──"
 if [ "$FAILURES" -gt 0 ]; then
 	say "SMOKE FAILED: $FAILURES assertion(s) red"

@@ -1,13 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
+import type { SessionResponse } from '$lib/api/types';
 import { setSessionCookie } from '$lib/server/session';
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
-interface SessionResponse {
-	token: string;
-	expires_at: string;
-	user: { id: string; email: string; display_name: string };
-}
+export const load: PageServerLoad = ({ locals }) => {
+	if (locals.user) redirect(303, '/');
+};
 
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {

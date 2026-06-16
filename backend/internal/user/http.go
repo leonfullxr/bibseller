@@ -1,9 +1,9 @@
 // Package user owns user profile reads and updates.
 //
-// TEMP (pre-M3): these endpoints have NO authorization — sessions don't
-// exist yet, so any caller can read or rename any user. They exist to
-// exercise the form-action flow in dev and must be gated to the signed-in
-// user (401/403 per docs/ARCHITECTURE.md) before anything ships.
+// GET /users/{id} is public: it returns only id + display_name, the same
+// non-PII the catalog already exposes as a listing's seller_name. PATCH is
+// gated to the signed-in user — you may rename yourself, no one else
+// (401/403 per docs/ARCHITECTURE.md).
 package user
 
 import (
@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/leonfullxr/bibseller/backend/internal/auth"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 )
@@ -71,9 +72,18 @@ type updateRequest struct {
 }
 
 func (h *Handler) updateDisplayName(w http.ResponseWriter, r *http.Request) {
+	caller, ok := auth.Authenticate(r.Context(), h.q, r)
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
+		return
+	}
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "not_found", "user not found")
+		return
+	}
+	if caller.ID != id {
+		httpx.Error(w, http.StatusForbidden, "forbidden", "cannot modify another user")
 		return
 	}
 

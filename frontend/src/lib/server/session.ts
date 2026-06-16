@@ -36,3 +36,8 @@ export function sessionHeader(cookies: Cookies): Record<string, string> {
 	const token = cookies.get(SESSION_COOKIE);
 	return token ? { cookie: `${SESSION_COOKIE}=${token}` } : {};
 }
+
+/** Drop the session cookie. Path must match the one it was set with (__Host- → '/'). */
+export function clearSessionCookie(cookies: Cookies): void {
+	cookies.delete(SESSION_COOKIE, { path: '/' });
+}

@@ -1,26 +1,17 @@
-import { fail } from '@sveltejs/kit';
-import { apiFetch, apiGet } from '$lib/api/server';
+import { fail, redirect } from '@sveltejs/kit';
+import { apiFetch } from '$lib/api/server';
+import { sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
-/**
- * TEMP until sessions (M3): the settings page edits the seeded demo user
- * (marta@example.com), whose id is fixed in backend/cmd/seed. Replace with
- * the signed-in user from `locals` once auth lands.
- */
-const DEMO_USER_ID = '00000000-0000-7000-8000-000000000001';
-
-interface UserProfile {
-	id: string;
-	display_name: string;
-}
-
-export const load: PageServerLoad = async ({ fetch }) => {
-	const user = await apiGet<UserProfile>(`/api/v1/users/${DEMO_USER_ID}`, fetch);
-	return { user };
+export const load: PageServerLoad = ({ locals }) => {
+	if (!locals.user) redirect(303, '/login');
+	return { user: locals.user };
 };
 
 export const actions: Actions = {
-	default: async ({ request }) => {
+	default: async ({ request, cookies, locals }) => {
+		if (!locals.user) redirect(303, '/login');
+
 		const data = await request.formData();
 		const displayName = String(data.get('display_name') ?? '').trim();
 
@@ -35,9 +26,10 @@ export const actions: Actions = {
 
 		let res: Response;
 		try {
-			res = await apiFetch(`/api/v1/users/${DEMO_USER_ID}`, {
+			res = await apiFetch(`/api/v1/users/${locals.user.id}`, {
 				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
+				// Forward the session so the API can confirm we own this id (403 otherwise).
+				headers: { 'Content-Type': 'application/json', ...sessionHeader(cookies) },
 				body: JSON.stringify({ display_name: displayName })
 			});
 		} catch {
@@ -55,7 +47,10 @@ export const actions: Actions = {
 			});
 		}
 
-		const user = (await res.json()) as UserProfile;
+		const user = (await res.json()) as { id: string; display_name: string };
+		// Keep this request's locals in sync so the re-run layout load (and thus
+		// the nav) shows the new name immediately, not on the next navigation.
+		locals.user.display_name = user.display_name;
 		return { success: true, value: user.display_name };
 	}
 };
