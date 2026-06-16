@@ -6,12 +6,12 @@ This is a single-context repo. The context doc lives under `docs/`, not at the r
 
 ## Before exploring, read these
 
-- **`docs/CONTEXT.md`** - the binding decisions log and domain glossary for Bibseller.
-- **`docs/adr/`** - read ADRs that touch the area you're about to work in. This directory is created lazily when the first ADR is written; if it's absent, proceed silently.
+- `docs/CONTEXT.md` - the binding decisions log and domain glossary for Bibseller.
+- `docs/adr/` - read ADRs that touch the area you're about to work in. This directory is created lazily when the first ADR is written; if it's absent, proceed silently.
 
 Supporting docs worth reading for deeper work: `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/PAYMENTS_AND_COMPLIANCE.md`.
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
+If any of these files don't exist, proceed silently. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 
 ## File structure
 
@@ -19,10 +19,10 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 /
 ├── CLAUDE.md
 ├── docs/
-│   ├── CONTEXT.md            ← decisions log + domain glossary
+│   ├── CONTEXT.md            <- decisions log + domain glossary
 │   ├── ARCHITECTURE.md
 │   ├── DATA_MODEL.md
-│   └── adr/                  ← architectural decision records (created lazily)
+│   └── adr/                  <- architectural decision records (created lazily)
 │       ├── 0001-....md
 │       └── 0002-....md
 ├── backend/
