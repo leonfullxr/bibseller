@@ -22,6 +22,11 @@ func RequestID(ctx context.Context) string {
 
 // requestID tags every request with a short random id for log correlation,
 // honoring an inbound X-Request-Id (e.g. from a reverse proxy) when present.
+//
+// SECURITY: this trusts X-Request-Id, which is correct only behind our own
+// proxy. If this port ever becomes directly client-facing, a client can forge
+// correlation ids — sanitize (length/charset cap) or stop honoring the header
+// at that point (tracked: near-term considerations, docs/TECH_NOTES.md).
 func requestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Request-Id")

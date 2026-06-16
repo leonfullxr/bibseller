@@ -184,7 +184,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 // me resolves the presented session cookie to the account — the endpoint the
 // SvelteKit server hook will call to populate locals.user on each request.
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
-	row, ok := Authenticate(r.Context(), h.q, r)
+	row, ok := UserFromContext(r.Context())
 	if !ok {
 		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
 		return

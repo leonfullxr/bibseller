@@ -46,6 +46,7 @@ func run() error {
 	srv := &http.Server{
 		Addr: ":" + cfg.Port,
 		Handler: httpx.NewRouter(logger, pool,
+			[]httpx.Middleware{auth.RateLimit(), auth.ResolveUser(queries)},
 			race.Routes(queries), listing.Routes(queries), user.Routes(queries), auth.Routes(queries)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,

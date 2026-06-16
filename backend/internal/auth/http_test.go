@@ -20,7 +20,9 @@ import (
 )
 
 func handler(pool *pgxpool.Pool) http.Handler {
-	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool, auth.Routes(sqlcgen.New(pool)))
+	q := sqlcgen.New(pool)
+	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool,
+		[]httpx.Middleware{auth.ResolveUser(q)}, auth.Routes(q))
 }
 
 type sessionResponse struct {

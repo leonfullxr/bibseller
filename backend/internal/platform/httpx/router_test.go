@@ -19,7 +19,7 @@ func testRouter(t *testing.T) http.Handler {
 		t.Fatalf("NewPool: %v", err)
 	}
 	t.Cleanup(pool.Close)
-	return NewRouter(slog.New(slog.DiscardHandler), pool)
+	return NewRouter(slog.New(slog.DiscardHandler), pool, nil)
 }
 
 func TestHealthz(t *testing.T) {

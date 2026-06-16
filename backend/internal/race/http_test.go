@@ -51,7 +51,7 @@ func mustDate(s string) time.Time {
 }
 
 func handler(pool *pgxpool.Pool) http.Handler {
-	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool, race.Routes(sqlcgen.New(pool)))
+	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool, nil, race.Routes(sqlcgen.New(pool)))
 }
 
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {

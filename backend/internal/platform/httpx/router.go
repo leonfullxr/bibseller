@@ -13,7 +13,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewRouter(logger *slog.Logger, pool *pgxpool.Pool, apiV1 ...func(*http.ServeMux)) http.Handler {
+// Middleware wraps a handler. v1Middleware (e.g. session resolution, rate
+// limiting) is applied only to the /api/v1 sub-mux, never to the health checks.
+type Middleware = func(http.Handler) http.Handler
+
+func NewRouter(logger *slog.Logger, pool *pgxpool.Pool, v1Middleware []Middleware, apiV1 ...func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
 
 	// Liveness: the process is up.
@@ -33,12 +37,18 @@ func NewRouter(logger *slog.Logger, pool *pgxpool.Pool, apiV1 ...func(*http.Serv
 	})
 
 	// Domain routes register method+pattern routes relative to /api/v1;
-	// StripPrefix rebases incoming paths onto that sub-mux.
+	// StripPrefix rebases incoming paths onto that sub-mux. v1 middleware sees
+	// the rebased path ("/auth/login") and wraps the mux with v1Middleware[0]
+	// outermost.
 	v1 := http.NewServeMux()
 	for _, mount := range apiV1 {
 		mount(v1)
 	}
-	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", v1))
+	var v1h http.Handler = v1
+	for i := len(v1Middleware) - 1; i >= 0; i-- {
+		v1h = v1Middleware[i](v1h)
+	}
+	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", v1h))
 
 	// Outermost first: tag the request, log it, convert panics to 500s,
 	// block cross-site mutations.
