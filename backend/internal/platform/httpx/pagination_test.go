@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"net/url"
+	"strconv"
 	"testing"
 )
 
@@ -15,9 +16,9 @@ func TestParseLimit(t *testing.T) {
 	}{
 		{name: "absent uses default", set: false, want: DefaultPageSize},
 		{name: "valid", set: true, raw: "10", want: 10},
-		{name: "max is allowed", set: true, raw: "100", want: MaxPageSize},
+		{name: "max is allowed", set: true, raw: strconv.Itoa(int(MaxPageSize)), want: MaxPageSize},
 		{name: "zero rejected", set: true, raw: "0", wantErr: true},
-		{name: "over max rejected", set: true, raw: "101", wantErr: true},
+		{name: "over max rejected", set: true, raw: strconv.Itoa(int(MaxPageSize) + 1), wantErr: true},
 		{name: "non-numeric rejected", set: true, raw: "abc", wantErr: true},
 	}
 	for _, c := range cases {
