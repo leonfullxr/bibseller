@@ -47,8 +47,8 @@ func main() {
 
 const noLoginHash = "*seeded-account-no-login*"
 
-// marta keeps a fixed id across reseeds: the pre-auth settings demo hardcodes
-// it (frontend/src/routes/settings/+page.server.ts). Remove with M3 sessions.
+// marta keeps a fixed id across reseeds so the smoke test can target a known
+// "other" user for its cross-user 403 check (scripts/smoke.sh → auth block).
 var martaID = uuid.MustParse("00000000-0000-7000-8000-000000000001")
 
 func seedUsers(ctx context.Context, q *sqlcgen.Queries, pool *pgxpool.Pool) map[string]uuid.UUID {

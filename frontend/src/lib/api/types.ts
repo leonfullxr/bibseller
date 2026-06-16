@@ -51,3 +51,16 @@ export interface Page<T> {
 	items: T[];
 	next_cursor: string | null;
 }
+
+/** The signed-in account, as returned by GET /auth/me and the session response. */
+export interface SessionUser {
+	id: string;
+	email: string;
+	display_name: string;
+}
+
+export interface SessionResponse {
+	token: string;
+	expires_at: string;
+	user: SessionUser;
+}
