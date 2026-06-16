@@ -20,15 +20,15 @@ import (
 // it impossible for a subdomain (or a non-HTTPS man-in-the-middle) to plant
 // or overwrite our session cookie.
 //
-// Division of labor (docs/ARCHITECTURE.md → Auth & sessions): the Go API
-// MINTS tokens and READS this cookie, but never sets it — Set-Cookie on a
+// Division of labor (docs/ARCHITECTURE.md -> Auth & sessions): the Go API
+// MINTS tokens and READS this cookie, but never sets it - Set-Cookie on a
 // server-to-server response would never reach the browser. The SvelteKit
 // form action receives the raw token in the JSON response (server-to-server
 // only) and sets the cookie with these exact attributes.
 const CookieName = "__Host-session"
 
 // tokenBytes = 256 bits from crypto/rand. The token is a pure random
-// capability — there is nothing to "crack"; the only attack is guessing,
+// capability - there is nothing to "crack"; the only attack is guessing,
 // and 2^256 is not guessable. Encoded as unpadded base64url (43 chars,
 // cookie-safe alphabet).
 const tokenBytes = 32
@@ -51,7 +51,7 @@ func newToken() (token string, tokenHash []byte, err error) {
 
 // hashToken is what makes a database leak harmless: the sessions table holds
 // SHA-256(token), and SHA-256 cannot be reversed to the token the browser
-// presents. A *fast* hash is correct here — unlike passwords, tokens are
+// presents. A *fast* hash is correct here - unlike passwords, tokens are
 // 256-bit random values with no dictionary to attack, so argon2 would add
 // cost without adding security. (This also means we never store anything a
 // log line or backup could turn into a working credential.)
@@ -79,7 +79,7 @@ func issueSession(ctx context.Context, q *sqlcgen.Queries, userID uuid.UUID, r *
 	return token, expiresAt, nil
 }
 
-// requestToken extracts the session token presented by the caller — the
+// requestToken extracts the session token presented by the caller - the
 // __Host-session cookie, forwarded verbatim by the SvelteKit server or sent
 // automatically by the browser on direct same-origin API calls.
 func requestToken(r *http.Request) (string, bool) {
@@ -92,7 +92,7 @@ func requestToken(r *http.Request) (string, bool) {
 
 // Authenticate resolves a presented token to its user, enforcing expiry and
 // sliding the 30-day idle window (throttled by touchInterval). Returns
-// ok=false for missing, unknown, or expired tokens — the caller answers 401.
+// ok=false for missing, unknown, or expired tokens - the caller answers 401.
 // Exported so other domains (e.g. user profile mutations) can gate a handler
 // to the signed-in user; promote to middleware once many routes need it.
 func Authenticate(ctx context.Context, q *sqlcgen.Queries, r *http.Request) (sqlcgen.GetSessionWithUserRow, bool) {

@@ -25,7 +25,7 @@
 </script>
 
 <svelte:head>
-	<title>Browse races — Bibseller</title>
+	<title>Browse races - Bibseller</title>
 	<meta name="description" content="Find race bibs for sale across EU running events." />
 </svelte:head>
 
@@ -73,7 +73,7 @@
 	</div>
 	{#if nextQuery}
 		<div class="more">
-			<a href="{resolve('/races')}?{nextQuery}">Next page →</a>
+			<a href="{resolve('/races')}?{nextQuery}">Next page -></a>
 		</div>
 	{/if}
 {/if}

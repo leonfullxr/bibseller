@@ -1,5 +1,5 @@
 // Package config loads runtime configuration from the environment.
-// Plain env vars with dev-friendly defaults, no config framework —
+// Plain env vars with dev-friendly defaults, no config framework -
 // see docs/ARCHITECTURE.md.
 package config
 

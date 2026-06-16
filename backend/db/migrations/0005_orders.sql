@@ -1,6 +1,6 @@
 -- +goose Up
 -- Orders exist only for platform_sale races (enforced in the service layer
--- and by checkout tests; see docs/DATA_MODEL.md → order state machine).
+-- and by checkout tests; see docs/DATA_MODEL.md -> order state machine).
 CREATE TABLE orders (
     id                       uuid PRIMARY KEY,
     listing_id               uuid NOT NULL REFERENCES listings (id),

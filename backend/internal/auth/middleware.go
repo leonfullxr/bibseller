@@ -16,7 +16,7 @@ const userKey ctxKey = iota
 // UserFromContext instead of each re-running the lookup. Best-effort: a
 // missing, unknown, or expired token simply leaves no user in context (the
 // handler answers 401). Anonymous requests carry no cookie and skip the DB
-// entirely (see Authenticate → requestToken).
+// entirely (see Authenticate -> requestToken).
 func ResolveUser(q *sqlcgen.Queries) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -16,7 +16,7 @@
 	<div class="callout sale">
 		<p class="title">This race allows bib resale.</p>
 		<p>
-			Agree with the seller in chat, then pay securely through the platform — funds are held until
+			Agree with the seller in chat, then pay securely through the platform - funds are held until
 			the transfer is confirmed. Zero commission.
 		</p>
 		{#if notes}<p class="notes">“{notes}”</p>{/if}
@@ -25,12 +25,12 @@
 	<div class="callout official">
 		<p class="title">This race runs its own official name-change process.</p>
 		<p>
-			Find each other and agree on the details here — the transfer itself (and any official fee)
+			Find each other and agree on the details here - the transfer itself (and any official fee)
 			goes through the race organizer. The platform never handles money for this race.
 		</p>
 		{#if officialUrl}
 			<a href={officialUrl} rel="external nofollow noopener" target="_blank" class="official-link">
-				Official transfer process ↗
+				Official transfer process
 			</a>
 		{/if}
 		{#if notes}<p class="notes">“{notes}”</p>{/if}
@@ -39,12 +39,12 @@
 	<div class="callout restricted">
 		<p class="title">
 			{policy === 'unknown'
-				? 'Transfer policy not verified yet — treat this race as chat-only.'
+				? 'Transfer policy not verified yet - treat this race as chat-only.'
 				: 'This race restricts bib transfers.'}
 		</p>
 		<p>
 			The platform only connects you: it handles no money here and takes no responsibility for any
-			arrangement between you and the other party. The race's own rules apply — check them before
+			arrangement between you and the other party. The race's own rules apply - check them before
 			agreeing to anything.
 		</p>
 		{#if notes}<p class="notes">“{notes}”</p>{/if}

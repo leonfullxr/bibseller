@@ -20,7 +20,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/user"
 )
 
-// seedUser inserts a login-less account directly — used as the public-profile
+// seedUser inserts a login-less account directly - used as the public-profile
 // subject and as the "victim" an attacker tries (and fails) to rename.
 func seedUser(t *testing.T, pool *pgxpool.Pool) sqlcgen.User {
 	t.Helper()
@@ -43,7 +43,7 @@ type noopMailer struct{}
 
 func (noopMailer) SendVerification(_, _ string) error { return nil }
 
-// handler mounts the user routes plus auth — the PATCH gate resolves the
+// handler mounts the user routes plus auth - the PATCH gate resolves the
 // session, so tests need a real registration flow to obtain a token.
 func handler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)

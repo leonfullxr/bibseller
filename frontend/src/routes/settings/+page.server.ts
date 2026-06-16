@@ -15,7 +15,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const displayName = String(data.get('display_name') ?? '').trim();
 
-		// Server-side mirror of the HTML5 constraints — the browser attributes
+		// Server-side mirror of the HTML5 constraints - the browser attributes
 		// are UX, not security; never trust the client.
 		if (displayName.length < 2 || displayName.length > 50) {
 			return fail(400, {

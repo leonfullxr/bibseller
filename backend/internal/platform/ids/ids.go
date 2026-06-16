@@ -7,7 +7,7 @@ import "github.com/google/uuid"
 func New() uuid.UUID {
 	id, err := uuid.NewV7()
 	if err != nil {
-		// Only possible on entropy-source failure — not a recoverable
+		// Only possible on entropy-source failure - not a recoverable
 		// application error.
 		panic(err)
 	}

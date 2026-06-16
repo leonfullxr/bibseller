@@ -1,7 +1,7 @@
 /**
  * Populates `locals.user` on every request by resolving the __Host-session
  * cookie against the Go API's GET /auth/me. This is the server-side half the
- * auth design anticipates (docs/ARCHITECTURE.md → Auth & sessions): the cookie
+ * auth design anticipates (docs/ARCHITECTURE.md -> Auth & sessions): the cookie
  * is an opaque token, so "who is this?" can only be answered by the API.
  */
 import type { Cookies, Handle } from '@sveltejs/kit';
@@ -19,7 +19,7 @@ async function resolveUser(cookies: Cookies): Promise<SessionUser | null> {
 	if (!cookies.get(SESSION_COOKIE)) return null;
 	try {
 		const res = await apiFetch('/api/v1/auth/me', { headers: sessionHeader(cookies) });
-		// 401 here is normal (expired/rotated token), not an error — fall through
+		// 401 here is normal (expired/rotated token), not an error - fall through
 		// to signed-out rather than throwing a page error.
 		return res.ok ? ((await res.json()) as SessionUser) : null;
 	} catch {

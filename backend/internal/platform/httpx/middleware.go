@@ -25,7 +25,7 @@ func RequestID(ctx context.Context) string {
 //
 // SECURITY: this trusts X-Request-Id, which is correct only behind our own
 // proxy. If this port ever becomes directly client-facing, a client can forge
-// correlation ids — sanitize (length/charset cap) or stop honoring the header
+// correlation ids - sanitize (length/charset cap) or stop honoring the header
 // at that point (tracked: near-term considerations, docs/TECH_NOTES.md).
 func requestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,10 +88,10 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 }
 
 // csrfGuard rejects browser-issued cross-site mutations using fetch metadata
-// (docs/ARCHITECTURE.md → Auth & sessions). Browsers attach Sec-Fetch-Site to
+// (docs/ARCHITECTURE.md -> Auth & sessions). Browsers attach Sec-Fetch-Site to
 // every request they make: "cross-site" means another origin's page triggered
 // it, which is never legitimate for a state change here. Server-to-server
-// callers (the SvelteKit actions) and curl send no such header and pass —
+// callers (the SvelteKit actions) and curl send no such header and pass -
 // CSRF is only about riding the *browser's* ambient cookie; a client that
 // sets its own headers holds the credential anyway. This is defense in depth
 // on top of SameSite=Lax, which already keeps the session cookie off

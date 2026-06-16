@@ -5,7 +5,7 @@ export
 DATABASE_URL ?= postgres://postgres:dev@localhost:5432/bibseller?sslmode=disable
 
 # Heavyweight tools run via `go run pkg@version`: pinned here, cached by Go,
-# and kept OUT of backend/go.mod — sqlc's dependency tree would otherwise
+# and kept OUT of backend/go.mod - sqlc's dependency tree would otherwise
 # force go-directive bumps that break linters (see docs/ARCHITECTURE.md).
 GOOSE := go run github.com/pressly/goose/v3/cmd/goose@v3.27.1
 SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
@@ -50,11 +50,11 @@ test-frontend:
 lint: lint-backend lint-frontend ## lint both halves
 lint-backend:
 	@if command -v golangci-lint >/dev/null; then cd backend && golangci-lint run; \
-	else echo "golangci-lint not installed — skipping (CI runs it)"; fi
+	else echo "golangci-lint not installed - skipping (CI runs it)"; fi
 lint-frontend:
 	cd frontend && npm run lint
 
-verify: ## pre-commit gate: lint + typecheck + tests + sqlc drift (docs/CONTEXT.md → D6)
+verify: ## pre-commit gate: lint + typecheck + tests + sqlc drift (docs/CONTEXT.md -> D6)
 	$(MAKE) lint
 	cd frontend && npm run check
 	$(MAKE) test

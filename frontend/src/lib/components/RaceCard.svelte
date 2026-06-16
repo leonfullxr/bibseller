@@ -13,7 +13,7 @@
 		<PolicyBadge policy={race.transfer_policy} />
 	</div>
 	<p class="meta">
-		{formatDate(race.event_date)} · {race.city}, {race.country}
+		{formatDate(race.event_date)} - {race.city}, {race.country}
 	</p>
 	<div class="tags">
 		{#if race.distance}

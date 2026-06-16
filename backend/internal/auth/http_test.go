@@ -19,7 +19,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
 )
 
-// noopMailer satisfies auth.Mailer without sending anything — the verification
+// noopMailer satisfies auth.Mailer without sending anything - the verification
 // flow is exercised by seeding a token row directly, not by parsing email.
 type noopMailer struct{}
 
@@ -232,7 +232,7 @@ func TestRegisterValidation(t *testing.T) {
 		}
 	}
 
-	// Duplicate email → 409, case-insensitively (citext).
+	// Duplicate email -> 409, case-insensitively (citext).
 	reg := register(t, h, pool, "correct horse battery staple")
 	dup := `{"email":"` + strings.ToUpper(reg.User.Email) + `","password":"longenough","display_name":"Copycat"}`
 	if rec := post(t, h, "/api/v1/auth/register", dup, ""); rec.Code != http.StatusConflict {

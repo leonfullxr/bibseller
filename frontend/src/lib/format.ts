@@ -22,7 +22,7 @@ export function formatDate(isoDate: string, locale = 'en'): string {
 	);
 }
 
-/** Today as YYYY-MM-DD (UTC) — the default lower bound for race browsing. */
+/** Today as YYYY-MM-DD (UTC) - the default lower bound for race browsing. */
 export function todayISO(): string {
 	return new Date().toISOString().slice(0, 10);
 }

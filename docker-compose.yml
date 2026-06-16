@@ -1,5 +1,5 @@
-# Dev infrastructure only — both apps run natively for hot reload.
-# See docs/ARCHITECTURE.md → Dev environment.
+# Dev infrastructure only - both apps run natively for hot reload.
+# See docs/ARCHITECTURE.md -> Dev environment.
 services:
   db:
     image: postgres:16
@@ -14,7 +14,7 @@ services:
       timeout: 3s
       retries: 15
 
-  minio: # S3-compatible — mirrors prod object storage locally
+  minio: # S3-compatible - mirrors prod object storage locally
     image: minio/minio
     command: server /data --console-address ":9001"
     environment:
@@ -28,7 +28,7 @@ services:
       timeout: 3s
       retries: 12
 
-  mailpit: # catches all dev email — web UI on :8025
+  mailpit: # catches all dev email - web UI on :8025
     image: axllent/mailpit
     ports: ['1025:1025', '8025:8025']
 

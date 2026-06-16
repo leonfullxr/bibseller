@@ -198,7 +198,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Cursor format: "<YYYY-MM-DD>~<uuid>" — keyset position on (event_date, id).
+// Cursor format: "<YYYY-MM-DD>~<uuid>" - keyset position on (event_date, id).
 func formatCursor(date time.Time, id uuid.UUID) string {
 	return date.Format("2006-01-02") + "~" + id.String()
 }

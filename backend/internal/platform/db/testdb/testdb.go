@@ -31,7 +31,7 @@ func Pool(t *testing.T) *pgxpool.Pool {
 
 	var migrated bool
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('races') IS NOT NULL`).Scan(&migrated); err != nil || !migrated {
-		t.Skip("schema not migrated — run `make migrate` first")
+		t.Skip("schema not migrated - run `make migrate` first")
 	}
 	return pool
 }

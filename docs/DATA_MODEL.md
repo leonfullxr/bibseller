@@ -1,14 +1,14 @@
 # Data model
 
-Source of truth for the v1 schema ([M1 #2](https://github.com/leonfullxr/bibseller/issues/2)). SQL below is a design sketch — the goose migrations are the executable truth and may refine details, not semantics.
+Source of truth for the v1 schema ([M1 #2](https://github.com/leonfullxr/bibseller/issues/2)). SQL below is a design sketch - the goose migrations are the executable truth and may refine details, not semantics.
 
 ## Conventions
 
-- **IDs:** UUIDv7, generated app-side (`google/uuid`). Time-ordered → doubles as pagination cursor.
-- **Time:** `timestamptz` everywhere, UTC. `created_at` (+ `updated_at` where rows mutate).
-- **Money:** integer cents + `currency char(3)`. EUR-only v1; the column exists from day one.
-- **Enums:** `TEXT` + `CHECK` constraint, not Postgres `ENUM` types — adding a value is a one-line constraint swap, not a type migration.
-- **Deletes:** GDPR deletion = **anonymization** for rows with retention duties (orders), real deletion elsewhere. No generic `deleted_at` soft-deletes.
+- IDs: UUIDv7, generated app-side (`google/uuid`). Time-ordered -> doubles as pagination cursor.
+- Time: `timestamptz` everywhere, UTC. `created_at` (+ `updated_at` where rows mutate).
+- Money: integer cents + `currency char(3)`. EUR-only v1; the column exists from day one.
+- Enums: `TEXT` + `CHECK` constraint, not Postgres `ENUM` types - adding a value is a one-line constraint swap, not a type migration.
+- Deletes: GDPR deletion = anonymization for rows with retention duties (orders), real deletion elsewhere. No generic `deleted_at` soft-deletes.
 
 ## ERD
 
@@ -65,7 +65,7 @@ CREATE INDEX sessions_user_idx ON sessions (user_id);
 
 ### races
 
-One row per **sellable event** (edition × distance): "Berlin Marathon 2026" and "Berlin Half 2026" are separate rows, optionally grouped by `series`. Normalizing into organizers/series tables is a known future step; not needed for v1.
+One row per sellable event (edition × distance): "Berlin Marathon 2026" and "Berlin Half 2026" are separate rows, optionally grouped by `series`. Normalizing into organizers/series tables is a known future step; not needed for v1.
 
 ```sql
 CREATE TABLE races (
@@ -105,14 +105,14 @@ CREATE INDEX races_fts_idx ON races
     USING gin (to_tsvector('simple', name || ' ' || city));
 ```
 
-**Policy semantics** (canonical UX matrix in [PRODUCT.md](PRODUCT.md#the-policy-matrix-canonical-ux-definition)):
+Policy semantics (canonical UX matrix in [PRODUCT.md](PRODUCT.md#the-policy-matrix-canonical-ux-definition)):
 
 | | listing | chat | payments | special |
 |---|---|---|---|---|
-| `platform_sale` | ✅ | ✅ | ✅ | requires `policy_source_url` |
-| `official_only` | ✅ | ✅ | ❌ | requires `official_transfer_url`, link-out UI |
-| `connect_only` | ✅ | ✅ after ack | ❌ | strong disclaimer |
-| `unknown` (default) | ✅ | ✅ after ack | ❌ | = connect_only + "unverified" badge |
+| `platform_sale` | yes | yes | yes | requires `policy_source_url` |
+| `official_only` | yes | yes | no | requires `official_transfer_url`, link-out UI |
+| `connect_only` | yes | yes after ack | no | strong disclaimer |
+| `unknown` (default) | yes | yes after ack | no | = connect_only + "unverified" badge |
 
 ### listings
 
@@ -136,7 +136,7 @@ CREATE INDEX listings_race_active_idx ON listings (race_id) WHERE status = 'acti
 CREATE INDEX listings_seller_idx ON listings (seller_id);
 ```
 
-Listing lifecycle: `active → reserved` (checkout holds it) `→ sold` | back to `active` (TTL lapse); `active → cancelled` (seller) | `expired` (race date job) | `removed` (moderation). Price-cap rule (`price_cents ≤ original_price_cents` when face value known) per [D2 — decided: hard cap](CONTEXT.md#founder-decisions-log) — enforced in the M4 service layer + tests (cross-row context makes a CHECK awkward).
+Listing lifecycle: `active -> reserved` (checkout holds it) `-> sold` | back to `active` (TTL lapse); `active -> cancelled` (seller) | `expired` (race date job) | `removed` (moderation). Price-cap rule (`price_cents <= original_price_cents` when face value known) per [D2 - decided: hard cap](CONTEXT.md#founder-decisions-log) - enforced in the M4 service layer + tests (cross-row context makes a CHECK awkward).
 
 ### chat_threads / messages / policy_acks
 
@@ -172,11 +172,11 @@ CREATE TABLE policy_acks (
 );
 ```
 
-Polling is `SELECT ... WHERE thread_id = $1 AND id > $cursor ORDER BY id LIMIT 100` — covered exactly by `messages_thread_idx`. The seller is implied by `listing.seller_id`; service layer rejects `buyer_id = seller_id` threads and enforces ack-before-first-message in gated modes.
+Polling is `SELECT ... WHERE thread_id = $1 AND id > $cursor ORDER BY id LIMIT 100` - covered exactly by `messages_thread_idx`. The seller is implied by `listing.seller_id`; service layer rejects `buyer_id = seller_id` threads and enforces ack-before-first-message in gated modes.
 
 ### orders / order_events / stripe_events
 
-Only ever created for `platform_sale` races — enforced in the service layer **and** by checkout API tests; there is no code path that builds a PaymentIntent from any other policy value.
+Only ever created for `platform_sale` races - enforced in the service layer and by checkout API tests; there is no code path that builds a PaymentIntent from any other policy value.
 
 ```sql
 CREATE TABLE orders (
@@ -257,7 +257,7 @@ CREATE TABLE audit_log (
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending_payment: checkout starts (listing → reserved)
+    [*] --> pending_payment: checkout starts (listing -> reserved)
     pending_payment --> paid_held: webhook payment_intent.succeeded
     pending_payment --> cancelled: TTL expires / buyer aborts / payment fails
     paid_held --> seller_marked_transferred: seller marks bib transferred
@@ -273,21 +273,21 @@ stateDiagram-v2
 
 | From | To | Actor | Guard / side effect |
 |---|---|---|---|
-| — | `pending_payment` | buyer | race is `platform_sale`, seller onboarded, listing `active` → `reserved`; PaymentIntent created |
+| - | `pending_payment` | buyer | race is `platform_sale`, seller onboarded, listing `active` -> `reserved`; PaymentIntent created |
 | `pending_payment` | `paid_held` | system (webhook) | signature-verified, idempotent via `stripe_events` |
-| `pending_payment` | `cancelled` | buyer / system | TTL (30 min) or failure → listing back to `active` |
+| `pending_payment` | `cancelled` | buyer / system | TTL (30 min) or failure -> listing back to `active` |
 | `paid_held` | `seller_marked_transferred` | seller | sets `seller_marked_at` |
-| `paid_held` | `refunded` | buyer/seller/system | race date passed or mutual cancel → Stripe Refund |
-| `seller_marked_transferred` | `completed` | buyer / system | buyer confirm or auto-release (N days, default 3) → **Stripe Transfer to seller**, listing → `sold` |
+| `paid_held` | `refunded` | buyer/seller/system | race date passed or mutual cancel -> Stripe Refund |
+| `seller_marked_transferred` | `completed` | buyer / system | buyer confirm or auto-release (N days, default 3) -> Stripe Transfer to seller, listing -> `sold` |
 | `seller_marked_transferred` | `disputed` | buyer | freezes auto-release |
 | `disputed` | `completed` / `refunded` | admin | manual; `audit_log` + `order_events` |
 
-**Invariants**
+Invariants
 
-1. Transitions happen only in `internal/order`, as `UPDATE orders SET state = $to WHERE id = $1 AND state = $from` — a zero-rowcount update means a concurrent transition won; retry or fail, never overwrite.
+1. Transitions happen only in `internal/order`, as `UPDATE orders SET state = $to WHERE id = $1 AND state = $from` - a zero-rowcount update means a concurrent transition won; retry or fail, never overwrite.
 2. Every transition appends an `order_events` row in the same transaction.
 3. Terminal states (`completed`, `cancelled`, `refunded`) are frozen.
-4. Money side effects (Transfer, Refund) execute behind the `payment` interface **after** the state row commits, with reconciliation via webhooks.
+4. Money side effects (Transfer, Refund) execute behind the `payment` interface after the state row commits, with reconciliation via webhooks.
 
 ## Retention (GDPR minimization)
 
@@ -295,8 +295,8 @@ stateDiagram-v2
 |---|---|---|
 | sessions | expiry + 30 d | cleanup job |
 | messages | 12 months after race `event_date` | chat is transactional, not an archive; job-deleted |
-| policy_acks | 6 years | liability evidence (legitimate interest) — confirm with counsel |
-| orders / order_events | 10 years, PII anonymized on account deletion | financial record-keeping (member-state commercial law) — confirm with counsel |
+| policy_acks | 6 years | liability evidence (legitimate interest) - confirm with counsel |
+| orders / order_events | 10 years, PII anonymized on account deletion | financial record-keeping (member-state commercial law) - confirm with counsel |
 | reports | 3 years | DSA traceability |
 | audit_log | 6 years | accountability |
 | account deletion | anonymize `users` row (email/name/hash scrubbed), real-delete sessions, messages become "deleted user" | [M7 #11](https://github.com/leonfullxr/bibseller/issues/11) |
