@@ -33,6 +33,7 @@ Policy view - the frontend's single derivation of a race's `transfer_policy` int
 | D12 | 2026-06-11 | Auth | Own email+password + Postgres sessions, no auth SaaS; OAuth (Google/Strava) post-v1 | Cost zero, EU data residency, learning value. Spec in ARCHITECTURE.md. |
 | D13 | 2026-06-11 | Chat transport | HTTP polling first; SSE/WebSocket upgrade is transport-only | Upgrade trigger: sustained poll QPS > ~2k or p95 > 100ms. |
 | D14 | 2026-06-12 | Stdlib-first stack | Drop chi and Tailwind; no superforms/zod/i18n libraries. Routing on Go 1.22 `http.ServeMux` (method + `{wildcard}` patterns), styling in scoped Svelte `<style>` blocks with tokens in `layout.css`, forms via SvelteKit form actions + native HTML5 validation | Founder learning goal (D7): core Go/Svelte primitives over third-party abstractions. pgx/sqlc/goose stay - typed SQL without ORM bloat. |
+| D15 | 2026-06-17 | Listing photos and handover confirmation | Photos are private chat artifacts (built in M5, server-proxied through the API), not public listing images. Buyer and seller confirm the handover with an in-chat acknowledgment button; a photo is optional. | Proof-of-registration photos can contain personal data, so they stay private to the buyer-seller conversation, never the public catalog. Image upload therefore moves from M4 (#7) to M5 (#8); the held-funds confirmation/escrow is the M6 order flow. M4 ships listings only. |
 
 ## Scope boundaries
 
