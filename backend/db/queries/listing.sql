@@ -7,6 +7,16 @@ INSERT INTO listings (
 )
 RETURNING *;
 
+-- name: ExpirePastRaceListings :execrows
+-- Flips active listings to 'expired' once their race is over (event_date is
+-- before the cutoff, i.e. start of today UTC). Returns the number expired.
+UPDATE listings l
+SET status = 'expired', updated_at = now()
+FROM races r
+WHERE l.race_id = r.id
+  AND l.status = 'active'
+  AND r.event_date < sqlc.arg('cutoff');
+
 -- name: UpdateListing :one
 -- Guarded so the edit is atomic with the owner/active checks the handler made:
 -- if the listing changed owner (never happens today) or left 'active' between

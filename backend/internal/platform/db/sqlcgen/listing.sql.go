@@ -64,6 +64,25 @@ func (q *Queries) CreateListing(ctx context.Context, arg CreateListingParams) (L
 	return i, err
 }
 
+const expirePastRaceListings = `-- name: ExpirePastRaceListings :execrows
+UPDATE listings l
+SET status = 'expired', updated_at = now()
+FROM races r
+WHERE l.race_id = r.id
+  AND l.status = 'active'
+  AND r.event_date < $1
+`
+
+// Flips active listings to 'expired' once their race is over (event_date is
+// before the cutoff, i.e. start of today UTC). Returns the number expired.
+func (q *Queries) ExpirePastRaceListings(ctx context.Context, cutoff time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, expirePastRaceListings, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getListingByID = `-- name: GetListingByID :one
 SELECT listings.id, listings.race_id, listings.seller_id, listings.status, listings.price_cents, listings.currency, listings.original_price_cents, listings.description, listings.image_key, listings.created_at, listings.updated_at, listings.expires_at, races.id, races.slug, races.name, races.series, races.sport, races.distance, races.event_date, races.city, races.country, races.website_url, races.transfer_policy, races.official_transfer_url, races.policy_source_url, races.policy_notes, races.policy_verified_at, races.policy_verified_by, races.status, races.created_by, races.created_at, races.updated_at, u.display_name AS seller_name
 FROM listings
