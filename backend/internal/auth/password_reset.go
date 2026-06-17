@@ -33,8 +33,13 @@ func (h *Handler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	user, err := h.q.GetUserByEmail(r.Context(), strings.TrimSpace(req.Email))
 	switch {
 	case err == nil:
-		// Invalidate outstanding tokens before issuing a fresh one.
-		_ = h.q.DeletePasswordResetsForUser(r.Context(), user.ID)
+		// Invalidate outstanding tokens before issuing a fresh one. If that
+		// clear fails, do NOT issue another token - stacking a new one on top of
+		// stale ones would break the single-link model. Log and fall through.
+		if err := h.q.DeletePasswordResetsForUser(r.Context(), user.ID); err != nil {
+			slog.Error("reset request: clearing old tokens failed", "err", err, "user_id", user.ID)
+			break
+		}
 		h.startPasswordReset(r.Context(), user.ID, user.Email)
 	case errors.Is(err, pgx.ErrNoRows):
 		// Unknown email - the no-enumeration path; fall through to the same 204.

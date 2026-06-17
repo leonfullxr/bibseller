@@ -285,8 +285,11 @@ func ValidateDisplayName(raw string) (string, error) {
 // validatePassword enforces the length policy shared by registration, reset,
 // and change-password. Length is the only rule (see the minPasswordLen note).
 func validatePassword(pw string) error {
-	if n := len(pw); n < minPasswordLen || n > maxPasswordLen {
+	switch n := len(pw); {
+	case n < minPasswordLen:
 		return fmt.Errorf("password must be at least %d characters", minPasswordLen)
+	case n > maxPasswordLen:
+		return fmt.Errorf("password must be at most %d characters", maxPasswordLen)
 	}
 	return nil
 }
