@@ -82,7 +82,7 @@ func RateLimit() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
-			case "/auth/login", "/auth/register", "/auth/verify/resend":
+			case "/auth/login", "/auth/register", "/auth/verify/resend", "/auth/password/reset/request":
 				if ok, retry := rl.allow(clientIP(r), time.Now()); !ok {
 					w.Header().Set("Retry-After", strconv.Itoa(retry))
 					httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many requests, slow down")

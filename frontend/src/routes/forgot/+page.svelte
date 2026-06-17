@@ -7,37 +7,41 @@
 </script>
 
 <svelte:head>
-	<title>Log in - Bibseller</title>
+	<title>Reset password - Bibseller</title>
 </svelte:head>
 
 <section class="panel">
-	<h1>Log in</h1>
+	<h1>Reset your password</h1>
 
-	<form method="POST" use:enhance>
-		<label for="email">Email</label>
-		<input
-			id="email"
-			name="email"
-			type="email"
-			required
-			autocomplete="email"
-			value={form?.email ?? ''}
-		/>
+	{#if form?.sent}
+		<p class="feedback ok" role="status">
+			If an account exists for that address, we've sent a link to reset your password. Check your
+			inbox.
+		</p>
+		<p class="alt"><a href={resolve('/login')}>Back to log in</a></p>
+	{:else}
+		<p class="lede">Enter your email and we'll send you a reset link.</p>
 
-		<label for="password">Password</label>
-		<input id="password" name="password" type="password" required autocomplete="current-password" />
+		<form method="POST" use:enhance>
+			<label for="email">Email</label>
+			<input
+				id="email"
+				name="email"
+				type="email"
+				required
+				autocomplete="email"
+				value={form?.email ?? ''}
+			/>
 
-		{#if form?.error}
-			<p class="feedback" role="alert">{form.error}</p>
-		{/if}
+			{#if form?.error}
+				<p class="feedback" role="alert">{form.error}</p>
+			{/if}
 
-		<button type="submit">Log in</button>
-	</form>
+			<button type="submit">Send reset link</button>
+		</form>
 
-	<p class="alt"><a href={resolve('/forgot')}>Forgot your password?</a></p>
-	<p class="alt">
-		New here? <a href={resolve('/register')}>Create an account</a>
-	</p>
+		<p class="alt"><a href={resolve('/login')}>Back to log in</a></p>
+	{/if}
 </section>
 
 <style>
@@ -54,6 +58,13 @@
 		font-size: 1.25rem;
 		line-height: 1.75rem;
 		font-weight: 700;
+	}
+
+	.lede {
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
 	}
 
 	form {
@@ -90,6 +101,12 @@
 		line-height: 1.25rem;
 		font-weight: 500;
 		color: var(--amber-900);
+	}
+
+	.feedback.ok {
+		border-color: var(--emerald-200);
+		background: var(--emerald-50);
+		color: var(--emerald-900);
 	}
 
 	button {

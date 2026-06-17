@@ -23,7 +23,8 @@ import (
 // flow is exercised by seeding a token row directly, not by parsing email.
 type noopMailer struct{}
 
-func (noopMailer) SendVerification(_, _ string) error { return nil }
+func (noopMailer) SendVerification(_, _ string) error  { return nil }
+func (noopMailer) SendPasswordReset(_, _ string) error { return nil }
 
 func handler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)
@@ -190,6 +191,79 @@ func TestEmailVerification(t *testing.T) {
 	// The token is single-use: replaying it fails.
 	if rec := post(t, h, "/api/v1/auth/verify", `{"token":"`+token+`"}`, ""); rec.Code != http.StatusBadRequest {
 		t.Errorf("replayed token: status = %d, want 400", rec.Code)
+	}
+}
+
+func TestPasswordReset(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+	q := sqlcgen.New(pool)
+	reg := register(t, h, pool, "correct horse battery staple")
+
+	// Unknown email still returns 204 (no account-enumeration oracle).
+	if rec := post(t, h, "/api/v1/auth/password/reset/request",
+		`{"email":"nobody-`+ids.New().String()+`@test.local"}`, ""); rec.Code != http.StatusNoContent {
+		t.Errorf("reset request for unknown email: status = %d, want 204", rec.Code)
+	}
+
+	// A bogus reset token is rejected.
+	if rec := post(t, h, "/api/v1/auth/password/reset",
+		`{"token":"not-a-real-token","password":"new-strong-password"}`, ""); rec.Code != http.StatusBadRequest {
+		t.Errorf("bogus reset token: status = %d, want 400", rec.Code)
+	}
+
+	// Seed a known reset token (the DB only ever holds its hash).
+	token := "reset-" + ids.New().String()
+	sum := sha256.Sum256([]byte(token))
+	if _, err := q.CreatePasswordReset(context.Background(), sqlcgen.CreatePasswordResetParams{
+		TokenHash: sum[:], UserID: reg.User.ID,
+	}); err != nil {
+		t.Fatalf("seed reset token: %v", err)
+	}
+
+	// A too-short new password is rejected (and the token is not consumed).
+	if rec := post(t, h, "/api/v1/auth/password/reset",
+		`{"token":"`+token+`","password":"short"}`, ""); rec.Code != http.StatusBadRequest {
+		t.Errorf("short password: status = %d, want 400", rec.Code)
+	}
+
+	const newPw = "a brand new strong password"
+	if rec := post(t, h, "/api/v1/auth/password/reset",
+		`{"token":"`+token+`","password":"`+newPw+`"}`, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("reset: status = %d, body = %s", rec.Code, rec.Body)
+	}
+
+	// Every prior session is revoked.
+	if rec := getMe(t, h, reg.Token); rec.Code != http.StatusUnauthorized {
+		t.Errorf("session survived reset: status = %d, want 401", rec.Code)
+	}
+
+	// The old password no longer logs in; the new one does.
+	if rec := post(t, h, "/api/v1/auth/login",
+		`{"email":"`+reg.User.Email+`","password":"correct horse battery staple"}`, ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("old password still works: status = %d, want 401", rec.Code)
+	}
+	rec := post(t, h, "/api/v1/auth/login",
+		`{"email":"`+reg.User.Email+`","password":"`+newPw+`"}`, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login with new password: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var login sessionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &login); err != nil {
+		t.Fatalf("login: bad JSON: %v", err)
+	}
+
+	// Reset auto-verified the email (founder decision): /auth/me reflects it.
+	me := getMe(t, h, login.Token)
+	var acc auth.Account
+	if err := json.Unmarshal(me.Body.Bytes(), &acc); err != nil || !acc.EmailVerified {
+		t.Errorf("me.email_verified = %v after reset (err=%v)", acc.EmailVerified, err)
+	}
+
+	// The token is single-use: replaying it fails.
+	if rec := post(t, h, "/api/v1/auth/password/reset",
+		`{"token":"`+token+`","password":"`+newPw+`"}`, ""); rec.Code != http.StatusBadRequest {
+		t.Errorf("replayed reset token: status = %d, want 400", rec.Code)
 	}
 }
 
