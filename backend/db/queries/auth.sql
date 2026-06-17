@@ -22,5 +22,8 @@ WHERE token_hash = $1;
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE token_hash = $1;
 
+-- name: DeleteSessionsForUserExcept :exec
+DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2;
+
 -- name: DeleteAllSessionsForUser :exec
 DELETE FROM sessions WHERE user_id = $1;

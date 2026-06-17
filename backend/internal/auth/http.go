@@ -55,6 +55,7 @@ func Routes(q *sqlcgen.Queries, mailer Mailer, appURL string) func(*http.ServeMu
 		mux.HandleFunc("POST /auth/verify/resend", h.resendVerification)
 		mux.HandleFunc("POST /auth/password/reset/request", h.requestPasswordReset)
 		mux.HandleFunc("POST /auth/password/reset", h.resetPassword)
+		mux.HandleFunc("POST /auth/password", h.changePassword)
 	}
 }
 

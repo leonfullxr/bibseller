@@ -267,6 +267,67 @@ func TestPasswordReset(t *testing.T) {
 	}
 }
 
+func TestChangePassword(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+	const oldPw = "correct horse battery staple"
+	reg := register(t, h, pool, oldPw)
+
+	// A second device: log in again to mint a separate session.
+	rec := post(t, h, "/api/v1/auth/login",
+		`{"email":"`+reg.User.Email+`","password":"`+oldPw+`"}`, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("second login: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var other sessionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &other); err != nil {
+		t.Fatalf("second login: bad JSON: %v", err)
+	}
+
+	// Unauthenticated change is rejected.
+	if rec := post(t, h, "/api/v1/auth/password",
+		`{"current_password":"`+oldPw+`","new_password":"a new strong password"}`, ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("change without session: status = %d, want 401", rec.Code)
+	}
+
+	// Wrong current password is rejected without changing anything.
+	if rec := post(t, h, "/api/v1/auth/password",
+		`{"current_password":"wrong","new_password":"a new strong password"}`, reg.Token); rec.Code != http.StatusUnauthorized {
+		t.Errorf("wrong current password: status = %d, want 401", rec.Code)
+	}
+
+	// A too-short new password is rejected.
+	if rec := post(t, h, "/api/v1/auth/password",
+		`{"current_password":"`+oldPw+`","new_password":"short"}`, reg.Token); rec.Code != http.StatusBadRequest {
+		t.Errorf("short new password: status = %d, want 400", rec.Code)
+	}
+
+	// Valid change succeeds.
+	const newPw = "a brand new strong password"
+	if rec := post(t, h, "/api/v1/auth/password",
+		`{"current_password":"`+oldPw+`","new_password":"`+newPw+`"}`, reg.Token); rec.Code != http.StatusNoContent {
+		t.Fatalf("change password: status = %d, body = %s", rec.Code, rec.Body)
+	}
+
+	// The caller's own session survives; the other device is signed out.
+	if rec := getMe(t, h, reg.Token); rec.Code != http.StatusOK {
+		t.Errorf("caller session revoked by own change: status = %d, want 200", rec.Code)
+	}
+	if rec := getMe(t, h, other.Token); rec.Code != http.StatusUnauthorized {
+		t.Errorf("other session survived password change: status = %d, want 401", rec.Code)
+	}
+
+	// The new password works; the old one does not.
+	if rec := post(t, h, "/api/v1/auth/login",
+		`{"email":"`+reg.User.Email+`","password":"`+oldPw+`"}`, ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("old password still works: status = %d, want 401", rec.Code)
+	}
+	if rec := post(t, h, "/api/v1/auth/login",
+		`{"email":"`+reg.User.Email+`","password":"`+newPw+`"}`, ""); rec.Code != http.StatusOK {
+		t.Errorf("new password rejected: status = %d", rec.Code)
+	}
+}
+
 func TestLoginFailuresAreIndistinguishable(t *testing.T) {
 	pool := testdb.Pool(t)
 	h := handler(pool)

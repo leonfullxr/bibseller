@@ -9,7 +9,7 @@ export const load: PageServerLoad = ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, locals }) => {
+	profile: async ({ request, cookies, locals }) => {
 		if (!locals.user) redirect(303, '/login');
 
 		const data = await request.formData();
@@ -52,5 +52,45 @@ export const actions: Actions = {
 		// the nav) shows the new name immediately, not on the next navigation.
 		locals.user.display_name = user.display_name;
 		return { success: true, value: user.display_name };
+	},
+
+	changePassword: async ({ request, cookies, locals }) => {
+		if (!locals.user) redirect(303, '/login');
+
+		const data = await request.formData();
+		const current = String(data.get('current_password') ?? '');
+		const next = String(data.get('new_password') ?? '');
+		const confirm = String(data.get('confirm_password') ?? '');
+
+		// Server-side mirror of the HTML5 constraints; the 8-char floor matches
+		// the API. The current password is checked there, not here.
+		if (next.length < 8) {
+			return fail(400, { pwError: 'New password must be at least 8 characters.' });
+		}
+		if (next !== confirm) {
+			return fail(400, { pwError: 'The two new passwords do not match.' });
+		}
+
+		let res: Response;
+		try {
+			res = await apiFetch('/api/v1/auth/password', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', ...sessionHeader(cookies) },
+				body: JSON.stringify({ current_password: current, new_password: next })
+			});
+		} catch {
+			return fail(502, { pwError: 'The API is unreachable.' });
+		}
+
+		if (res.status === 401) {
+			return fail(400, { pwError: 'Your current password is incorrect.' });
+		}
+		if (!res.ok) {
+			return fail(res.status >= 500 ? 502 : res.status, {
+				pwError: 'Could not change your password.'
+			});
+		}
+
+		return { pwSuccess: true };
 	}
 };
