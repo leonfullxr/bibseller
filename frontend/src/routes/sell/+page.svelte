@@ -22,7 +22,13 @@
 {/if}
 
 <form method="GET" action={resolve('/sell')} class="search">
-	<input type="search" name="q" value={data.q} placeholder="Race or city…" />
+	<input
+		type="search"
+		name="q"
+		value={data.q}
+		placeholder="Race or city…"
+		aria-label="Search races by name or city"
+	/>
 	<button type="submit">Search</button>
 </form>
 

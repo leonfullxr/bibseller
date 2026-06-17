@@ -24,6 +24,10 @@ export const actions: Actions = {
 		if (!locals.user) redirect(303, '/login');
 
 		const id = String((await request.formData()).get('id') ?? '');
+		if (id === '') {
+			return fail(400, { error: 'Missing listing id.' });
+		}
+
 		let res: Response;
 		try {
 			res = await apiFetch(`/api/v1/listings/${id}/cancel`, {
