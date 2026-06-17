@@ -1,5 +1,6 @@
-// Package listing owns public listing reads: active listings per race and
-// listing detail. Read-only in M2; seller mutations arrive in M4.
+// Package listing owns listing reads (active listings per race, listing detail)
+// and the M4 seller mutations: create, edit, cancel, and the seller's own list.
+// The D2 price cap and the verified-email listing gate are enforced here.
 package listing
 
 import (
@@ -24,6 +25,10 @@ func Routes(q *sqlcgen.Queries) func(*http.ServeMux) {
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("GET /races/{slug}/listings", h.listByRace)
 		mux.HandleFunc("GET /listings/{id}", h.get)
+		mux.HandleFunc("POST /listings", h.create)
+		mux.HandleFunc("PATCH /listings/{id}", h.update)
+		mux.HandleFunc("POST /listings/{id}/cancel", h.cancel)
+		mux.HandleFunc("GET /me/listings", h.listMine)
 	}
 }
 

@@ -248,6 +248,45 @@ func (q *Queries) ListListingsBySeller(ctx context.Context, sellerID uuid.UUID) 
 	return items, nil
 }
 
+const updateListing = `-- name: UpdateListing :one
+UPDATE listings
+SET price_cents = $2, original_price_cents = $3, description = $4, updated_at = now()
+WHERE id = $1
+RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, image_key, created_at, updated_at, expires_at
+`
+
+type UpdateListingParams struct {
+	ID                 uuid.UUID `json:"id"`
+	PriceCents         *int32    `json:"price_cents"`
+	OriginalPriceCents *int32    `json:"original_price_cents"`
+	Description        *string   `json:"description"`
+}
+
+func (q *Queries) UpdateListing(ctx context.Context, arg UpdateListingParams) (Listing, error) {
+	row := q.db.QueryRow(ctx, updateListing,
+		arg.ID,
+		arg.PriceCents,
+		arg.OriginalPriceCents,
+		arg.Description,
+	)
+	var i Listing
+	err := row.Scan(
+		&i.ID,
+		&i.RaceID,
+		&i.SellerID,
+		&i.Status,
+		&i.PriceCents,
+		&i.Currency,
+		&i.OriginalPriceCents,
+		&i.Description,
+		&i.ImageKey,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const updateListingStatus = `-- name: UpdateListingStatus :one
 UPDATE listings
 SET status = $1, updated_at = now()

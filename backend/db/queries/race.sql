@@ -8,6 +8,9 @@ INSERT INTO races (
 )
 RETURNING *;
 
+-- name: GetRaceByID :one
+SELECT * FROM races WHERE id = $1;
+
 -- name: GetRaceBySlug :one
 SELECT r.*,
     (SELECT count(*) FROM listings l
