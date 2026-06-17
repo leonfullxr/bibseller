@@ -49,10 +49,13 @@
 </div>
 
 <section>
-	<h2>
-		{race.active_listings}
-		{race.active_listings === 1 ? 'bib' : 'bibs'} for sale
-	</h2>
+	<div class="section-head">
+		<h2>
+			{race.active_listings}
+			{race.active_listings === 1 ? 'bib' : 'bibs'} for sale
+		</h2>
+		<a href={resolve('/sell/[slug]', { slug: race.slug })} class="sell-cta">Sell your bib</a>
+	</div>
 	{#if data.listings.length === 0}
 		<div class="empty">
 			<p>No bibs listed for this race yet.</p>
@@ -68,6 +71,27 @@
 </section>
 
 <style>
+	.section-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.sell-cta {
+		border-radius: 0.375rem;
+		background: var(--emerald-600);
+		padding: 0.375rem 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: white;
+		white-space: nowrap;
+	}
+
+	.sell-cta:hover {
+		background: var(--emerald-700);
+	}
+
 	nav {
 		font-size: 0.875rem;
 		line-height: 1.25rem;

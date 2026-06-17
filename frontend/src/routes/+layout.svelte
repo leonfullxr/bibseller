@@ -15,6 +15,8 @@
 			<nav>
 				<a href={resolve('/races')}>Races</a>
 				{#if data.user}
+					<a href={resolve('/sell')}>Sell</a>
+					<a href={resolve('/account/listings')}>My listings</a>
 					<a href={resolve('/settings')}>{data.user.display_name}</a>
 					<form method="POST" action={resolve('/logout')}>
 						<button type="submit">Log out</button>
