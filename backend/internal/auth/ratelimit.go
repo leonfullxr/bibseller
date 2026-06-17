@@ -82,7 +82,11 @@ func RateLimit() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
-			case "/auth/login", "/auth/register", "/auth/verify/resend", "/auth/password/reset/request":
+			case "/auth/login", "/auth/register", "/auth/verify/resend",
+				"/auth/password/reset/request", "/auth/password/reset":
+				// /auth/password/reset is included because it runs an argon2 hash
+				// before the token is validated - without a cap, spamming bogus
+				// tokens with valid-looking passwords is an unauthenticated CPU DoS.
 				if ok, retry := rl.allow(clientIP(r), time.Now()); !ok {
 					w.Header().Set("Retry-After", strconv.Itoa(retry))
 					httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many requests, slow down")
