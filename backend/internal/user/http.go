@@ -9,10 +9,7 @@ package user
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -20,11 +17,6 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/auth"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
-)
-
-const (
-	minNameLen = 2
-	maxNameLen = 50
 )
 
 type Handler struct {
@@ -93,10 +85,9 @@ func (h *Handler) updateDisplayName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := strings.TrimSpace(req.DisplayName)
-	if n := utf8.RuneCountInString(name); n < minNameLen || n > maxNameLen {
-		httpx.Error(w, http.StatusBadRequest, "invalid_parameter",
-			fmt.Sprintf("display_name must be %d..%d characters", minNameLen, maxNameLen))
+	name, err := auth.ValidateDisplayName(req.DisplayName)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
 		return
 	}
 
