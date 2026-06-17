@@ -90,7 +90,8 @@ if [ -n "$TOKEN" ] && [ -n "$USER_ID" ]; then
 		local hdr=()
 		[ -n "$2" ] && hdr=(-H "Cookie: __Host-session=$2")
 		curl -s -o /dev/null -w '%{http_code}' -X PATCH "${hdr[@]}" \
-			-H 'Content-Type: application/json' -d '{"display_name":"Probe Name"}' "$API/api/v1/users/$1"
+			-H 'Content-Type: application/json' \
+			-d '{"display_name":"Probe Name","locale":"en","country":"ES"}' "$API/api/v1/users/$1"
 	}
 	code=$(curl -s -o /dev/null -w '%{http_code}' -H "Cookie: __Host-session=$TOKEN" "$API/api/v1/auth/me")
 	[ "$code" = "200" ] && pass "session cookie resolves /auth/me" || fail "auth/me with cookie (got $code, want 200)"

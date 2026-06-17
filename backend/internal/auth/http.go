@@ -73,6 +73,8 @@ type Account struct {
 	Email         string    `json:"email"`
 	DisplayName   string    `json:"display_name"`
 	EmailVerified bool      `json:"email_verified"`
+	Locale        string    `json:"locale"`
+	Country       *string   `json:"country"`
 }
 
 // sessionResponse is returned to the SvelteKit server, which translates
@@ -140,7 +142,10 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	// Fire off the verification email; never blocks or fails registration
 	// (the user can resend). A fresh account is always unverified.
 	h.startEmailVerification(r.Context(), row.ID, row.Email)
-	h.respondWithSession(w, r, http.StatusCreated, row.ID, row.Email, row.DisplayName, false)
+	h.respondWithSession(w, r, http.StatusCreated, Account{
+		ID: row.ID, Email: row.Email, DisplayName: row.DisplayName,
+		EmailVerified: false, Locale: row.Locale, Country: row.Country,
+	})
 }
 
 type loginRequest struct {
@@ -193,7 +198,10 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		_ = h.q.DeleteSession(r.Context(), hashToken(old))
 	}
 
-	h.respondWithSession(w, r, http.StatusOK, user.ID, user.Email, user.DisplayName, user.EmailVerifiedAt != nil)
+	h.respondWithSession(w, r, http.StatusOK, Account{
+		ID: user.ID, Email: user.Email, DisplayName: user.DisplayName,
+		EmailVerified: user.EmailVerifiedAt != nil, Locale: user.Locale, Country: user.Country,
+	})
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
@@ -235,21 +243,18 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.JSON(w, http.StatusOK, Account{
 		ID: row.ID, Email: row.Email, DisplayName: row.DisplayName,
-		EmailVerified: row.EmailVerifiedAt != nil,
+		EmailVerified: row.EmailVerifiedAt != nil, Locale: row.Locale, Country: row.Country,
 	})
 }
 
-func (h *Handler) respondWithSession(w http.ResponseWriter, r *http.Request, status int, id uuid.UUID, email, name string, emailVerified bool) {
-	token, expiresAt, err := issueSession(r.Context(), h.q, id, r)
+func (h *Handler) respondWithSession(w http.ResponseWriter, r *http.Request, status int, acc Account) {
+	token, expiresAt, err := issueSession(r.Context(), h.q, acc.ID, r)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not create session")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	httpx.JSON(w, status, sessionResponse{
-		Token: token, ExpiresAt: expiresAt,
-		User: Account{ID: id, Email: email, DisplayName: name, EmailVerified: emailVerified},
-	})
+	httpx.JSON(w, status, sessionResponse{Token: token, ExpiresAt: expiresAt, User: acc})
 }
 
 // ValidateDisplayName trims and bounds-checks a display name, returning the

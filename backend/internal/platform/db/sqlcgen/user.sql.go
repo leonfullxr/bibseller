@@ -104,20 +104,43 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
-const updateUserDisplayName = `-- name: UpdateUserDisplayName :one
+const updateUserPassword = `-- name: UpdateUserPassword :exec
 UPDATE users
-SET display_name = $2, updated_at = now()
+SET password_hash = $2, updated_at = now()
+WHERE id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"password_hash"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE users
+SET display_name = $2, locale = $3, country = $4, updated_at = now()
 WHERE id = $1
 RETURNING id, email, email_verified_at, password_hash, display_name, locale, country, role, stripe_account_id, stripe_customer_id, anonymized_at, created_at, updated_at
 `
 
-type UpdateUserDisplayNameParams struct {
+type UpdateUserProfileParams struct {
 	ID          uuid.UUID `json:"id"`
 	DisplayName string    `json:"display_name"`
+	Locale      string    `json:"locale"`
+	Country     *string   `json:"country"`
 }
 
-func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDisplayNameParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateUserDisplayName, arg.ID, arg.DisplayName)
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile,
+		arg.ID,
+		arg.DisplayName,
+		arg.Locale,
+		arg.Country,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -135,20 +158,4 @@ func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDispl
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const updateUserPassword = `-- name: UpdateUserPassword :exec
-UPDATE users
-SET password_hash = $2, updated_at = now()
-WHERE id = $1
-`
-
-type UpdateUserPasswordParams struct {
-	ID           uuid.UUID `json:"id"`
-	PasswordHash string    `json:"password_hash"`
-}
-
-func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
-	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
-	return err
 }
