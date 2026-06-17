@@ -33,3 +33,19 @@ func (m SMTPMailer) SendVerification(to, link string) error {
 		m.From, to, link)
 	return smtp.SendMail(m.Addr, nil, envelopeFrom, []string{to}, []byte(msg))
 }
+
+// SendPasswordReset emails a one-click password-reset link. Same plain-text
+// envelope as SendVerification; the link is the whole payload.
+func (m SMTPMailer) SendPasswordReset(to, link string) error {
+	envelopeFrom := m.From
+	if addr, err := mail.ParseAddress(m.From); err == nil {
+		envelopeFrom = addr.Address
+	}
+	msg := fmt.Sprintf(
+		"From: %s\r\nTo: %s\r\nSubject: Reset your Bibseller password\r\n"+
+			"Content-Type: text/plain; charset=utf-8\r\n\r\n"+
+			"Someone asked to reset your Bibseller password. Set a new one:\r\n\r\n%s\r\n\r\n"+
+			"This link expires in 1 hour. If you didn't ask for this, ignore this email.\r\n",
+		m.From, to, link)
+	return smtp.SendMail(m.Addr, nil, envelopeFrom, []string{to}, []byte(msg))
+}

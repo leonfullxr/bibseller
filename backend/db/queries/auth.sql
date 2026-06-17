@@ -21,3 +21,6 @@ WHERE token_hash = $1;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE token_hash = $1;
+
+-- name: DeleteAllSessionsForUser :exec
+DELETE FROM sessions WHERE user_id = $1;

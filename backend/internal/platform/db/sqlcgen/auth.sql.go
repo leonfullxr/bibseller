@@ -42,6 +42,15 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (t
 	return expires_at, err
 }
 
+const deleteAllSessionsForUser = `-- name: DeleteAllSessionsForUser :exec
+DELETE FROM sessions WHERE user_id = $1
+`
+
+func (q *Queries) DeleteAllSessionsForUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAllSessionsForUser, userID)
+	return err
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions WHERE token_hash = $1
 `

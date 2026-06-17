@@ -3,41 +3,56 @@
 	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
 
-	let { form }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 </script>
 
 <svelte:head>
-	<title>Log in - Bibseller</title>
+	<title>Set a new password - Bibseller</title>
 </svelte:head>
 
 <section class="panel">
-	<h1>Log in</h1>
+	<h1>Set a new password</h1>
 
-	<form method="POST" use:enhance>
-		<label for="email">Email</label>
-		<input
-			id="email"
-			name="email"
-			type="email"
-			required
-			autocomplete="email"
-			value={form?.email ?? ''}
-		/>
+	{#if form?.done}
+		<p class="feedback ok" role="status">
+			Your password has been updated. You've been signed out everywhere - sign in with your new
+			password.
+		</p>
+		<p class="alt"><a href={resolve('/login')}>Log in</a></p>
+	{:else if !data.token}
+		<p class="feedback" role="alert">This reset link is missing its token. Request a new one.</p>
+		<p class="alt"><a href={resolve('/forgot')}>Request a reset link</a></p>
+	{:else}
+		<form method="POST" use:enhance>
+			<input type="hidden" name="token" value={data.token} />
 
-		<label for="password">Password</label>
-		<input id="password" name="password" type="password" required autocomplete="current-password" />
+			<label for="password">New password</label>
+			<input
+				id="password"
+				name="password"
+				type="password"
+				required
+				minlength="8"
+				autocomplete="new-password"
+			/>
 
-		{#if form?.error}
-			<p class="feedback" role="alert">{form.error}</p>
-		{/if}
+			<label for="confirm">Confirm password</label>
+			<input
+				id="confirm"
+				name="confirm"
+				type="password"
+				required
+				minlength="8"
+				autocomplete="new-password"
+			/>
 
-		<button type="submit">Log in</button>
-	</form>
+			{#if form?.error}
+				<p class="feedback" role="alert">{form.error}</p>
+			{/if}
 
-	<p class="alt"><a href={resolve('/forgot')}>Forgot your password?</a></p>
-	<p class="alt">
-		New here? <a href={resolve('/register')}>Create an account</a>
-	</p>
+			<button type="submit">Update password</button>
+		</form>
+	{/if}
 </section>
 
 <style>
@@ -90,6 +105,12 @@
 		line-height: 1.25rem;
 		font-weight: 500;
 		color: var(--amber-900);
+	}
+
+	.feedback.ok {
+		border-color: var(--emerald-200);
+		background: var(--emerald-50);
+		color: var(--emerald-900);
 	}
 
 	button {

@@ -53,6 +53,8 @@ func Routes(q *sqlcgen.Queries, mailer Mailer, appURL string) func(*http.ServeMu
 		mux.HandleFunc("GET /auth/me", h.me)
 		mux.HandleFunc("POST /auth/verify", h.verify)
 		mux.HandleFunc("POST /auth/verify/resend", h.resendVerification)
+		mux.HandleFunc("POST /auth/password/reset/request", h.requestPasswordReset)
+		mux.HandleFunc("POST /auth/password/reset", h.resetPassword)
 	}
 }
 
@@ -98,9 +100,8 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
 		return
 	}
-	if n := len(req.Password); n < minPasswordLen || n > maxPasswordLen {
-		httpx.Error(w, http.StatusBadRequest, "invalid_parameter",
-			fmt.Sprintf("password must be at least %d characters", minPasswordLen))
+	if err := validatePassword(req.Password); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
 		return
 	}
 
@@ -225,6 +226,15 @@ func ValidateDisplayName(raw string) (string, error) {
 		return "", fmt.Errorf("display_name must be %d..%d characters", minNameLen, maxNameLen)
 	}
 	return name, nil
+}
+
+// validatePassword enforces the length policy shared by registration, reset,
+// and change-password. Length is the only rule (see the minPasswordLen note).
+func validatePassword(pw string) error {
+	if n := len(pw); n < minPasswordLen || n > maxPasswordLen {
+		return fmt.Errorf("password must be at least %d characters", minPasswordLen)
+	}
+	return nil
 }
 
 // validEmail accepts what net/mail parses as a single bare address. This is

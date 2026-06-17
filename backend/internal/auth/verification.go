@@ -14,11 +14,12 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 )
 
-// Mailer sends the verification email. Declared here (the consumer) so the
-// auth package stays independent of the SMTP implementation: cmd/api injects
-// an email.SMTPMailer, tests inject a no-op.
+// Mailer sends the transactional auth emails. Declared here (the consumer) so
+// the auth package stays independent of the SMTP implementation: cmd/api
+// injects an email.SMTPMailer, tests inject a no-op.
 type Mailer interface {
 	SendVerification(to, link string) error
+	SendPasswordReset(to, link string) error
 }
 
 // startEmailVerification mints a verification token, persists its hash, and
