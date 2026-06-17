@@ -58,6 +58,8 @@ export interface SessionUser {
 	email: string;
 	display_name: string;
 	email_verified: boolean;
+	locale: string;
+	country: string | null;
 }
 
 export interface SessionResponse {

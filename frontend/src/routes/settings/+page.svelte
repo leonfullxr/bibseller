@@ -3,6 +3,9 @@
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+
+	// Mirrors the API allowlist (backend/internal/user); the catalog's country set.
+	const countries = ['AT', 'BE', 'DE', 'ES', 'FR', 'IT', 'NL', 'PL', 'PT'];
 </script>
 
 <svelte:head>
@@ -26,10 +29,22 @@
 			value={form?.value ?? data.user.display_name}
 		/>
 
+		<label for="locale">Language</label>
+		<select id="locale" name="locale" value={data.user.locale}>
+			<option value="en">English</option>
+			<option value="es">Español</option>
+		</select>
+
+		<label for="country">Country</label>
+		<select id="country" name="country" value={data.user.country ?? ''}>
+			<option value="">Not set</option>
+			{#each countries as c (c)}<option value={c}>{c}</option>{/each}
+		</select>
+
 		{#if form?.error}
 			<p class="feedback error" role="alert">{form.error}</p>
 		{:else if form?.success}
-			<p class="feedback success" role="status">Display name updated.</p>
+			<p class="feedback success" role="status">Profile updated.</p>
 		{/if}
 
 		<button type="submit">Save</button>
@@ -91,6 +106,18 @@
 	</form>
 </section>
 
+<section class="panel">
+	<h2>Delete account</h2>
+
+	<p class="note">
+		Permanently delete your account and its data. Available once full GDPR tooling ships (M7).
+	</p>
+
+	<button type="button" disabled title="Account deletion arrives with trust and safety (M7)">
+		Delete account - coming soon
+	</button>
+</section>
+
 <style>
 	h1 {
 		font-size: 1.5rem;
@@ -135,7 +162,8 @@
 		color: var(--slate-600);
 	}
 
-	input {
+	input,
+	select {
 		width: 100%;
 		border-radius: 0.375rem;
 		border: 1px solid var(--slate-300);
@@ -176,7 +204,12 @@
 		color: white;
 	}
 
-	button:hover {
+	button:hover:not(:disabled) {
 		background: var(--slate-700);
+	}
+
+	button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>

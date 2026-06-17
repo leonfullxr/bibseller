@@ -14,9 +14,13 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const displayName = String(data.get('display_name') ?? '').trim();
+		const locale = String(data.get('locale') ?? '');
+		const countryRaw = String(data.get('country') ?? '').trim();
+		const country = countryRaw === '' ? null : countryRaw;
 
 		// Server-side mirror of the HTML5 constraints - the browser attributes
-		// are UX, not security; never trust the client.
+		// are UX, not security; never trust the client. The API is the authority
+		// on the locale/country allowlists; the selects only constrain the UI.
 		if (displayName.length < 2 || displayName.length > 50) {
 			return fail(400, {
 				value: displayName,
@@ -30,7 +34,7 @@ export const actions: Actions = {
 				method: 'PATCH',
 				// Forward the session so the API can confirm we own this id (403 otherwise).
 				headers: { 'Content-Type': 'application/json', ...sessionHeader(cookies) },
-				body: JSON.stringify({ display_name: displayName })
+				body: JSON.stringify({ display_name: displayName, locale, country })
 			});
 		} catch {
 			return fail(502, { value: displayName, error: 'The API is unreachable.' });
@@ -49,8 +53,10 @@ export const actions: Actions = {
 
 		const user = (await res.json()) as { id: string; display_name: string };
 		// Keep this request's locals in sync so the re-run layout load (and thus
-		// the nav) shows the new name immediately, not on the next navigation.
+		// the nav) shows the new values immediately, not on the next navigation.
 		locals.user.display_name = user.display_name;
+		locals.user.locale = locale;
+		locals.user.country = country;
 		return { success: true, value: user.display_name };
 	},
 

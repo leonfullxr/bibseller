@@ -126,7 +126,7 @@ func TestUpdateOwnDisplayName(t *testing.T) {
 	h := handler(pool)
 	me := register(t, h, pool)
 
-	rec := patch(t, h, me.user.ID, `{"display_name": "  New Name  "}`, me.token)
+	rec := patch(t, h, me.user.ID, `{"display_name": "  New Name  ", "locale": "en"}`, me.token)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
@@ -169,6 +169,47 @@ func TestUpdateDisplayNameIsOwnerOnly(t *testing.T) {
 	}
 	if stored.DisplayName != "Original Name" {
 		t.Errorf("victim renamed across the gate: %q", stored.DisplayName)
+	}
+}
+
+func TestUpdateProfileLocaleAndCountry(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+	me := register(t, h, pool)
+
+	// A valid replace: Spanish + a country from the allowlist.
+	rec := patch(t, h, me.user.ID, `{"display_name":"Caller","locale":"es","country":"es"}`, me.token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
+	}
+	stored, err := sqlcgen.New(pool).GetUserByID(context.Background(), me.user.ID)
+	if err != nil {
+		t.Fatalf("reload user: %v", err)
+	}
+	if stored.Locale != "es" {
+		t.Errorf("stored locale = %q, want %q", stored.Locale, "es")
+	}
+	if stored.Country == nil || *stored.Country != "ES" {
+		t.Errorf("stored country = %v, want upper-cased ES", stored.Country)
+	}
+
+	// An empty country clears it back to NULL.
+	if rec := patch(t, h, me.user.ID, `{"display_name":"Caller","locale":"en","country":""}`, me.token); rec.Code != http.StatusOK {
+		t.Fatalf("clear country: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	stored, _ = sqlcgen.New(pool).GetUserByID(context.Background(), me.user.ID)
+	if stored.Country != nil {
+		t.Errorf("country = %v, want nil after clearing", *stored.Country)
+	}
+
+	// Bad locale and bad country are each rejected.
+	for name, body := range map[string]string{
+		"bad locale":  `{"display_name":"Caller","locale":"xx"}`,
+		"bad country": `{"display_name":"Caller","locale":"en","country":"ZZ"}`,
+	} {
+		if rec := patch(t, h, me.user.ID, body, me.token); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: status = %d, want 400", name, rec.Code)
+		}
 	}
 }
 
