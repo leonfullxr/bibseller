@@ -251,7 +251,7 @@ func (q *Queries) ListListingsBySeller(ctx context.Context, sellerID uuid.UUID) 
 const updateListing = `-- name: UpdateListing :one
 UPDATE listings
 SET price_cents = $2, original_price_cents = $3, description = $4, updated_at = now()
-WHERE id = $1
+WHERE id = $1 AND seller_id = $5 AND status = 'active'
 RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, image_key, created_at, updated_at, expires_at
 `
 
@@ -260,14 +260,19 @@ type UpdateListingParams struct {
 	PriceCents         *int32    `json:"price_cents"`
 	OriginalPriceCents *int32    `json:"original_price_cents"`
 	Description        *string   `json:"description"`
+	SellerID           uuid.UUID `json:"seller_id"`
 }
 
+// Guarded so the edit is atomic with the owner/active checks the handler made:
+// if the listing changed owner (never happens today) or left 'active' between
+// the read and here, no row matches and the handler maps ErrNoRows to 409.
 func (q *Queries) UpdateListing(ctx context.Context, arg UpdateListingParams) (Listing, error) {
 	row := q.db.QueryRow(ctx, updateListing,
 		arg.ID,
 		arg.PriceCents,
 		arg.OriginalPriceCents,
 		arg.Description,
+		arg.SellerID,
 	)
 	var i Listing
 	err := row.Scan(
