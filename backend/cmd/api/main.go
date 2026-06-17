@@ -57,6 +57,10 @@ func run() error {
 		IdleTimeout:       2 * time.Minute,
 	}
 
+	// Background jobs run on every instance and coordinate via Postgres advisory
+	// locks; they stop when ctx is cancelled on shutdown.
+	go listing.StartExpiryJob(ctx, pool, logger, time.Hour)
+
 	errc := make(chan error, 1)
 	go func() {
 		logger.Info("api listening", "addr", srv.Addr, "env", cfg.Env)
