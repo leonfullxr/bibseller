@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
@@ -40,6 +41,7 @@ const (
 )
 
 type Handler struct {
+	pool   *pgxpool.Pool // for multi-statement transactions (password reset/change)
 	q      *sqlcgen.Queries
 	mailer Mailer
 	appURL string // frontend base, for building verification links
@@ -49,8 +51,11 @@ type Handler struct {
 	loginLimiter *rateLimiter
 }
 
-func Routes(q *sqlcgen.Queries, mailer Mailer, appURL string) func(*http.ServeMux) {
-	h := &Handler{q: q, mailer: mailer, appURL: appURL, loginLimiter: newRateLimiter(rateLimitMax, rateLimitWindow)}
+func Routes(pool *pgxpool.Pool, mailer Mailer, appURL string) func(*http.ServeMux) {
+	h := &Handler{
+		pool: pool, q: sqlcgen.New(pool), mailer: mailer, appURL: appURL,
+		loginLimiter: newRateLimiter(rateLimitMax, rateLimitWindow),
+	}
 	go h.loginLimiter.sweep(rateLimitWindow)
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /auth/register", h.register)
@@ -161,6 +166,15 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := strings.TrimSpace(req.Email)
+	// An email longer than the RFC limit can't be a real account. Reject it the
+	// same way as a wrong credential (after equal argon2 work) and, crucially,
+	// before it becomes a limiter-map key - otherwise oversized inputs could
+	// bloat the in-process map.
+	if len(email) > maxEmailLen {
+		_, _ = verifyPassword(req.Password, dummyHash)
+		httpx.Error(w, http.StatusUnauthorized, "invalid_credentials", "invalid email or password")
+		return
+	}
 	// Per-account throttle, counted before any DB or argon2 work. Keyed by the
 	// lowercased email (matching citext), so it caps attempts on one account
 	// regardless of which IP they come from. Applied to all attempts, not just

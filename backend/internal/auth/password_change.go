@@ -45,7 +45,20 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not change password")
 		return
 	}
-	if err := h.q.UpdateUserPassword(r.Context(), sqlcgen.UpdateUserPasswordParams{
+	// One transaction so the change is all-or-nothing: updating the password and
+	// revoking the other sessions either both commit or both roll back. A
+	// partial change must not leave other devices signed in under the old
+	// session while the password has moved on; rolling back on failure also
+	// keeps the current password valid so the user's retry works cleanly.
+	tx, err := h.pool.Begin(r.Context())
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not change password")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }() // no-op once committed
+	q := h.q.WithTx(tx)
+
+	if err := q.UpdateUserPassword(r.Context(), sqlcgen.UpdateUserPasswordParams{
 		ID: user.ID, PasswordHash: hash,
 	}); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not change password")
@@ -55,11 +68,20 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 	// Keep this session, revoke the rest. The request authenticated, so a token
 	// is present; if it somehow is not, fail safe by revoking all (never fewer).
 	if token, ok := requestToken(r); ok {
-		_ = h.q.DeleteSessionsForUserExcept(r.Context(), sqlcgen.DeleteSessionsForUserExceptParams{
+		err = q.DeleteSessionsForUserExcept(r.Context(), sqlcgen.DeleteSessionsForUserExceptParams{
 			UserID: user.ID, TokenHash: hashToken(token),
 		})
 	} else {
-		_ = h.q.DeleteAllSessionsForUser(r.Context(), user.ID)
+		err = q.DeleteAllSessionsForUser(r.Context(), user.ID)
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not change password")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not change password")
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

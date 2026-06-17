@@ -50,7 +50,7 @@ func run() error {
 		Handler: httpx.NewRouter(logger, pool,
 			[]httpx.Middleware{auth.RateLimit(), auth.ResolveUser(queries)},
 			race.Routes(queries), listing.Routes(queries), user.Routes(queries),
-			auth.Routes(queries, mailer, cfg.AppURL)),
+			auth.Routes(pool, mailer, cfg.AppURL)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,

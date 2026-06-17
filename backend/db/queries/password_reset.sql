@@ -7,10 +7,13 @@ INSERT INTO password_resets (token_hash, user_id, expires_at)
 VALUES ($1, $2, now() + interval '1 hour')
 RETURNING expires_at;
 
--- name: GetPasswordResetUser :one
-SELECT user_id FROM password_resets
+-- name: ConsumePasswordReset :one
+-- Atomically validates and consumes a token: only one of two concurrent
+-- requests with the same token can delete the row and get the user_id back.
+DELETE FROM password_resets
 WHERE token_hash = $1
-  AND expires_at > now();
+  AND expires_at > now()
+RETURNING user_id;
 
 -- name: DeletePasswordResetsForUser :exec
 DELETE FROM password_resets WHERE user_id = $1;

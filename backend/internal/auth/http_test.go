@@ -29,7 +29,7 @@ func (noopMailer) SendPasswordReset(_, _ string) error { return nil }
 func handler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)
 	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool,
-		[]httpx.Middleware{auth.ResolveUser(q)}, auth.Routes(q, noopMailer{}, "http://test.local"))
+		[]httpx.Middleware{auth.ResolveUser(q)}, auth.Routes(pool, noopMailer{}, "http://test.local"))
 }
 
 type sessionResponse struct {

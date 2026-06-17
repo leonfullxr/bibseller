@@ -30,12 +30,19 @@ func (h *Handler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "invalid_body", "request body must be JSON")
 		return
 	}
-	if user, err := h.q.GetUserByEmail(r.Context(), strings.TrimSpace(req.Email)); err == nil {
+	user, err := h.q.GetUserByEmail(r.Context(), strings.TrimSpace(req.Email))
+	switch {
+	case err == nil:
 		// Invalidate outstanding tokens before issuing a fresh one.
 		_ = h.q.DeletePasswordResetsForUser(r.Context(), user.ID)
 		h.startPasswordReset(r.Context(), user.ID, user.Email)
+	case errors.Is(err, pgx.ErrNoRows):
+		// Unknown email - the no-enumeration path; fall through to the same 204.
+	default:
+		// An operational failure, not "no such user". Log it for visibility but
+		// still answer 204 so the response never reveals account existence.
+		slog.Error("reset request: user lookup failed", "err", err)
 	}
-	// An unknown email (pgx.ErrNoRows) falls through to the same 204 - no oracle.
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -80,7 +87,28 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := h.q.GetPasswordResetUser(r.Context(), hashToken(req.Token))
+	// Hash before opening the transaction: argon2id is CPU-bound and must not
+	// hold a DB transaction open.
+	hash, err := hashPassword(req.Password)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
+		return
+	}
+
+	// One transaction so the reset is all-or-nothing: consuming the token,
+	// setting the password, verifying the email, and revoking every session
+	// either all commit or all roll back. A partial reset must never leave old
+	// sessions valid under a new password.
+	tx, err := h.pool.Begin(r.Context())
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }() // no-op once committed
+	q := h.q.WithTx(tx)
+
+	// Atomic consume: a replayed or concurrent token finds no row to delete.
+	userID, err := q.ConsumePasswordReset(r.Context(), hashToken(req.Token))
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Unknown, already-consumed, or expired - indistinguishable to the caller.
 		httpx.Error(w, http.StatusBadRequest, "invalid_token", "this reset link is invalid or has expired")
@@ -91,12 +119,7 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hash, err := hashPassword(req.Password)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
-		return
-	}
-	if err := h.q.UpdateUserPassword(r.Context(), sqlcgen.UpdateUserPasswordParams{
+	if err := q.UpdateUserPassword(r.Context(), sqlcgen.UpdateUserPasswordParams{
 		ID: userID, PasswordHash: hash,
 	}); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
@@ -104,9 +127,23 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	// Using the emailed link proves inbox control, so the reset also verifies
 	// the email (no-op if already verified).
-	_ = h.q.MarkEmailVerified(r.Context(), userID)
-	// One-time use, and force a fresh login everywhere under the new password.
-	_ = h.q.DeletePasswordResetsForUser(r.Context(), userID)
-	_ = h.q.DeleteAllSessionsForUser(r.Context(), userID)
+	if err := q.MarkEmailVerified(r.Context(), userID); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
+		return
+	}
+	// Drop any sibling tokens and force a fresh login everywhere.
+	if err := q.DeletePasswordResetsForUser(r.Context(), userID); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
+		return
+	}
+	if err := q.DeleteAllSessionsForUser(r.Context(), userID); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not reset password")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
