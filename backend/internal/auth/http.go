@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -42,14 +43,20 @@ type Handler struct {
 	q      *sqlcgen.Queries
 	mailer Mailer
 	appURL string // frontend base, for building verification links
+	// loginLimiter throttles login attempts per account (by email), complementing
+	// the per-IP RateLimit middleware so a distributed guessing attack can't dodge
+	// the cap by rotating source addresses.
+	loginLimiter *rateLimiter
 }
 
 func Routes(q *sqlcgen.Queries, mailer Mailer, appURL string) func(*http.ServeMux) {
-	h := &Handler{q: q, mailer: mailer, appURL: appURL}
+	h := &Handler{q: q, mailer: mailer, appURL: appURL, loginLimiter: newRateLimiter(rateLimitMax, rateLimitWindow)}
+	go h.loginLimiter.sweep(rateLimitWindow)
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /auth/register", h.register)
 		mux.HandleFunc("POST /auth/login", h.login)
 		mux.HandleFunc("POST /auth/logout", h.logout)
+		mux.HandleFunc("POST /auth/logout/all", h.logoutAll)
 		mux.HandleFunc("GET /auth/me", h.me)
 		mux.HandleFunc("POST /auth/verify", h.verify)
 		mux.HandleFunc("POST /auth/verify/resend", h.resendVerification)
@@ -148,7 +155,18 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.q.GetUserByEmail(r.Context(), strings.TrimSpace(req.Email))
+	email := strings.TrimSpace(req.Email)
+	// Per-account throttle, counted before any DB or argon2 work. Keyed by the
+	// lowercased email (matching citext), so it caps attempts on one account
+	// regardless of which IP they come from. Applied to all attempts, not just
+	// failures, to stay stateless and simple.
+	if ok, retry := h.loginLimiter.allow("login:"+strings.ToLower(email), time.Now()); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(retry))
+		httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many attempts for this account, try again later")
+		return
+	}
+
+	user, err := h.q.GetUserByEmail(r.Context(), email)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Unknown email burns the same argon2id work as a wrong password,
 		// and returns the same code+message: neither timing nor wording may
@@ -186,6 +204,22 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 			httpx.Error(w, http.StatusInternalServerError, "internal", "could not log out")
 			return
 		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// logoutAll revokes every session for the signed-in user - the "log out all
+// devices" control. The caller's own session goes too; the SvelteKit action
+// then clears the cookie and sends them to the login page.
+func (h *Handler) logoutAll(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
+		return
+	}
+	if err := h.q.DeleteAllSessionsForUser(r.Context(), user.ID); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not log out")
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -81,6 +81,16 @@
 	</form>
 </section>
 
+<section class="panel">
+	<h2>Sessions</h2>
+
+	<p class="note">Sign out of Bibseller on every device, including this one.</p>
+
+	<form method="POST" action="?/logoutAll" use:enhance>
+		<button type="submit">Log out all devices</button>
+	</form>
+</section>
+
 <style>
 	h1 {
 		font-size: 1.5rem;
@@ -101,6 +111,13 @@
 		font-size: 1.125rem;
 		line-height: 1.75rem;
 		font-weight: 600;
+	}
+
+	.note {
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
 	}
 
 	form {

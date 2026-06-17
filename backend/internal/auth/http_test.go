@@ -328,6 +328,58 @@ func TestChangePassword(t *testing.T) {
 	}
 }
 
+func TestLogoutAll(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+	const pw = "correct horse battery staple"
+	reg := register(t, h, pool, pw)
+
+	// A second device.
+	rec := post(t, h, "/api/v1/auth/login",
+		`{"email":"`+reg.User.Email+`","password":"`+pw+`"}`, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("second login: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var other sessionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &other); err != nil {
+		t.Fatalf("second login: bad JSON: %v", err)
+	}
+
+	// Unauthenticated logout-all is rejected.
+	if rec := post(t, h, "/api/v1/auth/logout/all", "", ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("logout-all without session: status = %d, want 401", rec.Code)
+	}
+
+	// Logging out everywhere kills both sessions, including the caller's own.
+	if rec := post(t, h, "/api/v1/auth/logout/all", "", reg.Token); rec.Code != http.StatusNoContent {
+		t.Fatalf("logout-all: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	if rec := getMe(t, h, reg.Token); rec.Code != http.StatusUnauthorized {
+		t.Errorf("caller session survived logout-all: status = %d, want 401", rec.Code)
+	}
+	if rec := getMe(t, h, other.Token); rec.Code != http.StatusUnauthorized {
+		t.Errorf("other session survived logout-all: status = %d, want 401", rec.Code)
+	}
+}
+
+func TestLoginRateLimitedPerAccount(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+	reg := register(t, h, pool, "correct horse battery staple")
+	body := `{"email":"` + reg.User.Email + `","password":"wrong password"}`
+
+	// The window allows rateLimitMax (10) attempts; each is a normal 401.
+	for i := 0; i < 10; i++ {
+		if rec := post(t, h, "/api/v1/auth/login", body, ""); rec.Code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d: status = %d, want 401", i+1, rec.Code)
+		}
+	}
+	// The next attempt for this account is throttled, regardless of source.
+	if rec := post(t, h, "/api/v1/auth/login", body, ""); rec.Code != http.StatusTooManyRequests {
+		t.Errorf("over-limit attempt: status = %d, want 429", rec.Code)
+	}
+}
+
 func TestLoginFailuresAreIndistinguishable(t *testing.T) {
 	pool := testdb.Pool(t)
 	h := handler(pool)

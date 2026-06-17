@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
-import { sessionHeader } from '$lib/server/session';
+import { clearSessionCookie, sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals }) => {
@@ -92,5 +92,19 @@ export const actions: Actions = {
 		}
 
 		return { pwSuccess: true };
+	},
+
+	logoutAll: async ({ cookies, locals }) => {
+		if (!locals.user) redirect(303, '/login');
+
+		// Idempotent on the API side (a dead token is still a 204). This revokes
+		// every session including the current one, so drop the cookie and send
+		// the user back to log in regardless of the API's answer.
+		await apiFetch('/api/v1/auth/logout/all', {
+			method: 'POST',
+			headers: sessionHeader(cookies)
+		}).catch(() => {});
+		clearSessionCookie(cookies);
+		redirect(303, '/login');
 	}
 };
