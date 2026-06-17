@@ -57,7 +57,7 @@ Out (parked): native apps, ads/premium tiers, race-organizer SaaS, multi-currenc
 | Milestone | Issue | Status |
 |---|---|---|
 | M0 scaffold - M1 schema - M2 public catalog | #1 #2 #4 | done (PR #14) |
-| M3 auth & accounts | #5 | next |
+| M3 auth & accounts | #5 | in progress (core done: register/login/logout, sessions, email verify, CSRF, per-IP rate limit; pending: password reset, change password, log-out-all + per-account limit, settings locale/country + delete stub) |
 | M4 seller flows (listings + uploads) | #7 | - |
 | M5 chat (the beta's core) | #8 | - |
 | M8 i18n (en + es per D4) | #9 | - |

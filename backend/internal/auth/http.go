@@ -93,10 +93,9 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "email is not valid")
 		return
 	}
-	name := strings.TrimSpace(req.DisplayName)
-	if n := utf8.RuneCountInString(name); n < minNameLen || n > maxNameLen {
-		httpx.Error(w, http.StatusBadRequest, "invalid_parameter",
-			fmt.Sprintf("display_name must be %d..%d characters", minNameLen, maxNameLen))
+	name, err := ValidateDisplayName(req.DisplayName)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
 		return
 	}
 	if n := len(req.Password); n < minPasswordLen || n > maxPasswordLen {
@@ -215,6 +214,17 @@ func (h *Handler) respondWithSession(w http.ResponseWriter, r *http.Request, sta
 		Token: token, ExpiresAt: expiresAt,
 		User: Account{ID: id, Email: email, DisplayName: name, EmailVerified: emailVerified},
 	})
+}
+
+// ValidateDisplayName trims and bounds-checks a display name, returning the
+// cleaned value. The single source of the 2..50 rule, shared by registration
+// here and profile updates in internal/user (which imports auth).
+func ValidateDisplayName(raw string) (string, error) {
+	name := strings.TrimSpace(raw)
+	if n := utf8.RuneCountInString(name); n < minNameLen || n > maxNameLen {
+		return "", fmt.Errorf("display_name must be %d..%d characters", minNameLen, maxNameLen)
+	}
+	return name, nil
 }
 
 // validEmail accepts what net/mail parses as a single bare address. This is
