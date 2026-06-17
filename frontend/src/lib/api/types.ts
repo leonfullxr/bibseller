@@ -67,3 +67,17 @@ export interface SessionResponse {
 	expires_at: string;
 	user: SessionUser;
 }
+
+/** A seller's own listing, as returned by GET /me/listings. */
+export interface OwnedListing {
+	id: string;
+	status: string;
+	price_cents: number | null;
+	currency: string;
+	original_price_cents: number | null;
+	description: string | null;
+	created_at: string;
+	race_name: string;
+	race_slug: string;
+	event_date: string;
+}
