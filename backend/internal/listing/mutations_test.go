@@ -230,6 +230,15 @@ func TestUpdateListing(t *testing.T) {
 		`{"price_cents":9000,"original_price_cents":6000}`, token); rec.Code != http.StatusBadRequest {
 		t.Errorf("over-cap edit: status = %d, want 400", rec.Code)
 	}
+
+	// A non-active listing cannot be edited (409). Cancel, then try to edit.
+	if rec := doJSON(t, h, http.MethodPost, "/api/v1/listings/"+id+"/cancel", "", token); rec.Code != http.StatusOK {
+		t.Fatalf("cancel for setup: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	if rec := doJSON(t, h, http.MethodPatch, "/api/v1/listings/"+id,
+		`{"price_cents":3000}`, token); rec.Code != http.StatusConflict {
+		t.Errorf("edit cancelled listing: status = %d, want 409", rec.Code)
+	}
 }
 
 func TestCancelListing(t *testing.T) {

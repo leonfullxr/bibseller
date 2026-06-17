@@ -134,7 +134,14 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.q.UpdateListing(r.Context(), sqlcgen.UpdateListingParams{
 		ID: id, PriceCents: req.PriceCents,
 		OriginalPriceCents: req.OriginalPriceCents, Description: req.Description,
+		SellerID: caller.ID,
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The read saw it active and owned, but it transitioned before this
+		// guarded write - a concurrent change, not a stale client error.
+		httpx.Error(w, http.StatusConflict, "not_active", "listing is no longer active")
+		return
+	}
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not update listing")
 		return
