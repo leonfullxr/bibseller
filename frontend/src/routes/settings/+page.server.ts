@@ -21,7 +21,11 @@ export const actions: Actions = {
 		// Server-side mirror of the HTML5 constraints - the browser attributes
 		// are UX, not security; never trust the client. The API is the authority
 		// on the locale/country allowlists; the selects only constrain the UI.
-		if (displayName.length < 2 || displayName.length > 50) {
+		// Count Unicode code points (like the API's Go rune count), not UTF-16
+		// units, so a name with astral characters near the limit is not wrongly
+		// rejected here while the API would accept it.
+		const nameLen = [...displayName].length;
+		if (nameLen < 2 || nameLen > 50) {
 			return fail(400, {
 				value: displayName,
 				error: 'Display name must be between 2 and 50 characters.'

@@ -12,6 +12,22 @@ import (
 	"github.com/google/uuid"
 )
 
+const consumePasswordReset = `-- name: ConsumePasswordReset :one
+DELETE FROM password_resets
+WHERE token_hash = $1
+  AND expires_at > now()
+RETURNING user_id
+`
+
+// Atomically validates and consumes a token: only one of two concurrent
+// requests with the same token can delete the row and get the user_id back.
+func (q *Queries) ConsumePasswordReset(ctx context.Context, tokenHash []byte) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, consumePasswordReset, tokenHash)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const createPasswordReset = `-- name: CreatePasswordReset :one
 
 INSERT INTO password_resets (token_hash, user_id, expires_at)
@@ -41,17 +57,4 @@ DELETE FROM password_resets WHERE user_id = $1
 func (q *Queries) DeletePasswordResetsForUser(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deletePasswordResetsForUser, userID)
 	return err
-}
-
-const getPasswordResetUser = `-- name: GetPasswordResetUser :one
-SELECT user_id FROM password_resets
-WHERE token_hash = $1
-  AND expires_at > now()
-`
-
-func (q *Queries) GetPasswordResetUser(ctx context.Context, tokenHash []byte) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, getPasswordResetUser, tokenHash)
-	var user_id uuid.UUID
-	err := row.Scan(&user_id)
-	return user_id, err
 }
