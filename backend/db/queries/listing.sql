@@ -7,6 +7,12 @@ INSERT INTO listings (
 )
 RETURNING *;
 
+-- name: UpdateListing :one
+UPDATE listings
+SET price_cents = $2, original_price_cents = $3, description = $4, updated_at = now()
+WHERE id = $1
+RETURNING *;
+
 -- name: GetListingByID :one
 SELECT sqlc.embed(listings), sqlc.embed(races), u.display_name AS seller_name
 FROM listings

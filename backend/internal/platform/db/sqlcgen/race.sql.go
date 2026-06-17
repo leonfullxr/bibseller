@@ -91,6 +91,38 @@ func (q *Queries) CreateRace(ctx context.Context, arg CreateRaceParams) (Race, e
 	return i, err
 }
 
+const getRaceByID = `-- name: GetRaceByID :one
+SELECT id, slug, name, series, sport, distance, event_date, city, country, website_url, transfer_policy, official_transfer_url, policy_source_url, policy_notes, policy_verified_at, policy_verified_by, status, created_by, created_at, updated_at FROM races WHERE id = $1
+`
+
+func (q *Queries) GetRaceByID(ctx context.Context, id uuid.UUID) (Race, error) {
+	row := q.db.QueryRow(ctx, getRaceByID, id)
+	var i Race
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.Series,
+		&i.Sport,
+		&i.Distance,
+		&i.EventDate,
+		&i.City,
+		&i.Country,
+		&i.WebsiteUrl,
+		&i.TransferPolicy,
+		&i.OfficialTransferUrl,
+		&i.PolicySourceUrl,
+		&i.PolicyNotes,
+		&i.PolicyVerifiedAt,
+		&i.PolicyVerifiedBy,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getRaceBySlug = `-- name: GetRaceBySlug :one
 SELECT r.id, r.slug, r.name, r.series, r.sport, r.distance, r.event_date, r.city, r.country, r.website_url, r.transfer_policy, r.official_transfer_url, r.policy_source_url, r.policy_notes, r.policy_verified_at, r.policy_verified_by, r.status, r.created_by, r.created_at, r.updated_at,
     (SELECT count(*) FROM listings l
