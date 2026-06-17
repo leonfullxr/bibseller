@@ -14,7 +14,7 @@
 <section class="panel">
 	<h2>Profile</h2>
 
-	<form method="POST" use:enhance>
+	<form method="POST" action="?/profile" use:enhance>
 		<label for="display_name">Display name</label>
 		<input
 			id="display_name"
@@ -33,6 +33,51 @@
 		{/if}
 
 		<button type="submit">Save</button>
+	</form>
+</section>
+
+<section class="panel">
+	<h2>Password</h2>
+
+	<form method="POST" action="?/changePassword" use:enhance>
+		<label for="current_password">Current password</label>
+		<input
+			id="current_password"
+			name="current_password"
+			type="password"
+			required
+			autocomplete="current-password"
+		/>
+
+		<label for="new_password">New password</label>
+		<input
+			id="new_password"
+			name="new_password"
+			type="password"
+			required
+			minlength="8"
+			autocomplete="new-password"
+		/>
+
+		<label for="confirm_password">Confirm new password</label>
+		<input
+			id="confirm_password"
+			name="confirm_password"
+			type="password"
+			required
+			minlength="8"
+			autocomplete="new-password"
+		/>
+
+		{#if form?.pwError}
+			<p class="feedback error" role="alert">{form.pwError}</p>
+		{:else if form?.pwSuccess}
+			<p class="feedback success" role="status">
+				Password changed. Other devices have been signed out.
+			</p>
+		{/if}
+
+		<button type="submit">Change password</button>
 	</form>
 </section>
 

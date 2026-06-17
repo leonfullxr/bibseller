@@ -60,6 +60,20 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 	return err
 }
 
+const deleteSessionsForUserExcept = `-- name: DeleteSessionsForUserExcept :exec
+DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2
+`
+
+type DeleteSessionsForUserExceptParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	TokenHash []byte    `json:"token_hash"`
+}
+
+func (q *Queries) DeleteSessionsForUserExcept(ctx context.Context, arg DeleteSessionsForUserExceptParams) error {
+	_, err := q.db.Exec(ctx, deleteSessionsForUserExcept, arg.UserID, arg.TokenHash)
+	return err
+}
+
 const getSessionWithUser = `-- name: GetSessionWithUser :one
 SELECT s.last_seen_at, u.id, u.email, u.email_verified_at, u.password_hash, u.display_name, u.locale, u.country, u.role, u.stripe_account_id, u.stripe_customer_id, u.anonymized_at, u.created_at, u.updated_at
 FROM sessions s
