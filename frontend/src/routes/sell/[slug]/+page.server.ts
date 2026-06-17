@@ -17,6 +17,12 @@ export const actions: Actions = {
 
 		const form = await request.formData();
 		const raceID = String(form.get('race_id') ?? '');
+		if (raceID === '') {
+			return fail(400, {
+				error: 'Missing race - please start again from the race page.',
+				values: snapshot(form)
+			});
+		}
 		const description = String(form.get('description') ?? '').trim();
 		const parsed = parseListingPrice(
 			String(form.get('price') ?? ''),
