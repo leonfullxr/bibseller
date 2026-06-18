@@ -36,10 +36,15 @@ export const actions: Actions = {
 			if (form.get('ack') == null) {
 				return fail(400, { error: 'Please acknowledge the terms to continue.', body });
 			}
-			const ackRes = await apiFetch(`/api/v1/races/${listing.race.slug}/ack`, {
-				method: 'POST',
-				headers: sessionHeader(cookies)
-			});
+			let ackRes: Response;
+			try {
+				ackRes = await apiFetch(`/api/v1/races/${listing.race.slug}/ack`, {
+					method: 'POST',
+					headers: sessionHeader(cookies)
+				});
+			} catch {
+				return fail(502, { error: 'The API is unreachable.', body });
+			}
 			if (!ackRes.ok) {
 				return fail(502, { error: 'Could not record your acknowledgment. Try again.', body });
 			}

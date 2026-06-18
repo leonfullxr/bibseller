@@ -21,9 +21,14 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 	const thread = inbox.items.find((t) => t.id === params.id);
 	if (!thread) error(404, 'Conversation not found');
 
-	const msgsRes = await apiFetch(`/api/v1/threads/${params.id}/messages`, {
-		headers: sessionHeader(cookies)
-	});
+	let msgsRes: Response;
+	try {
+		msgsRes = await apiFetch(`/api/v1/threads/${params.id}/messages`, {
+			headers: sessionHeader(cookies)
+		});
+	} catch {
+		error(502, 'The API is unreachable.');
+	}
 	if (!msgsRes.ok) error(502, 'Could not load messages.');
 	const msgs = (await msgsRes.json()) as { items: ChatMessage[] };
 

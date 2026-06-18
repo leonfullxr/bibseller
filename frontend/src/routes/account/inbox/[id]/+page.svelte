@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { formatDateTime } from '$lib/format';
 	import type { ChatMessage } from '$lib/api/types';
 	import type { PageProps } from './$types';
 
@@ -84,10 +85,6 @@
 			sending = false;
 		}
 	}
-
-	function stamp(ts: string): string {
-		return new Date(ts).toLocaleString();
-	}
 </script>
 
 <svelte:head>
@@ -109,7 +106,7 @@
 	{#each messages as m (m.id)}
 		<div class="msg" class:mine={m.sender_id === meId}>
 			<p class="body">{m.body}</p>
-			<span class="time">{stamp(m.created_at)}</span>
+			<span class="time">{formatDateTime(m.created_at)}</span>
 		</div>
 	{/each}
 </div>

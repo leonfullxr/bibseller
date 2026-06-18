@@ -5,8 +5,9 @@
 	let { policy, officialUrl = null }: { policy: TransferPolicy; officialUrl?: string | null } =
 		$props();
 
-	// The buy path exists ONLY for platform_sale - and even there it ships
-	// with M6. Chat ships with M5. Until then: honest disabled stubs.
+	// The buy path exists ONLY for platform_sale, and even there it ships with M6
+	// (honest disabled stub). Messaging is live (M5) via the contact composer on
+	// the listing page, so there is no chat stub here.
 	const action = $derived(policyView[policy].primaryAction);
 </script>
 
@@ -20,9 +21,6 @@
 			Official transfer process
 		</a>
 	{/if}
-	<button type="button" disabled class="chat" title="Chat arrives with M5">
-		Message seller - coming soon
-	</button>
 </div>
 
 <style>
@@ -33,8 +31,7 @@
 	}
 
 	.buy,
-	.official,
-	.chat {
+	.official {
 		border-radius: 0.375rem;
 		padding: 0.5rem 1rem;
 		font-weight: 600;
@@ -55,12 +52,5 @@
 
 	.official:hover {
 		background: var(--sky-700);
-	}
-
-	.chat {
-		border: 1px solid var(--slate-300);
-		color: var(--slate-500);
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 </style>
