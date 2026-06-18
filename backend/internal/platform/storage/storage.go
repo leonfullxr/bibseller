@@ -72,3 +72,16 @@ func (c *Client) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	}
 	return obj, nil
 }
+
+// Delete removes an object. Used to clean up an image whose message row failed
+// to commit, so no orphan is left in the bucket.
+func (c *Client) Delete(ctx context.Context, key string) error {
+	return c.mc.RemoveObject(ctx, c.bucket, key, minio.RemoveObjectOptions{})
+}
+
+// IsNotFound reports whether err is a missing-object error from this store. The
+// result comes from the error argument, not the receiver; the method form keeps
+// callers decoupled from the minio package.
+func (c *Client) IsNotFound(err error) bool {
+	return minio.ToErrorResponse(err).Code == "NoSuchKey"
+}

@@ -461,7 +461,10 @@ func uploadImage(t *testing.T, h http.Handler, threadID, token, caption string, 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("upload image: status = %d, body = %s", rec.Code, rec.Body)
 	}
-	var m message
+	var m struct {
+		ID       string `json:"id"`
+		HasImage bool   `json:"has_image"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
 		t.Fatalf("upload image: bad JSON: %v", err)
 	}
@@ -514,6 +517,19 @@ func TestImageMessage(t *testing.T) {
 		if m.ID == msgID && (!m.HasImage || m.Body != "my bib") {
 			t.Errorf("image message in list: %+v", m)
 		}
+	}
+
+	// If the object vanishes from storage, the download is a 404, not a 500.
+	var key string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT image_key FROM messages WHERE id = $1`, uuid.MustParse(msgID)).Scan(&key); err != nil {
+		t.Fatalf("read image_key: %v", err)
+	}
+	if err := newStorage().Delete(context.Background(), key); err != nil {
+		t.Fatalf("delete object: %v", err)
+	}
+	if rec := imageResponse(t, h, threadID, msgID, buyerTok); rec.Code != http.StatusNotFound {
+		t.Errorf("missing object fetch: status = %d, want 404", rec.Code)
 	}
 }
 

@@ -53,6 +53,8 @@ type Mailer interface {
 type Storage interface {
 	Put(ctx context.Context, key string, r io.Reader, size int64, contentType string) error
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
+	Delete(ctx context.Context, key string) error
+	IsNotFound(err error) bool
 }
 
 type Handler struct {
@@ -534,9 +536,32 @@ func (h *Handler) postImageMessage(w http.ResponseWriter, r *http.Request, threa
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxImageBytes+(1<<20)) // image cap + multipart slack
 	if err := r.ParseMultipartForm(maxImageBytes); err != nil {
-		httpx.Error(w, http.StatusRequestEntityTooLarge, "image_too_large", "the image is too large")
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			httpx.Error(w, http.StatusRequestEntityTooLarge, "image_too_large", "the image is too large")
+		} else {
+			httpx.Error(w, http.StatusBadRequest, "invalid_body", "could not read the upload")
+		}
 		return
 	}
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll() // remove any parts that spilled to temp files
+		}
+	}()
+
+	// Validate the optional caption before storing anything, so a bad caption can
+	// never orphan an uploaded object.
+	var caption *string
+	if c := strings.TrimSpace(r.FormValue("body")); c != "" {
+		if utf8.RuneCountInString(c) > maxMessageLen {
+			httpx.Error(w, http.StatusBadRequest, "invalid_parameter",
+				fmt.Sprintf("caption must be at most %d characters", maxMessageLen))
+			return
+		}
+		caption = &c
+	}
+
 	file, _, err := r.FormFile("image")
 	if err != nil {
 		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "an image file is required")
@@ -575,18 +600,10 @@ func (h *Handler) postImageMessage(w http.ResponseWriter, r *http.Request, threa
 		return
 	}
 
-	var caption *string
-	if c := strings.TrimSpace(r.FormValue("body")); c != "" {
-		if utf8.RuneCountInString(c) > maxMessageLen {
-			httpx.Error(w, http.StatusBadRequest, "invalid_parameter",
-				fmt.Sprintf("caption must be at most %d characters", maxMessageLen))
-			return
-		}
-		caption = &c
-	}
-
+	// The object now exists; any failure below must delete it to avoid an orphan.
 	tx, err := h.pool.Begin(r.Context())
 	if err != nil {
+		h.discardObject(key)
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not send message")
 		return
 	}
@@ -595,13 +612,25 @@ func (h *Handler) postImageMessage(w http.ResponseWriter, r *http.Request, threa
 
 	msg, ok := insertAndTouch(w, r, qtx, threadID, sender, caption, &key)
 	if !ok {
+		h.discardObject(key)
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
+		h.discardObject(key)
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not send message")
 		return
 	}
 	httpx.JSON(w, http.StatusCreated, toMessageDTO(msg))
+}
+
+// discardObject best-effort deletes an uploaded image whose message row did not
+// commit, so a failed send leaves no orphan in the bucket.
+func (h *Handler) discardObject(key string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := h.storage.Delete(ctx, key); err != nil {
+		slog.Error("chat: orphaned image cleanup failed", "err", err, "key", key)
+	}
 }
 
 // getMessageImage streams a message's private image to a thread participant.
@@ -645,6 +674,10 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := h.storage.Get(r.Context(), *row.ImageKey)
 	if err != nil {
+		if h.storage.IsNotFound(err) {
+			httpx.Error(w, http.StatusNotFound, "not_found", "image not found")
+			return
+		}
 		slog.Error("chat: image fetch failed", "err", err, "message_id", msgID)
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
 		return

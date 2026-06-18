@@ -100,12 +100,14 @@
 				if (fileInput) fileInput.value = '';
 			} else if (res.status === 413) {
 				error = 'That image is too large (5 MB max).';
-			} else if (res.status === 400) {
-				error = 'Only JPEG or PNG images are allowed.';
 			} else if (res.status === 429) {
 				error = 'You are sending messages too fast - wait a moment.';
 			} else {
-				error = 'Could not send your message. Try again.';
+				// Surface the API's specific reason (bad image, message/caption too long, ...).
+				const detail = (await res.json().catch(() => null)) as {
+					error?: { message?: string };
+				} | null;
+				error = detail?.error?.message ?? 'Could not send your message. Try again.';
 			}
 		} catch {
 			error = 'Network error - check your connection.';
