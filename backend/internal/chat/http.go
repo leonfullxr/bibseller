@@ -6,10 +6,15 @@
 package chat
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -29,8 +34,9 @@ import (
 )
 
 const (
-	maxMessageLen   = 4000 // matches the messages_body_length DB CHECK
-	messagePageSize = 100  // schema note: a poll fetches up to 100 messages
+	maxMessageLen   = 4000    // matches the messages_body_length DB CHECK
+	messagePageSize = 100     // schema note: a poll fetches up to 100 messages
+	maxImageBytes   = 5 << 20 // 5 MiB cap on an uploaded image
 )
 
 // Mailer sends the new-message notification. Declared here (the consumer) so
@@ -40,18 +46,28 @@ type Mailer interface {
 	SendNewMessage(to, link string) error
 }
 
+// Storage holds and serves the private image objects. Declared here (the
+// consumer) so chat depends on the capability, not the S3 implementation;
+// cmd/api injects *storage.Client, tests inject the real client (skipped when
+// the object store is unreachable).
+type Storage interface {
+	Put(ctx context.Context, key string, r io.Reader, size int64, contentType string) error
+	Get(ctx context.Context, key string) (io.ReadCloser, error)
+}
+
 type Handler struct {
 	pool       *pgxpool.Pool // for the send transaction (insert + thread touch)
 	q          *sqlcgen.Queries
 	mailer     Mailer
+	storage    Storage
 	appURL     string       // frontend base, for the inbox link in the email
 	msgLimiter *rateLimiter // per-account cap on message sends
 	ipLimiter  *rateLimiter // per-source-IP cap on message sends
 }
 
-func Routes(pool *pgxpool.Pool, mailer Mailer, appURL string) func(*http.ServeMux) {
+func Routes(pool *pgxpool.Pool, mailer Mailer, store Storage, appURL string) func(*http.ServeMux) {
 	h := &Handler{
-		pool: pool, q: sqlcgen.New(pool), mailer: mailer, appURL: appURL,
+		pool: pool, q: sqlcgen.New(pool), mailer: mailer, storage: store, appURL: appURL,
 		msgLimiter: newRateLimiter(msgRateMax, msgRateWindow),
 		ipLimiter:  newRateLimiter(ipRateMax, msgRateWindow),
 	}
@@ -62,6 +78,7 @@ func Routes(pool *pgxpool.Pool, mailer Mailer, appURL string) func(*http.ServeMu
 		mux.HandleFunc("POST /listings/{id}/threads", h.startThread)
 		mux.HandleFunc("POST /threads/{id}/messages", h.postMessage)
 		mux.HandleFunc("GET /threads/{id}/messages", h.listMessages)
+		mux.HandleFunc("GET /threads/{id}/messages/{mid}/image", h.getMessageImage)
 		mux.HandleFunc("GET /threads", h.listThreads)
 	}
 }
@@ -69,12 +86,16 @@ func Routes(pool *pgxpool.Pool, mailer Mailer, appURL string) func(*http.ServeMu
 type messageDTO struct {
 	ID        uuid.UUID `json:"id"`
 	SenderID  uuid.UUID `json:"sender_id"`
-	Body      string    `json:"body"`
+	Body      *string   `json:"body"` // null for an image-only message
+	HasImage  bool      `json:"has_image"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 func toMessageDTO(m sqlcgen.Message) messageDTO {
-	return messageDTO{ID: m.ID, SenderID: m.SenderID, Body: m.Body, CreatedAt: m.CreatedAt}
+	return messageDTO{
+		ID: m.ID, SenderID: m.SenderID, Body: m.Body,
+		HasImage: m.ImageKey != nil, CreatedAt: m.CreatedAt,
+	}
 }
 
 type threadSummary struct {
@@ -205,7 +226,7 @@ func (h *Handler) startThread(w http.ResponseWriter, r *http.Request) {
 	// A brand-new thread comes back with no last_message_at; that is the one
 	// time the seller is emailed.
 	firstMessage := thread.LastMessageAt == nil
-	msg, ok := insertAndTouch(w, r, qtx, thread.ID, caller.ID, body)
+	msg, ok := insertAndTouch(w, r, qtx, thread.ID, caller.ID, &body, nil)
 	if !ok {
 		return
 	}
@@ -252,6 +273,13 @@ func (h *Handler) postMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A multipart body is an image upload (with an optional caption); JSON is a
+	// plain text message.
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		h.postImageMessage(w, r, threadID, caller.ID)
+		return
+	}
+
 	body, ok := h.decodeBody(w, r, caller.ID)
 	if !ok {
 		return
@@ -265,7 +293,7 @@ func (h *Handler) postMessage(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = tx.Rollback(r.Context()) }() // no-op once committed
 	qtx := h.q.WithTx(tx)
 
-	msg, ok := insertAndTouch(w, r, qtx, threadID, caller.ID, body)
+	msg, ok := insertAndTouch(w, r, qtx, threadID, caller.ID, &body, nil)
 	if !ok {
 		return
 	}
@@ -404,18 +432,26 @@ func (h *Handler) decodeBody(w http.ResponseWriter, r *http.Request, sender uuid
 		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
 		return "", false
 	}
-	// Per-account is the primary control; the generous per-IP cap stops one
-	// source flooding writes across many accounts without tripping shared NAT.
-	now := time.Now()
-	if allowed, retry := h.msgLimiter.allow("acct:"+sender.String(), now); !allowed {
-		tooManyMessages(w, retry)
-		return "", false
-	}
-	if allowed, retry := h.ipLimiter.allow(clientIP(r), now); !allowed {
-		tooManyMessages(w, retry)
+	if !h.allowSend(w, r, sender) {
 		return "", false
 	}
 	return body, true
+}
+
+// allowSend applies the message-send budgets. Per-account is the primary control;
+// the generous per-IP cap stops one source flooding writes across many accounts
+// without tripping a shared NAT. It writes the 429 itself and returns false.
+func (h *Handler) allowSend(w http.ResponseWriter, r *http.Request, sender uuid.UUID) bool {
+	now := time.Now()
+	if allowed, retry := h.msgLimiter.allow("acct:"+sender.String(), now); !allowed {
+		tooManyMessages(w, retry)
+		return false
+	}
+	if allowed, retry := h.ipLimiter.allow(clientIP(r), now); !allowed {
+		tooManyMessages(w, retry)
+		return false
+	}
+	return true
 }
 
 func tooManyMessages(w http.ResponseWriter, retry int) {
@@ -426,9 +462,9 @@ func tooManyMessages(w http.ResponseWriter, retry int) {
 // insertAndTouch writes the message and bumps the thread's last_message_at (and
 // the sender's read mark) inside the caller's transaction. It writes the error
 // response and returns ok=false on failure.
-func insertAndTouch(w http.ResponseWriter, r *http.Request, qtx *sqlcgen.Queries, threadID, sender uuid.UUID, body string) (sqlcgen.Message, bool) {
+func insertAndTouch(w http.ResponseWriter, r *http.Request, qtx *sqlcgen.Queries, threadID, sender uuid.UUID, body, imageKey *string) (sqlcgen.Message, bool) {
 	msg, err := qtx.InsertMessage(r.Context(), sqlcgen.InsertMessageParams{
-		ID: ids.New(), ThreadID: threadID, SenderID: sender, Body: body,
+		ID: ids.New(), ThreadID: threadID, SenderID: sender, Body: body, ImageKey: imageKey,
 	})
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not send message")
@@ -485,4 +521,143 @@ func validateBody(raw string) (string, error) {
 		return "", fmt.Errorf("message must be at most %d characters", maxMessageLen)
 	}
 	return raw, nil
+}
+
+// postImageMessage handles a multipart image upload on an existing thread; the
+// caller is already a verified participant. The image is decoded and re-encoded
+// (which drops any EXIF), only JPEG and PNG are accepted, the object key is
+// random, and the bucket is private - the image is reachable only via
+// getMessageImage. An optional text caption rides along as the message body.
+func (h *Handler) postImageMessage(w http.ResponseWriter, r *http.Request, threadID, sender uuid.UUID) {
+	if !h.allowSend(w, r, sender) {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxImageBytes+(1<<20)) // image cap + multipart slack
+	if err := r.ParseMultipartForm(maxImageBytes); err != nil {
+		httpx.Error(w, http.StatusRequestEntityTooLarge, "image_too_large", "the image is too large")
+		return
+	}
+	file, _, err := r.FormFile("image")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "an image file is required")
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	// Decoding proves it really is an image; re-encoding strips any EXIF metadata.
+	img, format, err := image.Decode(file)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_image", "could not read the image")
+		return
+	}
+	var buf bytes.Buffer
+	var contentType, ext string
+	switch format {
+	case "jpeg":
+		contentType, ext = "image/jpeg", "jpg"
+		err = jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85})
+	case "png":
+		contentType, ext = "image/png", "png"
+		err = png.Encode(&buf, img)
+	default:
+		httpx.Error(w, http.StatusBadRequest, "unsupported_image", "only JPEG and PNG images are allowed")
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not process the image")
+		return
+	}
+
+	key := "threads/" + threadID.String() + "/" + ids.New().String() + "." + ext
+	if err := h.storage.Put(r.Context(), key, &buf, int64(buf.Len()), contentType); err != nil {
+		slog.Error("chat: image store failed", "err", err, "thread_id", threadID)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not store the image")
+		return
+	}
+
+	var caption *string
+	if c := strings.TrimSpace(r.FormValue("body")); c != "" {
+		if utf8.RuneCountInString(c) > maxMessageLen {
+			httpx.Error(w, http.StatusBadRequest, "invalid_parameter",
+				fmt.Sprintf("caption must be at most %d characters", maxMessageLen))
+			return
+		}
+		caption = &c
+	}
+
+	tx, err := h.pool.Begin(r.Context())
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not send message")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }() // no-op once committed
+	qtx := h.q.WithTx(tx)
+
+	msg, ok := insertAndTouch(w, r, qtx, threadID, sender, caption, &key)
+	if !ok {
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not send message")
+		return
+	}
+	httpx.JSON(w, http.StatusCreated, toMessageDTO(msg))
+}
+
+// getMessageImage streams a message's private image to a thread participant.
+func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
+	caller, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
+		return
+	}
+	if caller.EmailVerifiedAt == nil {
+		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
+		return
+	}
+	threadID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "not_found", "image not found")
+		return
+	}
+	msgID, err := uuid.Parse(r.PathValue("mid"))
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "not_found", "image not found")
+		return
+	}
+	row, err := h.q.GetMessageImage(r.Context(), sqlcgen.GetMessageImageParams{ID: msgID, ThreadID: threadID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.Error(w, http.StatusNotFound, "not_found", "image not found")
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+	if !isParticipant(caller.ID, row.BuyerID, row.SellerID) {
+		httpx.Error(w, http.StatusForbidden, "forbidden", "you are not a participant in this thread")
+		return
+	}
+	if row.ImageKey == nil {
+		httpx.Error(w, http.StatusNotFound, "not_found", "this message has no image")
+		return
+	}
+
+	obj, err := h.storage.Get(r.Context(), *row.ImageKey)
+	if err != nil {
+		slog.Error("chat: image fetch failed", "err", err, "message_id", msgID)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+	defer func() { _ = obj.Close() }()
+	w.Header().Set("Content-Type", contentTypeForKey(*row.ImageKey))
+	w.Header().Set("Cache-Control", "private, no-store")
+	_, _ = io.Copy(w, obj) // a mid-stream client disconnect is not actionable here
+}
+
+func contentTypeForKey(key string) string {
+	if strings.HasSuffix(key, ".png") {
+		return "image/png"
+	}
+	return "image/jpeg"
 }

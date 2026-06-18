@@ -17,6 +17,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/email"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/storage"
 	"github.com/leonfullxr/bibseller/backend/internal/race"
 	"github.com/leonfullxr/bibseller/backend/internal/user"
 )
@@ -46,12 +47,26 @@ func run() error {
 
 	queries := sqlcgen.New(pool)
 	mailer := email.SMTPMailer{Addr: cfg.SMTPAddr, From: cfg.EmailFrom}
+
+	store, err := storage.New(cfg.S3Endpoint, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket)
+	if err != nil {
+		return err
+	}
+	// Ensure the private image bucket exists. Best-effort so the API still boots
+	// if the object store is briefly unavailable; the image routes error until it
+	// returns.
+	bucketCtx, cancelBucket := context.WithTimeout(ctx, 5*time.Second)
+	if err := store.EnsureBucket(bucketCtx); err != nil {
+		logger.Warn("object storage not ready", "err", err)
+	}
+	cancelBucket()
+
 	srv := &http.Server{
 		Addr: ":" + cfg.Port,
 		Handler: httpx.NewRouter(logger, pool,
 			[]httpx.Middleware{auth.RateLimit(), auth.ResolveUser(queries)},
 			race.Routes(queries), listing.Routes(queries), user.Routes(queries),
-			auth.Routes(pool, mailer, cfg.AppURL), chat.Routes(pool, mailer, cfg.AppURL)),
+			auth.Routes(pool, mailer, cfg.AppURL), chat.Routes(pool, mailer, store, cfg.AppURL)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,

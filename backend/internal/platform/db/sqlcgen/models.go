@@ -57,8 +57,9 @@ type Message struct {
 	ID        uuid.UUID `json:"id"`
 	ThreadID  uuid.UUID `json:"thread_id"`
 	SenderID  uuid.UUID `json:"sender_id"`
-	Body      string    `json:"body"`
+	Body      *string   `json:"body"`
 	CreatedAt time.Time `json:"created_at"`
+	ImageKey  *string   `json:"image_key"`
 }
 
 type Order struct {

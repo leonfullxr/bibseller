@@ -69,11 +69,12 @@ export interface SessionResponse {
 	user: SessionUser;
 }
 
-/** A chat message, as returned by the chat message endpoints (M5.1). */
+/** A chat message, as returned by the chat message endpoints (M5.1+). */
 export interface ChatMessage {
 	id: string;
 	sender_id: string;
-	body: string;
+	body: string | null; // null for an image-only message
+	has_image: boolean;
 	created_at: string;
 }
 

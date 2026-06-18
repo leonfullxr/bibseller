@@ -19,6 +19,8 @@
 	let sending = $state(false);
 	let error = $state('');
 	let list = $state<HTMLDivElement>();
+	let files = $state<FileList | undefined>();
+	let fileInput = $state<HTMLInputElement>();
 	let polling = false; // in-flight guard so slow polls cannot overlap
 
 	// Re-seed and jump to the latest when navigating to a different thread.
@@ -65,20 +67,41 @@
 
 	async function send(e: SubmitEvent) {
 		e.preventDefault();
-		const body = draft.trim();
-		if (!body || sending) return;
+		const text = draft.trim();
+		const file = files?.[0] ?? null;
+		if ((!text && !file) || sending) return;
 		sending = true;
 		error = '';
 		try {
-			const res = await fetch(`/api/v1/threads/${threadId}/messages`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'same-origin',
-				body: JSON.stringify({ body })
-			});
+			let res: Response;
+			if (file) {
+				// Image upload: multipart, with the text as an optional caption. The
+				// browser sets the multipart Content-Type (boundary) itself.
+				const fd = new FormData();
+				fd.append('image', file);
+				if (text) fd.append('body', text);
+				res = await fetch(`/api/v1/threads/${threadId}/messages`, {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: fd
+				});
+			} else {
+				res = await fetch(`/api/v1/threads/${threadId}/messages`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({ body: text })
+				});
+			}
 			if (res.ok) {
 				await merge([(await res.json()) as ChatMessage]);
 				draft = '';
+				files = undefined;
+				if (fileInput) fileInput.value = '';
+			} else if (res.status === 413) {
+				error = 'That image is too large (5 MB max).';
+			} else if (res.status === 400) {
+				error = 'Only JPEG or PNG images are allowed.';
 			} else if (res.status === 429) {
 				error = 'You are sending messages too fast - wait a moment.';
 			} else {
@@ -110,7 +133,15 @@
 <div class="messages" bind:this={list}>
 	{#each messages as m (m.id)}
 		<div class="msg" class:mine={m.sender_id === meId}>
-			<p class="body">{m.body}</p>
+			{#if m.has_image}
+				<img
+					class="image"
+					src={`/api/v1/threads/${threadId}/messages/${m.id}/image`}
+					alt={m.body ?? 'Shared image'}
+					loading="lazy"
+				/>
+			{/if}
+			{#if m.body}<p class="body">{m.body}</p>{/if}
 			<span class="time">{formatDateTime(m.created_at)}</span>
 		</div>
 	{/each}
@@ -120,15 +151,24 @@
 	<textarea
 		bind:value={draft}
 		rows="3"
-		required
 		maxlength="4000"
 		aria-label="Your message"
-		placeholder="Write a message..."
+		placeholder="Write a message, or attach an image..."
 	></textarea>
 	{#if error}
 		<p class="feedback error" role="alert">{error}</p>
 	{/if}
-	<button type="submit" disabled={sending}>{sending ? 'Sending...' : 'Send'}</button>
+	<div class="actions">
+		<input
+			class="file"
+			type="file"
+			accept="image/jpeg,image/png"
+			aria-label="Attach an image (JPEG or PNG)"
+			bind:files
+			bind:this={fileInput}
+		/>
+		<button type="submit" disabled={sending}>{sending ? 'Sending...' : 'Send'}</button>
+	</div>
 </form>
 
 <style>
@@ -202,6 +242,14 @@
 		color: var(--slate-900);
 	}
 
+	.image {
+		display: block;
+		max-width: 100%;
+		max-height: 20rem;
+		border-radius: 0.375rem;
+		margin-bottom: 0.375rem;
+	}
+
 	.time {
 		margin-top: 0.25rem;
 		display: block;
@@ -215,6 +263,19 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+	}
+
+	.actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.file {
+		font-size: 0.8125rem;
+		color: var(--slate-600);
+		min-width: 0;
 	}
 
 	textarea {
