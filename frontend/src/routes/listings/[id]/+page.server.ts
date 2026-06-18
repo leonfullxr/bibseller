@@ -1,15 +1,27 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { apiFetch, apiGet } from '$lib/api/server';
 import type { ListingDetail } from '$lib/api/types';
 import { requiresAck } from '$lib/policy';
 import { sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, fetch, setHeaders, locals }) => {
+export const load: PageServerLoad = async ({ params, fetch, setHeaders, locals, cookies }) => {
+	// Signed-in viewers get the per-viewer is_own_listing and an uncacheable
+	// response; anonymous viewers get the public, cacheable listing.
+	if (locals.user) {
+		let res: Response;
+		try {
+			res = await apiFetch(`/api/v1/listings/${params.id}`, { headers: sessionHeader(cookies) });
+		} catch {
+			error(502, 'The API is unreachable.');
+		}
+		if (res.status === 404) error(404, 'Not found');
+		if (!res.ok) error(502, 'Could not load the listing.');
+		setHeaders({ 'cache-control': 'private, no-store' });
+		return { listing: (await res.json()) as ListingDetail };
+	}
 	const listing = await apiGet<ListingDetail>(`/api/v1/listings/${params.id}`, fetch);
-	// Cache only for anonymous visitors: a signed-in page carries user-specific
-	// contact UI and must not be shared (CONTEXT cache caveat).
-	if (!locals.user) setHeaders({ 'cache-control': 'public, max-age=60' });
+	setHeaders({ 'cache-control': 'public, max-age=60' });
 	return { listing };
 };
 

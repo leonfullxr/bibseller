@@ -23,11 +23,12 @@ export const policyView: Record<TransferPolicy, PolicyView> = {
 };
 
 // Whether contacting a seller for this race needs the buyer to acknowledge the
-// venue-only terms first (the restricted modes: connect_only and unknown). The
-// server enforces this too - the chat API rejects a first message without the
-// recorded ack - this only drives whether the UI shows the acknowledgment gate.
+// venue-only terms first: connect_only and unknown. An explicit policy check,
+// not derived from the presentational `tone`, so a UI tweak can never shift this
+// gate. The server enforces it too - the chat API rejects a first message
+// without the recorded ack - this only drives whether the UI shows the gate.
 export function requiresAck(policy: TransferPolicy): boolean {
-	return policyView[policy].tone === 'restricted';
+	return policy === 'connect_only' || policy === 'unknown';
 }
 
 // Words live apart from facts (the seed of the M8 i18n dictionary). Labels feed

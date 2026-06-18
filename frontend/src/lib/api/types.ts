@@ -30,12 +30,12 @@ export interface ListingSummary {
 	currency: string;
 	original_price_cents: number | null;
 	description: string | null;
-	seller_id: string;
 	seller_name: string;
 	created_at: string;
 }
 
 export interface ListingDetail extends ListingSummary {
+	is_own_listing: boolean; // true when the signed-in viewer is the seller
 	race: {
 		slug: string;
 		name: string;

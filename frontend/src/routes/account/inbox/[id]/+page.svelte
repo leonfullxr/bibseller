@@ -19,6 +19,7 @@
 	let sending = $state(false);
 	let error = $state('');
 	let list = $state<HTMLDivElement>();
+	let polling = false; // in-flight guard so slow polls cannot overlap
 
 	// Re-seed and jump to the latest when navigating to a different thread.
 	$effect(() => {
@@ -43,6 +44,8 @@
 	}
 
 	async function poll() {
+		if (polling) return; // a previous poll is still in flight; skip this tick
+		polling = true;
 		try {
 			const res = await fetch(`/api/v1/threads/${threadId}/messages?since=${cursor()}`, {
 				credentials: 'same-origin'
@@ -50,6 +53,8 @@
 			if (res.ok) await merge(((await res.json()) as { items: ChatMessage[] }).items);
 		} catch {
 			/* transient; the next tick retries */
+		} finally {
+			polling = false;
 		}
 	}
 

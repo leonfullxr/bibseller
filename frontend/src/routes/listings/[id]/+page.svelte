@@ -20,7 +20,7 @@
 			listing.price_cents < listing.original_price_cents
 	);
 	const available = $derived(listing.status === 'active');
-	const isOwn = $derived(data.user?.id === listing.seller_id);
+	const isOwn = $derived(listing.is_own_listing);
 	const needsAck = $derived(requiresAck(race.transfer_policy));
 </script>
 
