@@ -1,9 +1,91 @@
-import { apiGet } from '$lib/api/server';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { apiFetch, apiGet } from '$lib/api/server';
 import type { ListingDetail } from '$lib/api/types';
-import type { PageServerLoad } from './$types';
+import { requiresAck } from '$lib/policy';
+import { sessionHeader } from '$lib/server/session';
+import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, fetch, setHeaders }) => {
+export const load: PageServerLoad = async ({ params, fetch, setHeaders, locals, cookies }) => {
+	// Signed-in viewers get the per-viewer is_own_listing and an uncacheable
+	// response; anonymous viewers get the public, cacheable listing.
+	if (locals.user) {
+		let res: Response;
+		try {
+			res = await apiFetch(`/api/v1/listings/${params.id}`, { headers: sessionHeader(cookies) });
+		} catch {
+			error(502, 'The API is unreachable.');
+		}
+		if (res.status === 404) error(404, 'Not found');
+		if (!res.ok) error(502, 'Could not load the listing.');
+		setHeaders({ 'cache-control': 'private, no-store' });
+		return { listing: (await res.json()) as ListingDetail };
+	}
 	const listing = await apiGet<ListingDetail>(`/api/v1/listings/${params.id}`, fetch);
 	setHeaders({ 'cache-control': 'public, max-age=60' });
 	return { listing };
+};
+
+export const actions: Actions = {
+	// contact starts (or reuses) the buyer's thread with the seller, sending the
+	// first message. In the restricted policy modes it first records the buyer's
+	// acknowledgment of the venue-only terms - the chat API rejects the message
+	// without it.
+	contact: async ({ request, params, cookies, locals, fetch }) => {
+		if (!locals.user) redirect(303, '/login');
+		if (!locals.user.email_verified) {
+			return fail(403, { error: 'Verify your email before contacting a seller.', body: '' });
+		}
+
+		const form = await request.formData();
+		const body = String(form.get('body') ?? '').trim();
+		if (body === '') {
+			return fail(400, { error: 'Write a message to the seller first.', body: '' });
+		}
+
+		// Authoritative policy + slug from the API, never a tamperable hidden field.
+		const listing = await apiGet<ListingDetail>(`/api/v1/listings/${params.id}`, fetch);
+		if (requiresAck(listing.race.transfer_policy)) {
+			if (form.get('ack') == null) {
+				return fail(400, { error: 'Please acknowledge the terms to continue.', body });
+			}
+			let ackRes: Response;
+			try {
+				ackRes = await apiFetch(`/api/v1/races/${listing.race.slug}/ack`, {
+					method: 'POST',
+					headers: sessionHeader(cookies)
+				});
+			} catch {
+				return fail(502, { error: 'The API is unreachable.', body });
+			}
+			if (!ackRes.ok) {
+				return fail(502, { error: 'Could not record your acknowledgment. Try again.', body });
+			}
+		}
+
+		let res: Response;
+		try {
+			res = await apiFetch(`/api/v1/listings/${params.id}/threads`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', ...sessionHeader(cookies) },
+				body: JSON.stringify({ body })
+			});
+		} catch {
+			return fail(502, { error: 'The API is unreachable.', body });
+		}
+		if (res.status === 403) {
+			return fail(403, { error: 'You cannot contact the seller for this listing.', body });
+		}
+		if (res.status === 409) {
+			return fail(409, { error: 'This listing is no longer available.', body });
+		}
+		if (!res.ok) {
+			return fail(res.status >= 500 ? 502 : res.status, {
+				error: 'Could not start the conversation.',
+				body
+			});
+		}
+
+		const { thread_id } = (await res.json()) as { thread_id: string };
+		redirect(303, `/account/inbox/${thread_id}`);
+	}
 };

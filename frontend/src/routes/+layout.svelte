@@ -17,6 +17,9 @@
 				{#if data.user}
 					<a href={resolve('/sell')}>Sell</a>
 					<a href={resolve('/account/listings')}>My listings</a>
+					{#if data.user.email_verified}
+						<a href={resolve('/account/inbox')}>Inbox</a>
+					{/if}
 					<a href={resolve('/settings')}>{data.user.display_name}</a>
 					<form method="POST" action={resolve('/logout')}>
 						<button type="submit">Log out</button>

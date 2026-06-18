@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/leonfullxr/bibseller/backend/internal/auth"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 	"github.com/leonfullxr/bibseller/backend/internal/race"
@@ -56,7 +57,8 @@ type raceContext struct {
 
 type Detail struct {
 	Summary
-	Race raceContext `json:"race"`
+	Race         raceContext `json:"race"`
+	IsOwnListing bool        `json:"is_own_listing"` // true when the signed-in viewer is the seller
 }
 
 type listResponse struct {
@@ -138,7 +140,15 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
+	// is_own_listing lets the buyer UI hide the contact composer on the viewer's
+	// own listing without exposing a stable seller id publicly. It depends on the
+	// caller, so an authenticated response must not be shared by a cache.
+	caller, signedIn := auth.UserFromContext(r.Context())
+	if signedIn {
+		w.Header().Set("Cache-Control", "no-store")
+	} else {
+		w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
+	}
 	httpx.JSON(w, http.StatusOK, Detail{
 		Summary: Summary{
 			ID: row.Listing.ID, Status: row.Listing.Status,
@@ -154,5 +164,6 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 			TransferPolicy:      row.Race.TransferPolicy,
 			OfficialTransferURL: row.Race.OfficialTransferUrl,
 		},
+		IsOwnListing: signedIn && caller.ID == row.Listing.SellerID,
 	})
 }

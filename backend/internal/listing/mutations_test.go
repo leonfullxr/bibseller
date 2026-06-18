@@ -308,3 +308,37 @@ func TestListMine(t *testing.T) {
 		t.Errorf("unauth list mine: status = %d, want 401", rec.Code)
 	}
 }
+
+// TestListingDetailIsOwn proves the listing detail's is_own_listing is computed
+// per viewer from the session: true only for the seller, false for others and
+// anonymous (so no stable seller id is exposed publicly).
+func TestListingDetailIsOwn(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerSeller(t, h, pool, true)
+	otherTok, _ := registerSeller(t, h, pool, true)
+	race := seedRace(t, pool, "published", future())
+	id := createListing(t, h, race.ID, sellerTok)
+
+	isOwn := func(token string) bool {
+		rec := doJSON(t, h, http.MethodGet, "/api/v1/listings/"+id, "", token)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("get listing: status = %d, body = %s", rec.Code, rec.Body)
+		}
+		var d listing.Detail
+		if err := json.Unmarshal(rec.Body.Bytes(), &d); err != nil {
+			t.Fatalf("bad JSON: %v", err)
+		}
+		return d.IsOwnListing
+	}
+
+	if !isOwn(sellerTok) {
+		t.Error("seller viewing own listing: is_own_listing = false, want true")
+	}
+	if isOwn(otherTok) {
+		t.Error("other user: is_own_listing = true, want false")
+	}
+	if isOwn("") {
+		t.Error("anonymous: is_own_listing = true, want false")
+	}
+}

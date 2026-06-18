@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import ListingCTA from '$lib/components/ListingCTA.svelte';
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate, formatPrice } from '$lib/format';
+	import { requiresAck } from '$lib/policy';
 	import type { PageProps } from './$types';
 
-	let { data }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 	const listing = $derived(data.listing);
 	const race = $derived(data.listing.race);
 
@@ -18,6 +20,8 @@
 			listing.price_cents < listing.original_price_cents
 	);
 	const available = $derived(listing.status === 'active');
+	const isOwn = $derived(listing.is_own_listing);
+	const needsAck = $derived(requiresAck(race.transfer_policy));
 </script>
 
 <svelte:head>
@@ -74,6 +78,55 @@
 <div class="callout-wrap">
 	<PolicyCallout policy={race.transfer_policy} officialUrl={race.official_transfer_url} />
 </div>
+
+{#if available}
+	<section class="contact">
+		<h2>Contact the seller</h2>
+
+		{#if !data.user}
+			<p class="hint">
+				<a href={resolve('/login')}>Log in</a> to message the seller.
+			</p>
+		{:else if !data.user.email_verified}
+			<p class="hint">
+				Verify your email to message the seller.
+				<a href={resolve('/settings')}>Account settings</a>
+			</p>
+		{:else if isOwn}
+			<p class="hint">
+				This is your listing - manage it from
+				<a href={resolve('/account/listings')}>your listings</a>.
+			</p>
+		{:else}
+			<form method="POST" action="?/contact" use:enhance class="composer">
+				<textarea
+					name="body"
+					rows="4"
+					required
+					maxlength="4000"
+					aria-label="Message to the seller"
+					placeholder="Hi - is this bib still available?">{form?.body ?? ''}</textarea
+				>
+
+				{#if needsAck}
+					<label class="ack">
+						<input type="checkbox" name="ack" required />
+						<span>
+							I understand the platform handles no money and takes no responsibility for this
+							transfer - the race's own rules apply.
+						</span>
+					</label>
+				{/if}
+
+				{#if form?.error}
+					<p class="feedback error" role="alert">{form.error}</p>
+				{/if}
+
+				<button type="submit">Send message</button>
+			</form>
+		{/if}
+	</section>
+{/if}
 
 <style>
 	nav {
@@ -181,5 +234,90 @@
 
 	.callout-wrap {
 		margin-top: 1.5rem;
+	}
+
+	.contact {
+		margin-top: 1.5rem;
+		border-radius: 0.5rem;
+		border: 1px solid var(--slate-200);
+		background: white;
+		padding: 1.5rem;
+	}
+
+	.contact h2 {
+		font-size: 1.125rem;
+		line-height: 1.75rem;
+		font-weight: 600;
+	}
+
+	.hint {
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
+	}
+
+	.hint a {
+		color: var(--emerald-700);
+		text-decoration: underline;
+	}
+
+	.composer {
+		margin-top: 0.75rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		max-width: 40rem;
+	}
+
+	textarea {
+		width: 100%;
+		border-radius: 0.375rem;
+		border: 1px solid var(--slate-300);
+		background: white;
+		padding: 0.5rem 0.75rem;
+		font: inherit;
+		font-size: 0.875rem;
+		resize: vertical;
+	}
+
+	.ack {
+		display: flex;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-700);
+	}
+
+	.ack input {
+		margin-top: 0.2rem;
+		flex-shrink: 0;
+	}
+
+	.feedback {
+		border-radius: 0.375rem;
+		padding: 0.5rem 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.error {
+		border: 1px solid var(--amber-300);
+		background: var(--amber-50);
+		color: var(--amber-900);
+	}
+
+	button {
+		align-self: flex-start;
+		border-radius: 0.375rem;
+		background: var(--emerald-600);
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: white;
+	}
+
+	button:hover {
+		background: var(--emerald-700);
 	}
 </style>
