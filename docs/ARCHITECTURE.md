@@ -74,7 +74,7 @@ bibseller/
     │   ├── lib/
     │   │   ├── api/            # typed client for the Go API
     │   │   ├── components/     # PolicyBadge, DisclaimerBlock, ...
-    │   │   └── i18n/           # Paraglide messages
+    │   │   └── i18n/           # hand-rolled message dictionaries (D14/D17)
     │   ├── routes/
     │   │   ├── races/[slug]/
     │   │   ├── listings/[id]/

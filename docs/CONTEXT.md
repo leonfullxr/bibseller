@@ -35,6 +35,7 @@ Policy view - the frontend's single derivation of a race's `transfer_policy` int
 | D14 | 2026-06-12 | Stdlib-first stack | Drop chi and Tailwind; no superforms/zod/i18n libraries. Routing on Go 1.22 `http.ServeMux` (method + `{wildcard}` patterns), styling in scoped Svelte `<style>` blocks with tokens in `layout.css`, forms via SvelteKit form actions + native HTML5 validation | Founder learning goal (D7): core Go/Svelte primitives over third-party abstractions. pgx/sqlc/goose stay - typed SQL without ORM bloat. |
 | D15 | 2026-06-17 | Listing photos and handover confirmation | Photos are private chat artifacts (built in M5, server-proxied through the API), not public listing images. Buyer and seller confirm the handover with an in-chat acknowledgment button; a photo is optional. | Proof-of-registration photos can contain personal data, so they stay private to the buyer-seller conversation, never the public catalog. Image upload therefore moves from M4 (#7) to M5 (#8); the held-funds confirmation/escrow is the M6 order flow. M4 ships listings only. |
 | D16 | 2026-06-18 | Object-storage client (first deliberate dependency under D14) | `minio-go` | In-chat images are private, server-proxied artifacts (D15): the API authorizes each fetch by thread participation, so it must hold an S3 client - presigned-PUT-only (the old M4 security-checklist line) does not fit. `minio-go` is the lightweight S3-compatible client, identical across MinIO (dev) and R2/Scaleway (prod); first justified exception to D14's no-new-dependencies stance. Lands in M5.3 (#38). |
+| D17 | 2026-06-18 | i18n approach (M8) | Hand-rolled message dictionaries + English-root / `/es`-prefix routing | Reaffirms D14 (no i18n library) over issue #9's "Paraglide" title: en+es is small enough to hand-roll a typed dictionary + `t()` accessor, keeping the stdlib-first learning goal. Locale URL strategy: English at the root, Spanish under `/es` with `hreflang` alternates (best for search traffic); locale resolved by signed-in `users.locale` > `locale` cookie > `Accept-Language` > `en`. Lands in M8.1 (#45) + M8.2 (#46). |
 
 ## Scope boundaries
 
@@ -61,8 +62,8 @@ Out (parked): native apps, ads/premium tiers, race-organizer SaaS, multi-currenc
 | M0 scaffold - M1 schema - M2 public catalog | #1 #2 #4 | done (PR #14) |
 | M3 auth & accounts | #5 | auth + accounts complete (register/login/logout, sessions, email verify, CSRF, password reset, change password, log-out-all, per-IP + per-account throttle, settings display name/locale/country, delete stub); remaining acceptance "unverified cannot list/chat" is enforced when M4/M5 add those endpoints |
 | M4 seller flows (listings) | #7 | done - listings CRUD, past-race expiry job, /sell + /account/listings (sub-issues #29-#31, PRs #33-#35); image upload moved to M5 per D15 |
-| M5 chat (the beta's core) | #8 | scoped - sub-issues #36 (backend) #37 (frontend) #38 (images, minio-go) #39 (report/block + retention) |
-| M8 i18n (en + es per D4) | #9 | - |
+| M5 chat (the beta's core) | #8 | done - threads/polling/inbox + ack gate, private images (minio-go), report/block + retention job (sub-issues #36-#39, PRs #41-#44) |
+| M8 i18n (en + es per D4) | #9 | scoped - hand-rolled per D14/D17; sub-issues #45 (foundation + en) #46 (Spanish) |
 | M7 trust/safety (lite gates beta; full gates payments) | #11 | - |
 | M9 production (starts pre-beta per D8) | #12 | - |
 | Gate 1: chat-only public beta (D3) | #13 | - |
