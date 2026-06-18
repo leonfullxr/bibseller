@@ -150,7 +150,7 @@ Grounding math: 2M MAU at marketplace engagement ≈ hundreds of RPS peak on cat
 - [ ] argon2id, session-hash storage, cookie flags, CSRF middleware (M3)
 - [ ] AuthZ: ownership checks on every mutation; admin role separated (M4+)
 - [ ] Rate limits: auth endpoints (M3), messages (M5), checkout (M6)
-- [ ] Uploads: presigned PUT only, content-type allowlist, size cap, random keys, private bucket, EXIF stripped (M4)
+- [ ] Uploads: server-proxied (browser -> API -> private bucket; not presigned PUT, so each fetch is authorized by thread participation), content-type allowlist, size cap, random keys, private bucket, EXIF stripped (M5; D15/D16)
 - [ ] Stripe webhook signature verification; idempotent event handling (M6)
 - [ ] Security headers via Caddy + SvelteKit hooks: CSP, HSTS, frame-deny (M9)
 - [ ] No PII in logs (user ids ok, emails never); secrets only via env (always)
