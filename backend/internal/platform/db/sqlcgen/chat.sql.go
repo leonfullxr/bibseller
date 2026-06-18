@@ -91,6 +91,25 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Cre
 	return i, err
 }
 
+const deleteExpiredMessages = `-- name: DeleteExpiredMessages :execrows
+DELETE FROM messages m
+USING chat_threads t, listings l, races r
+WHERE m.thread_id = t.id
+  AND t.listing_id = l.id
+  AND l.race_id = r.id
+  AND r.event_date < $1
+`
+
+// Retention: delete messages whose race finished before the cutoff (12 months
+// after race event_date). Returns the number deleted.
+func (q *Queries) DeleteExpiredMessages(ctx context.Context, cutoff time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredMessages, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getMessageImage = `-- name: GetMessageImage :one
 SELECT m.image_key, t.buyer_id, l.seller_id
 FROM messages m
@@ -202,6 +221,37 @@ func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (M
 		&i.ImageKey,
 	)
 	return i, err
+}
+
+const listExpiredMessageImageKeys = `-- name: ListExpiredMessageImageKeys :many
+SELECT m.image_key
+FROM messages m
+JOIN chat_threads t ON t.id = m.thread_id
+JOIN listings l ON l.id = t.listing_id
+JOIN races r ON r.id = l.race_id
+WHERE r.event_date < $1 AND m.image_key IS NOT NULL
+`
+
+// Image keys of messages whose race finished before the cutoff, so the objects
+// can be removed from storage before DeleteExpiredMessages drops the rows.
+func (q *Queries) ListExpiredMessageImageKeys(ctx context.Context, cutoff time.Time) ([]*string, error) {
+	rows, err := q.db.Query(ctx, listExpiredMessageImageKeys, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*string
+	for rows.Next() {
+		var image_key *string
+		if err := rows.Scan(&image_key); err != nil {
+			return nil, err
+		}
+		items = append(items, image_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMessages = `-- name: ListMessages :many

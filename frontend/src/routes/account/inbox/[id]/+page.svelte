@@ -22,6 +22,7 @@
 	let files = $state<FileList | null>(null);
 	let fileInput = $state<HTMLInputElement>();
 	let polling = false; // in-flight guard so slow polls cannot overlap
+	let notice = $state(''); // status line for block / report actions
 
 	// Re-seed and jump to the latest when navigating to a different thread.
 	$effect(() => {
@@ -115,6 +116,37 @@
 			sending = false;
 		}
 	}
+
+	async function blockUser() {
+		if (!window.confirm(`Block ${data.thread.other_party}? They will not be able to message you.`))
+			return;
+		const res = await fetch('/api/v1/blocks', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'same-origin',
+			body: JSON.stringify({ blocked_id: data.thread.other_party_id })
+		});
+		notice = res.ok ? 'User blocked.' : 'Could not block the user.';
+	}
+
+	async function unblockUser() {
+		const res = await fetch(`/api/v1/blocks/${data.thread.other_party_id}`, {
+			method: 'DELETE',
+			credentials: 'same-origin'
+		});
+		notice = res.ok ? 'User unblocked.' : 'Could not unblock the user.';
+	}
+
+	async function reportMessage(id: string) {
+		if (!window.confirm('Report this message to the moderators?')) return;
+		const res = await fetch('/api/v1/reports', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'same-origin',
+			body: JSON.stringify({ subject_type: 'message', subject_id: id, reason: 'other' })
+		});
+		notice = res.ok ? 'Message reported.' : 'Could not report the message.';
+	}
 </script>
 
 <svelte:head>
@@ -130,6 +162,11 @@
 			>{data.thread.race_name}</a
 		>
 	</p>
+	<div class="safety">
+		<button type="button" onclick={blockUser}>Block</button>
+		<button type="button" onclick={unblockUser}>Unblock</button>
+		{#if notice}<span class="notice" role="status">{notice}</span>{/if}
+	</div>
 </header>
 
 <div class="messages" bind:this={list}>
@@ -144,7 +181,10 @@
 				/>
 			{/if}
 			{#if m.body}<p class="body">{m.body}</p>{/if}
-			<span class="time">{formatDateTime(m.created_at)}</span>
+			<div class="msg-foot">
+				<span class="time">{formatDateTime(m.created_at)}</span>
+				<button type="button" class="report-msg" onclick={() => reportMessage(m.id)}>report</button>
+			</div>
 		</div>
 	{/each}
 </div>
@@ -321,5 +361,52 @@
 	button:disabled {
 		opacity: 0.6;
 		cursor: default;
+	}
+
+	.safety {
+		margin-top: 0.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.safety button {
+		align-self: auto;
+		background: none;
+		color: var(--slate-600);
+		border: 1px solid var(--slate-300);
+		padding: 0.25rem 0.625rem;
+		font-size: 0.8125rem;
+		font-weight: 500;
+	}
+
+	.safety button:hover {
+		background: var(--slate-100);
+	}
+
+	.notice {
+		color: var(--emerald-700);
+	}
+
+	.msg-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.msg-foot button {
+		align-self: auto;
+		background: none;
+		color: var(--slate-400);
+		padding: 0;
+		font-size: 0.6875rem;
+		font-weight: 400;
+	}
+
+	.msg-foot button:hover {
+		background: none;
+		color: var(--amber-700);
 	}
 </style>

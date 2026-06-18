@@ -106,8 +106,9 @@ type threadSummary struct {
 	ListingID     uuid.UUID  `json:"listing_id"`
 	RaceName      string     `json:"race_name"`
 	RaceSlug      string     `json:"race_slug"`
-	Role          string     `json:"role"`        // the caller's role: "buyer" | "seller"
-	OtherParty    string     `json:"other_party"` // display name of the other participant
+	Role          string     `json:"role"`           // the caller's role: "buyer" | "seller"
+	OtherParty    string     `json:"other_party"`    // display name of the other participant
+	OtherPartyID  uuid.UUID  `json:"other_party_id"` // the other participant, for block/unblock
 	LastMessageAt *time.Time `json:"last_message_at"`
 	UnreadCount   int        `json:"unread_count"`
 }
@@ -200,6 +201,14 @@ func (h *Handler) startThread(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if blocked, err := h.q.IsBlocked(r.Context(), sqlcgen.IsBlockedParams{BlockerID: caller.ID, BlockedID: lst.Listing.SellerID}); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not check block status")
+		return
+	} else if blocked {
+		httpx.Error(w, http.StatusForbidden, "blocked", "you cannot contact this seller")
+		return
+	}
+
 	body, ok := h.decodeBody(w, r, caller.ID)
 	if !ok {
 		return
@@ -273,6 +282,18 @@ func (h *Handler) postMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	if !isParticipant(caller.ID, tc.BuyerID, tc.SellerID) {
 		httpx.Error(w, http.StatusForbidden, "forbidden", "you are not a participant in this thread")
+		return
+	}
+
+	other := tc.SellerID
+	if caller.ID == tc.SellerID {
+		other = tc.BuyerID
+	}
+	if blocked, err := h.q.IsBlocked(r.Context(), sqlcgen.IsBlockedParams{BlockerID: caller.ID, BlockedID: other}); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not check block status")
+		return
+	} else if blocked {
+		httpx.Error(w, http.StatusForbidden, "blocked", "you cannot message in this thread")
 		return
 	}
 
@@ -406,14 +427,14 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]threadSummary, len(rows))
 	for i, row := range rows {
-		role, other := "seller", row.BuyerName
+		role, other, otherID := "seller", row.BuyerName, row.BuyerID
 		if row.BuyerID == caller.ID {
-			role, other = "buyer", row.SellerName
+			role, other, otherID = "buyer", row.SellerName, row.SellerID
 		}
 		items[i] = threadSummary{
 			ID: row.ID, ListingID: row.ListingID,
 			RaceName: row.RaceName, RaceSlug: row.RaceSlug,
-			Role: role, OtherParty: other,
+			Role: role, OtherParty: other, OtherPartyID: otherID,
 			LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
 		}
 	}
