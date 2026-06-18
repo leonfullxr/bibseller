@@ -22,6 +22,7 @@ type Client struct {
 // (http -> insecure, matching the dev MinIO); a bare host[:port] defaults to
 // secure for prod.
 func New(endpoint, accessKey, secretKey, bucket string) (*Client, error) {
+	endpoint = strings.TrimSpace(endpoint)
 	secure, host := true, endpoint
 	switch {
 	case strings.HasPrefix(endpoint, "http://"):
@@ -29,6 +30,7 @@ func New(endpoint, accessKey, secretKey, bucket string) (*Client, error) {
 	case strings.HasPrefix(endpoint, "https://"):
 		secure, host = true, strings.TrimPrefix(endpoint, "https://")
 	}
+	host = strings.TrimSuffix(host, "/") // a trailing slash makes an invalid minio host
 	mc, err := minio.New(host, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: secure,

@@ -34,9 +34,10 @@ import (
 )
 
 const (
-	maxMessageLen   = 4000    // matches the messages_body_length DB CHECK
-	messagePageSize = 100     // schema note: a poll fetches up to 100 messages
-	maxImageBytes   = 5 << 20 // 5 MiB cap on an uploaded image
+	maxMessageLen   = 4000       // matches the messages_content_check body bound
+	messagePageSize = 100        // schema note: a poll fetches up to 100 messages
+	maxImageBytes   = 5 << 20    // 5 MiB cap on an uploaded image
+	maxImagePixels  = 40_000_000 // decode-bomb guard: ~40 MP (high-res phone photos still fit)
 )
 
 // Mailer sends the new-message notification. Declared here (the consumer) so
@@ -568,6 +569,22 @@ func (h *Handler) postImageMessage(w http.ResponseWriter, r *http.Request, threa
 		return
 	}
 	defer func() { _ = file.Close() }()
+
+	// Guard against a decompression bomb before fully decoding: read just the
+	// header for the dimensions, reject an absurd pixel count, then rewind.
+	cfg, _, err := image.DecodeConfig(file)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_image", "could not read the image")
+		return
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
+		httpx.Error(w, http.StatusBadRequest, "image_too_large", "the image dimensions are too large")
+		return
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not read the image")
+		return
+	}
 
 	// Decoding proves it really is an image; re-encoding strips any EXIF metadata.
 	img, format, err := image.Decode(file)

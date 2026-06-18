@@ -19,7 +19,7 @@
 	let sending = $state(false);
 	let error = $state('');
 	let list = $state<HTMLDivElement>();
-	let files = $state<FileList | undefined>();
+	let files = $state<FileList | null>(null);
 	let fileInput = $state<HTMLInputElement>();
 	let polling = false; // in-flight guard so slow polls cannot overlap
 
@@ -96,7 +96,7 @@
 			if (res.ok) {
 				await merge([(await res.json()) as ChatMessage]);
 				draft = '';
-				files = undefined;
+				files = null;
 				if (fileInput) fileInput.value = '';
 			} else if (res.status === 413) {
 				error = 'That image is too large (5 MB max).';

@@ -555,3 +555,44 @@ func TestImageMessageRejectsBadUploads(t *testing.T) {
 		t.Errorf("oversized upload: status = %d, want 413", rec.Code)
 	}
 }
+
+// TestImageMessageWithoutCaption covers an image-only message (no caption): the
+// API returns body:null with has_image, and it round-trips through the list.
+func TestImageMessageWithoutCaption(t *testing.T) {
+	pool := testdb.Pool(t)
+	requireStorage(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "hello")
+
+	body, ct := multipartImage(t, "bib.jpg", tinyJPEG(t), "")
+	rec := postMultipart(t, h, "/api/v1/threads/"+threadID+"/messages", buyerTok, body, ct)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("image-only upload: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var created struct {
+		ID       string  `json:"id"`
+		Body     *string `json:"body"`
+		HasImage bool    `json:"has_image"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if created.Body != nil || !created.HasImage {
+		t.Errorf("image-only message: body = %v, has_image = %v; want nil, true", created.Body, created.HasImage)
+	}
+
+	// It also round-trips through the list (a null body unmarshals to "" here).
+	found := false
+	for _, m := range messages(t, h, threadID, "", buyerTok) {
+		if m.ID == created.ID {
+			found = m.HasImage && m.Body == ""
+		}
+	}
+	if !found {
+		t.Error("image-only message not reflected with has_image and empty body in the list")
+	}
+}
