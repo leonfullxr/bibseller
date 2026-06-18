@@ -49,3 +49,18 @@ func (m SMTPMailer) SendPasswordReset(to, link string) error {
 		m.From, to, link)
 	return smtp.SendMail(m.Addr, nil, envelopeFrom, []string{to}, []byte(msg))
 }
+
+// SendNewMessage notifies a seller that a buyer started a conversation about one
+// of their listings. Same plain-text envelope; the inbox link is the payload.
+func (m SMTPMailer) SendNewMessage(to, link string) error {
+	envelopeFrom := m.From
+	if addr, err := mail.ParseAddress(m.From); err == nil {
+		envelopeFrom = addr.Address
+	}
+	msg := fmt.Sprintf(
+		"From: %s\r\nTo: %s\r\nSubject: New message about your Bibseller listing\r\n"+
+			"Content-Type: text/plain; charset=utf-8\r\n\r\n"+
+			"A buyer started a conversation about one of your listings. Read and reply:\r\n\r\n%s\r\n",
+		m.From, to, link)
+	return smtp.SendMail(m.Addr, nil, envelopeFrom, []string{to}, []byte(msg))
+}
