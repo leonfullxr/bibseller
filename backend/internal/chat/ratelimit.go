@@ -2,14 +2,19 @@ package chat
 
 import (
 	"math"
+	"net"
+	"net/http"
 	"sync"
 	"time"
 )
 
-// Per-account message-send budget. Polling (GET) is unmetered; only writes are
-// capped, so a lively conversation is fine but scripted spam is not.
+// Message-send budgets. Polling (GET) is unmetered; only writes are capped.
+// Per-account is the primary anti-spam control; the per-IP cap is deliberately
+// generous so it stops a single source flooding writes across many accounts
+// without tripping a shared NAT of legitimate users.
 const (
 	msgRateMax    = 30
+	ipRateMax     = 120
 	msgRateWindow = time.Minute
 )
 
@@ -51,6 +56,14 @@ func (rl *rateLimiter) allow(key string, now time.Time) (bool, int) {
 	}
 	w.count++
 	return true, 0
+}
+
+// clientIP is the source address used as the per-IP limiter key.
+func clientIP(r *http.Request) string {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 // sweep evicts expired windows so the map cannot grow without bound. Runs for

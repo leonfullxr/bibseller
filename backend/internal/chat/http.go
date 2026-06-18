@@ -46,14 +46,17 @@ type Handler struct {
 	mailer     Mailer
 	appURL     string       // frontend base, for the inbox link in the email
 	msgLimiter *rateLimiter // per-account cap on message sends
+	ipLimiter  *rateLimiter // per-source-IP cap on message sends
 }
 
 func Routes(pool *pgxpool.Pool, mailer Mailer, appURL string) func(*http.ServeMux) {
 	h := &Handler{
 		pool: pool, q: sqlcgen.New(pool), mailer: mailer, appURL: appURL,
 		msgLimiter: newRateLimiter(msgRateMax, msgRateWindow),
+		ipLimiter:  newRateLimiter(ipRateMax, msgRateWindow),
 	}
 	go h.msgLimiter.sweep(msgRateWindow)
+	go h.ipLimiter.sweep(msgRateWindow)
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /races/{slug}/ack", h.ack)
 		mux.HandleFunc("POST /listings/{id}/threads", h.startThread)
@@ -206,7 +209,7 @@ func (h *Handler) startThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if firstMessage {
-		h.notifySeller(r.Context(), lst.Listing.SellerID)
+		h.notifySeller(lst.Listing.SellerID)
 	}
 	httpx.JSON(w, http.StatusCreated, startThreadResponse{ThreadID: thread.ID, Message: toMessageDTO(msg)})
 }
@@ -281,6 +284,10 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
 		return
 	}
+	if caller.EmailVerifiedAt == nil {
+		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
+		return
+	}
 	threadID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "not_found", "thread not found")
@@ -351,6 +358,10 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
 		return
 	}
+	if caller.EmailVerifiedAt == nil {
+		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
+		return
+	}
 	rows, err := h.q.ListThreadsForUser(r.Context(), caller.ID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load inbox")
@@ -387,12 +398,23 @@ func (h *Handler) decodeBody(w http.ResponseWriter, r *http.Request, sender uuid
 		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
 		return "", false
 	}
-	if allowed, retry := h.msgLimiter.allow("msg:"+sender.String(), time.Now()); !allowed {
-		w.Header().Set("Retry-After", strconv.Itoa(retry))
-		httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many messages, slow down")
+	// Per-account is the primary control; the generous per-IP cap stops one
+	// source flooding writes across many accounts without tripping shared NAT.
+	now := time.Now()
+	if allowed, retry := h.msgLimiter.allow("acct:"+sender.String(), now); !allowed {
+		tooManyMessages(w, retry)
+		return "", false
+	}
+	if allowed, retry := h.ipLimiter.allow(clientIP(r), now); !allowed {
+		tooManyMessages(w, retry)
 		return "", false
 	}
 	return body, true
+}
+
+func tooManyMessages(w http.ResponseWriter, retry int) {
+	w.Header().Set("Retry-After", strconv.Itoa(retry))
+	httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many messages, slow down")
 }
 
 // insertAndTouch writes the message and bumps the thread's last_message_at (and
@@ -418,17 +440,19 @@ func insertAndTouch(w http.ResponseWriter, r *http.Request, qtx *sqlcgen.Queries
 }
 
 // notifySeller emails the listing's seller that a buyer started a conversation.
-// Best-effort and backgrounded: a mail failure never affects the request, and
-// the seller still sees the thread in their inbox (mirrors auth's email sends).
-func (h *Handler) notifySeller(ctx context.Context, sellerID uuid.UUID) {
-	seller, err := h.q.GetUserByID(ctx, sellerID)
-	if err != nil {
-		slog.Error("chat: seller lookup for notification failed", "err", err, "seller_id", sellerID)
-		return
-	}
-	link := h.appURL + "/account/inbox"
+// Fully backgrounded with its own short-lived context: this is best-effort, so
+// it must not ride (and die with) the request context after the send commits.
+// A failure only means no email; the seller still sees the thread in their inbox.
+func (h *Handler) notifySeller(sellerID uuid.UUID) {
 	go func() {
-		if err := h.mailer.SendNewMessage(seller.Email, link); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		seller, err := h.q.GetUserByID(ctx, sellerID)
+		if err != nil {
+			slog.Error("chat: seller lookup for notification failed", "err", err, "seller_id", sellerID)
+			return
+		}
+		if err := h.mailer.SendNewMessage(seller.Email, h.appURL+"/account/inbox"); err != nil {
 			slog.Error("chat: new-message email send failed", "err", err, "seller_id", sellerID)
 		}
 	}()

@@ -317,7 +317,11 @@ func TestStartThreadGates(t *testing.T) {
 		t.Errorf("no session: status = %d, want 401", rec.Code)
 	}
 	if rec := doJSON(t, h, http.MethodPost, "/api/v1/listings/"+listingID+"/threads", `{"body":"x"}`, unverifiedTok); rec.Code != http.StatusForbidden {
-		t.Errorf("unverified: status = %d, want 403", rec.Code)
+		t.Errorf("unverified write: status = %d, want 403", rec.Code)
+	}
+	// Reads are gated on verification too, for consistency with writes.
+	if rec := doJSON(t, h, http.MethodGet, "/api/v1/threads", "", unverifiedTok); rec.Code != http.StatusForbidden {
+		t.Errorf("unverified inbox read: status = %d, want 403", rec.Code)
 	}
 	if rec := doJSON(t, h, http.MethodPost, "/api/v1/listings/"+ids.New().String()+"/threads", `{"body":"x"}`, unverifiedTok); rec.Code != http.StatusForbidden {
 		// Unverified is rejected before the listing is even looked up.
