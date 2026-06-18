@@ -21,6 +21,12 @@ type AuditLog struct {
 	CreatedAt   time.Time  `json:"created_at"`
 }
 
+type Block struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type ChatThread struct {
 	ID               uuid.UUID  `json:"id"`
 	ListingID        uuid.UUID  `json:"listing_id"`

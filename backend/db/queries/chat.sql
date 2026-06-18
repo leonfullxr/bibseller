@@ -70,6 +70,26 @@ WHERE thread_id = $1
 ORDER BY id
 LIMIT sqlc.arg('page_size');
 
+-- name: ListExpiredMessageImageKeys :many
+-- Image keys of messages whose race finished before the cutoff, so the objects
+-- can be removed from storage before DeleteExpiredMessages drops the rows.
+SELECT m.image_key
+FROM messages m
+JOIN chat_threads t ON t.id = m.thread_id
+JOIN listings l ON l.id = t.listing_id
+JOIN races r ON r.id = l.race_id
+WHERE r.event_date < sqlc.arg('cutoff') AND m.image_key IS NOT NULL;
+
+-- name: DeleteExpiredMessages :execrows
+-- Retention: delete messages whose race finished before the cutoff (12 months
+-- after race event_date). Returns the number deleted.
+DELETE FROM messages m
+USING chat_threads t, listings l, races r
+WHERE m.thread_id = t.id
+  AND t.listing_id = l.id
+  AND l.race_id = r.id
+  AND r.event_date < sqlc.arg('cutoff');
+
 -- name: GetPolicyAck :one
 SELECT * FROM policy_acks WHERE user_id = $1 AND race_id = $2;
 

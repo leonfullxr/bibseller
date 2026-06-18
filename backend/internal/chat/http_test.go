@@ -596,3 +596,36 @@ func TestImageMessageWithoutCaption(t *testing.T) {
 		t.Error("image-only message not reflected with has_image and empty body in the list")
 	}
 }
+
+// TestBlockedCannotChat proves a block stops new threads and messages both ways.
+func TestBlockedCannotChat(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	sellerTok, sellerID := registerUser(t, h, pool, "Seller", true)
+	buyerTok, buyerID := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "hello")
+
+	if _, err := pool.Exec(context.Background(),
+		`INSERT INTO blocks (blocker_id, blocked_id) VALUES ($1, $2)`, buyerID, sellerID); err != nil {
+		t.Fatalf("insert block: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM blocks WHERE blocker_id = $1 OR blocked_id = $1`, buyerID)
+	})
+
+	// Neither side can send in the existing thread (the block is symmetric).
+	if rec := doJSON(t, h, http.MethodPost, "/api/v1/threads/"+threadID+"/messages", `{"body":"hi"}`, buyerTok); rec.Code != http.StatusForbidden {
+		t.Errorf("blocker send: status = %d, want 403", rec.Code)
+	}
+	if rec := doJSON(t, h, http.MethodPost, "/api/v1/threads/"+threadID+"/messages", `{"body":"hi"}`, sellerTok); rec.Code != http.StatusForbidden {
+		t.Errorf("blocked send: status = %d, want 403", rec.Code)
+	}
+
+	// And no new thread can be started with the same seller.
+	listing2 := createListing(t, h, race.ID, sellerTok)
+	if rec := doJSON(t, h, http.MethodPost, "/api/v1/listings/"+listing2+"/threads", `{"body":"hi"}`, buyerTok); rec.Code != http.StatusForbidden {
+		t.Errorf("blocked start thread: status = %d, want 403", rec.Code)
+	}
+}

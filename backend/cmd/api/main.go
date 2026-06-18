@@ -12,6 +12,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/auth"
 	"github.com/leonfullxr/bibseller/backend/internal/chat"
 	"github.com/leonfullxr/bibseller/backend/internal/listing"
+	"github.com/leonfullxr/bibseller/backend/internal/moderation"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/config"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
@@ -66,7 +67,8 @@ func run() error {
 		Handler: httpx.NewRouter(logger, pool,
 			[]httpx.Middleware{auth.RateLimit(), auth.ResolveUser(queries)},
 			race.Routes(queries), listing.Routes(queries), user.Routes(queries),
-			auth.Routes(pool, mailer, cfg.AppURL), chat.Routes(pool, mailer, store, cfg.AppURL)),
+			auth.Routes(pool, mailer, cfg.AppURL), chat.Routes(pool, mailer, store, cfg.AppURL),
+			moderation.Routes(queries)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -76,6 +78,7 @@ func run() error {
 	// Background jobs run on every instance and coordinate via Postgres advisory
 	// locks; they stop when ctx is cancelled on shutdown.
 	go listing.StartExpiryJob(ctx, pool, logger, time.Hour)
+	go chat.StartRetentionJob(ctx, pool, store, logger, 24*time.Hour)
 
 	errc := make(chan error, 1)
 	go func() {

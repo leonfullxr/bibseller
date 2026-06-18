@@ -22,6 +22,39 @@
 	const available = $derived(listing.status === 'active');
 	const isOwn = $derived(listing.is_own_listing);
 	const needsAck = $derived(requiresAck(race.transfer_policy));
+
+	let reportReason = $state('scam');
+	let reportDetails = $state('');
+	let reportStatus = $state('');
+	let reporting = $state(false);
+
+	async function reportListing(e: SubmitEvent) {
+		e.preventDefault();
+		if (reporting) return;
+		reporting = true;
+		reportStatus = '';
+		try {
+			const res = await fetch('/api/v1/reports', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({
+					subject_type: 'listing',
+					subject_id: listing.id,
+					reason: reportReason,
+					details: reportDetails.trim() || undefined
+				})
+			});
+			reportStatus = res.ok
+				? 'Thanks - this listing has been reported.'
+				: 'Could not file the report. Try again.';
+			if (res.ok) reportDetails = '';
+		} catch {
+			reportStatus = 'Network error - try again.';
+		} finally {
+			reporting = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -126,6 +159,31 @@
 			</form>
 		{/if}
 	</section>
+{/if}
+
+{#if data.user}
+	<details class="report">
+		<summary>Report this listing</summary>
+		<form class="report-form" onsubmit={reportListing}>
+			<select bind:value={reportReason} aria-label="Reason for report">
+				<option value="forbidden_transfer">Forbidden transfer</option>
+				<option value="scam">Scam</option>
+				<option value="offensive">Offensive</option>
+				<option value="other">Other</option>
+			</select>
+			<textarea
+				bind:value={reportDetails}
+				rows="2"
+				maxlength="2000"
+				aria-label="Report details (optional)"
+				placeholder="Details (optional)"
+			></textarea>
+			{#if reportStatus}<p class="report-status" role="status">{reportStatus}</p>{/if}
+			<button type="submit" disabled={reporting}
+				>{reporting ? 'Reporting...' : 'Submit report'}</button
+			>
+		</form>
+	</details>
 {/if}
 
 <style>
@@ -319,5 +377,37 @@
 
 	button:hover {
 		background: var(--emerald-700);
+	}
+
+	.report {
+		margin-top: 1.5rem;
+		font-size: 0.875rem;
+	}
+
+	.report summary {
+		cursor: pointer;
+		color: var(--slate-500);
+	}
+
+	.report-form {
+		margin-top: 0.75rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-width: 28rem;
+	}
+
+	select {
+		border-radius: 0.375rem;
+		border: 1px solid var(--slate-300);
+		background: white;
+		padding: 0.375rem 0.5rem;
+		font: inherit;
+		font-size: 0.875rem;
+	}
+
+	.report-status {
+		font-size: 0.8125rem;
+		color: var(--slate-700);
 	}
 </style>

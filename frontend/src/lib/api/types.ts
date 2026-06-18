@@ -86,6 +86,7 @@ export interface ChatThreadSummary {
 	race_slug: string;
 	role: 'buyer' | 'seller'; // the caller's role in this thread
 	other_party: string; // display name of the other participant
+	other_party_id: string; // the other participant, for block/unblock
 	last_message_at: string | null;
 	unread_count: number;
 }
