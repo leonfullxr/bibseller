@@ -26,7 +26,7 @@ func StartRetentionJob(ctx context.Context, pool *pgxpool.Pool, store Storage, l
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
-		if n, ran, err := purgeExpiredMessages(ctx, pool, store, time.Now().UTC()); err != nil {
+		if n, ran, err := purgeExpiredMessages(ctx, pool, store, logger, time.Now().UTC()); err != nil {
 			logger.Error("message retention failed", "err", err)
 		} else if ran && n > 0 {
 			logger.Info("deleted expired chat messages", "count", n)
@@ -40,9 +40,9 @@ func StartRetentionJob(ctx context.Context, pool *pgxpool.Pool, store Storage, l
 }
 
 // purgeExpiredMessages deletes messages whose race finished over retentionMonths
-// ago - removing their private images from storage first - under an advisory
-// lock. Reports how many it deleted and whether this instance held the lock.
-func purgeExpiredMessages(ctx context.Context, pool *pgxpool.Pool, store Storage, now time.Time) (count int64, ran bool, err error) {
+// ago under an advisory lock, then removes their private image objects from
+// storage. Reports how many it deleted and whether this instance held the lock.
+func purgeExpiredMessages(ctx context.Context, pool *pgxpool.Pool, store Storage, logger *slog.Logger, now time.Time) (count int64, ran bool, err error) {
 	cutoff := now.AddDate(0, -retentionMonths, 0).Truncate(24 * time.Hour)
 
 	tx, err := pool.Begin(ctx)
@@ -78,9 +78,12 @@ func purgeExpiredMessages(ctx context.Context, pool *pgxpool.Pool, store Storage
 		if key == nil {
 			continue
 		}
-		dctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if ctx.Err() != nil {
+			break // shutting down; the rows are already gone, leave the rest
+		}
+		dctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		if derr := store.Delete(dctx, *key); derr != nil {
-			slog.Error("retention: image object delete failed", "err", derr, "key", *key)
+			logger.Error("retention: image object delete failed", "err", derr, "key", *key)
 		}
 		cancel()
 	}

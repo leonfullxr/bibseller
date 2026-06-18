@@ -118,34 +118,50 @@
 	}
 
 	async function blockUser() {
-		if (!window.confirm(`Block ${data.thread.other_party}? They will not be able to message you.`))
+		if (
+			!window.confirm(
+				`Block ${data.thread.other_party}? Neither of you will be able to message the other.`
+			)
+		)
 			return;
-		const res = await fetch('/api/v1/blocks', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'same-origin',
-			body: JSON.stringify({ blocked_id: data.thread.other_party_id })
-		});
-		notice = res.ok ? 'User blocked.' : 'Could not block the user.';
+		try {
+			const res = await fetch('/api/v1/blocks', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({ blocked_id: data.thread.other_party_id })
+			});
+			notice = res.ok ? 'User blocked.' : 'Could not block the user.';
+		} catch {
+			notice = 'Network error - try again.';
+		}
 	}
 
 	async function unblockUser() {
-		const res = await fetch(`/api/v1/blocks/${data.thread.other_party_id}`, {
-			method: 'DELETE',
-			credentials: 'same-origin'
-		});
-		notice = res.ok ? 'User unblocked.' : 'Could not unblock the user.';
+		try {
+			const res = await fetch(`/api/v1/blocks/${data.thread.other_party_id}`, {
+				method: 'DELETE',
+				credentials: 'same-origin'
+			});
+			notice = res.ok ? 'User unblocked.' : 'Could not unblock the user.';
+		} catch {
+			notice = 'Network error - try again.';
+		}
 	}
 
 	async function reportMessage(id: string) {
 		if (!window.confirm('Report this message to the moderators?')) return;
-		const res = await fetch('/api/v1/reports', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'same-origin',
-			body: JSON.stringify({ subject_type: 'message', subject_id: id, reason: 'other' })
-		});
-		notice = res.ok ? 'Message reported.' : 'Could not report the message.';
+		try {
+			const res = await fetch('/api/v1/reports', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({ subject_type: 'message', subject_id: id, reason: 'other' })
+			});
+			notice = res.ok ? 'Message reported.' : 'Could not report the message.';
+		} catch {
+			notice = 'Could not report the message.';
+		}
 	}
 </script>
 

@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -110,7 +111,7 @@ func TestPurgeExpiredMessages(t *testing.T) {
 	expired, expiredKey := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -13, 0)) // past horizon
 	recent, _ := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -1, 0))            // within horizon
 
-	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, now)
+	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), now)
 	if err != nil {
 		t.Fatalf("purge: %v", err)
 	}

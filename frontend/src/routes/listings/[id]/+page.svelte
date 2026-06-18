@@ -175,6 +175,7 @@
 				bind:value={reportDetails}
 				rows="2"
 				maxlength="2000"
+				aria-label="Report details (optional)"
 				placeholder="Details (optional)"
 			></textarea>
 			{#if reportStatus}<p class="report-status" role="status">{reportStatus}</p>{/if}
