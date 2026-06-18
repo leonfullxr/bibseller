@@ -91,6 +91,35 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Cre
 	return i, err
 }
 
+const getMessageImage = `-- name: GetMessageImage :one
+SELECT m.image_key, t.buyer_id, l.seller_id
+FROM messages m
+JOIN chat_threads t ON t.id = m.thread_id
+JOIN listings l ON l.id = t.listing_id
+WHERE m.id = $1 AND m.thread_id = $2
+`
+
+type GetMessageImageParams struct {
+	ID       uuid.UUID `json:"id"`
+	ThreadID uuid.UUID `json:"thread_id"`
+}
+
+type GetMessageImageRow struct {
+	ImageKey *string   `json:"image_key"`
+	BuyerID  uuid.UUID `json:"buyer_id"`
+	SellerID uuid.UUID `json:"seller_id"`
+}
+
+// A message's image plus the thread participants, for the authorized download.
+// Scoped by thread_id (from the URL) so a message id from another thread cannot
+// be fetched through this thread's route.
+func (q *Queries) GetMessageImage(ctx context.Context, arg GetMessageImageParams) (GetMessageImageRow, error) {
+	row := q.db.QueryRow(ctx, getMessageImage, arg.ID, arg.ThreadID)
+	var i GetMessageImageRow
+	err := row.Scan(&i.ImageKey, &i.BuyerID, &i.SellerID)
+	return i, err
+}
+
 const getPolicyAck = `-- name: GetPolicyAck :one
 SELECT id, user_id, race_id, policy, acked_at FROM policy_acks WHERE user_id = $1 AND race_id = $2
 `
@@ -142,16 +171,17 @@ func (q *Queries) GetThreadParticipants(ctx context.Context, id uuid.UUID) (GetT
 }
 
 const insertMessage = `-- name: InsertMessage :one
-INSERT INTO messages (id, thread_id, sender_id, body)
-VALUES ($1, $2, $3, $4)
-RETURNING id, thread_id, sender_id, body, created_at
+INSERT INTO messages (id, thread_id, sender_id, body, image_key)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, thread_id, sender_id, body, created_at, image_key
 `
 
 type InsertMessageParams struct {
 	ID       uuid.UUID `json:"id"`
 	ThreadID uuid.UUID `json:"thread_id"`
 	SenderID uuid.UUID `json:"sender_id"`
-	Body     string    `json:"body"`
+	Body     *string   `json:"body"`
+	ImageKey *string   `json:"image_key"`
 }
 
 func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (Message, error) {
@@ -160,6 +190,7 @@ func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (M
 		arg.ThreadID,
 		arg.SenderID,
 		arg.Body,
+		arg.ImageKey,
 	)
 	var i Message
 	err := row.Scan(
@@ -168,12 +199,13 @@ func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (M
 		&i.SenderID,
 		&i.Body,
 		&i.CreatedAt,
+		&i.ImageKey,
 	)
 	return i, err
 }
 
 const listMessages = `-- name: ListMessages :many
-SELECT id, thread_id, sender_id, body, created_at FROM messages
+SELECT id, thread_id, sender_id, body, created_at, image_key FROM messages
 WHERE thread_id = $1
   AND ($2::uuid IS NULL OR id > $2)
 ORDER BY id
@@ -203,6 +235,7 @@ func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]M
 			&i.SenderID,
 			&i.Body,
 			&i.CreatedAt,
+			&i.ImageKey,
 		); err != nil {
 			return nil, err
 		}

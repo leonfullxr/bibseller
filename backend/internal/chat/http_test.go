@@ -1,9 +1,13 @@
 package chat_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/jpeg"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,10 +20,12 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/auth"
 	"github.com/leonfullxr/bibseller/backend/internal/chat"
 	"github.com/leonfullxr/bibseller/backend/internal/listing"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/config"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/testdb"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/storage"
 )
 
 type noopMailer struct{}
@@ -32,10 +38,34 @@ func (noopMailer) SendNewMessage(_, _ string) error    { return nil }
 // listing via the API) and auth (to register and obtain real session cookies).
 func authedHandler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)
+	store := newStorage()
 	return httpx.NewRouter(slog.New(slog.DiscardHandler), pool,
 		[]httpx.Middleware{auth.ResolveUser(q)},
-		listing.Routes(q), chat.Routes(pool, noopMailer{}, "http://test.local"),
+		listing.Routes(q), chat.Routes(pool, noopMailer{}, store, "http://test.local"),
 		auth.Routes(pool, noopMailer{}, "http://test.local"))
+}
+
+// newStorage builds the object-storage client from env (MinIO defaults). New
+// does not connect, so this never fails on a healthy config; image tests gate
+// on reachability via requireStorage.
+func newStorage() *storage.Client {
+	cfg := config.Load()
+	store, err := storage.New(cfg.S3Endpoint, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket)
+	if err != nil {
+		panic(err)
+	}
+	return store
+}
+
+// requireStorage skips the test unless the object store is reachable and the
+// bucket exists (mirrors testdb.Pool for Postgres).
+func requireStorage(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := newStorage().EnsureBucket(ctx); err != nil {
+		t.Skipf("object storage not reachable, skipping image test: %v", err)
+	}
 }
 
 // registerUser creates a throwaway verified account and returns its session
@@ -171,6 +201,7 @@ type message struct {
 	ID       string `json:"id"`
 	SenderID string `json:"sender_id"`
 	Body     string `json:"body"`
+	HasImage bool   `json:"has_image"`
 }
 
 func messages(t *testing.T, h http.Handler, threadID, since, token string) []message {
@@ -364,5 +395,204 @@ func TestStartThreadGates(t *testing.T) {
 	}
 	if rec := doJSON(t, h, http.MethodPost, "/api/v1/listings/"+listingID+"/threads", `{"body":"x"}`, buyerTok); rec.Code != http.StatusConflict {
 		t.Errorf("cancelled listing: status = %d, want 409", rec.Code)
+	}
+}
+
+func tinyJPEG(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 4, 4)), nil); err != nil {
+		t.Fatalf("encode jpeg: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// jpegWithEXIF returns a JPEG carrying an APP1 "Exif" segment, so a test can
+// prove the server strips it when it re-encodes the upload.
+func jpegWithEXIF(t *testing.T) []byte {
+	t.Helper()
+	base := tinyJPEG(t) // begins with the SOI marker FF D8
+	payload := append([]byte("Exif\x00\x00"), make([]byte, 16)...)
+	seg := []byte{0xFF, 0xE1, byte((len(payload) + 2) >> 8), byte(len(payload) + 2)}
+	seg = append(seg, payload...)
+	out := append([]byte{}, base[:2]...) // SOI
+	out = append(out, seg...)            // injected APP1/EXIF
+	return append(out, base[2:]...)
+}
+
+func multipartImage(t *testing.T, filename string, data []byte, caption string) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, err := mw.CreateFormFile("image", filename)
+	if err != nil {
+		t.Fatalf("multipart: %v", err)
+	}
+	if _, err := fw.Write(data); err != nil {
+		t.Fatalf("multipart write: %v", err)
+	}
+	if caption != "" {
+		if err := mw.WriteField("body", caption); err != nil {
+			t.Fatalf("multipart field: %v", err)
+		}
+	}
+	if err := mw.Close(); err != nil {
+		t.Fatalf("multipart close: %v", err)
+	}
+	return &buf, mw.FormDataContentType()
+}
+
+func postMultipart(t *testing.T, h http.Handler, path, token string, body *bytes.Buffer, contentType string) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, path, body)
+	req.Header.Set("Content-Type", contentType)
+	if token != "" {
+		req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+	}
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func uploadImage(t *testing.T, h http.Handler, threadID, token, caption string, data []byte) string {
+	t.Helper()
+	body, ct := multipartImage(t, "bib.jpg", data, caption)
+	rec := postMultipart(t, h, "/api/v1/threads/"+threadID+"/messages", token, body, ct)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("upload image: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var m struct {
+		ID       string `json:"id"`
+		HasImage bool   `json:"has_image"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
+		t.Fatalf("upload image: bad JSON: %v", err)
+	}
+	if !m.HasImage {
+		t.Fatal("uploaded message is missing has_image")
+	}
+	return m.ID
+}
+
+func imageResponse(t *testing.T, h http.Handler, threadID, msgID, token string) *httptest.ResponseRecorder {
+	t.Helper()
+	return doJSON(t, h, http.MethodGet, "/api/v1/threads/"+threadID+"/messages/"+msgID+"/image", "", token)
+}
+
+// TestImageMessage proves a participant can attach an image, both participants
+// retrieve it (a non-participant cannot), the bytes are re-encoded with the EXIF
+// stripped, and the message advertises the image plus its caption (#8 / #38).
+func TestImageMessage(t *testing.T) {
+	pool := testdb.Pool(t)
+	requireStorage(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	strangerTok, _ := registerUser(t, h, pool, "Stranger", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "hello")
+
+	msgID := uploadImage(t, h, threadID, buyerTok, "my bib", jpegWithEXIF(t))
+
+	rec := imageResponse(t, h, threadID, msgID, sellerTok)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("seller fetch image: status = %d", rec.Code)
+	}
+	got := rec.Body.Bytes()
+	if bytes.Contains(got, []byte("Exif")) {
+		t.Error("retrieved image still carries an EXIF segment")
+	}
+	if _, _, err := image.Decode(bytes.NewReader(got)); err != nil {
+		t.Errorf("retrieved image does not decode: %v", err)
+	}
+	if rec := imageResponse(t, h, threadID, msgID, buyerTok); rec.Code != http.StatusOK {
+		t.Errorf("buyer fetch image: status = %d, want 200", rec.Code)
+	}
+	if rec := imageResponse(t, h, threadID, msgID, strangerTok); rec.Code != http.StatusForbidden {
+		t.Errorf("stranger fetch image: status = %d, want 403", rec.Code)
+	}
+
+	for _, m := range messages(t, h, threadID, "", buyerTok) {
+		if m.ID == msgID && (!m.HasImage || m.Body != "my bib") {
+			t.Errorf("image message in list: %+v", m)
+		}
+	}
+
+	// If the object vanishes from storage, the download is a 404, not a 500.
+	var key string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT image_key FROM messages WHERE id = $1`, uuid.MustParse(msgID)).Scan(&key); err != nil {
+		t.Fatalf("read image_key: %v", err)
+	}
+	if err := newStorage().Delete(context.Background(), key); err != nil {
+		t.Fatalf("delete object: %v", err)
+	}
+	if rec := imageResponse(t, h, threadID, msgID, buyerTok); rec.Code != http.StatusNotFound {
+		t.Errorf("missing object fetch: status = %d, want 404", rec.Code)
+	}
+}
+
+func TestImageMessageRejectsBadUploads(t *testing.T) {
+	pool := testdb.Pool(t)
+	requireStorage(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "hello")
+
+	// Non-image bytes are rejected once decoding fails.
+	body, ct := multipartImage(t, "notes.jpg", []byte("definitely not an image"), "")
+	if rec := postMultipart(t, h, "/api/v1/threads/"+threadID+"/messages", buyerTok, body, ct); rec.Code != http.StatusBadRequest {
+		t.Errorf("non-image upload: status = %d, want 400", rec.Code)
+	}
+
+	// An oversized upload is rejected before decoding.
+	big, ctBig := multipartImage(t, "big.jpg", make([]byte, 7<<20), "")
+	if rec := postMultipart(t, h, "/api/v1/threads/"+threadID+"/messages", buyerTok, big, ctBig); rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("oversized upload: status = %d, want 413", rec.Code)
+	}
+}
+
+// TestImageMessageWithoutCaption covers an image-only message (no caption): the
+// API returns body:null with has_image, and it round-trips through the list.
+func TestImageMessageWithoutCaption(t *testing.T) {
+	pool := testdb.Pool(t)
+	requireStorage(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "hello")
+
+	body, ct := multipartImage(t, "bib.jpg", tinyJPEG(t), "")
+	rec := postMultipart(t, h, "/api/v1/threads/"+threadID+"/messages", buyerTok, body, ct)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("image-only upload: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var created struct {
+		ID       string  `json:"id"`
+		Body     *string `json:"body"`
+		HasImage bool    `json:"has_image"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if created.Body != nil || !created.HasImage {
+		t.Errorf("image-only message: body = %v, has_image = %v; want nil, true", created.Body, created.HasImage)
+	}
+
+	// It also round-trips through the list (a null body unmarshals to "" here).
+	found := false
+	for _, m := range messages(t, h, threadID, "", buyerTok) {
+		if m.ID == created.ID {
+			found = m.HasImage && m.Body == ""
+		}
+	}
+	if !found {
+		t.Error("image-only message not reflected with has_image and empty body in the list")
 	}
 }

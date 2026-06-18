@@ -29,6 +29,10 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:dev@localhost:5432/bibseller_test?sslmode=disable
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: bibseller-test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -47,6 +51,15 @@ jobs:
           $GOOSE -dir db/migrations postgres "$DATABASE_URL" up
           $GOOSE -dir db/migrations postgres "$DATABASE_URL" down-to 0
           $GOOSE -dir db/migrations postgres "$DATABASE_URL" up
+      - name: start minio (object storage for the chat image tests)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && break || sleep 1
+          done
+          curl -sf http://localhost:9000/minio/health/live # fail the step if MinIO never came up
       - run: go test ./... # includes schema constraint tests against the migrated service DB
       - name: sqlc generated code is current
         run: |

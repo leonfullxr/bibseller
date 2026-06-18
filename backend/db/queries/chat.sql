@@ -30,9 +30,19 @@ JOIN listings l ON l.id = t.listing_id
 WHERE t.id = $1;
 
 -- name: InsertMessage :one
-INSERT INTO messages (id, thread_id, sender_id, body)
-VALUES ($1, $2, $3, $4)
+INSERT INTO messages (id, thread_id, sender_id, body, image_key)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
+
+-- name: GetMessageImage :one
+-- A message's image plus the thread participants, for the authorized download.
+-- Scoped by thread_id (from the URL) so a message id from another thread cannot
+-- be fetched through this thread's route.
+SELECT m.image_key, t.buyer_id, l.seller_id
+FROM messages m
+JOIN chat_threads t ON t.id = m.thread_id
+JOIN listings l ON l.id = t.listing_id
+WHERE m.id = $1 AND m.thread_id = $2;
 
 -- name: TouchThreadOnMessage :exec
 -- Bumps last_message_at and marks the sender's own side read (you have read what
