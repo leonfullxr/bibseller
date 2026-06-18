@@ -30,6 +30,7 @@ export interface ListingSummary {
 	currency: string;
 	original_price_cents: number | null;
 	description: string | null;
+	seller_id: string;
 	seller_name: string;
 	created_at: string;
 }
@@ -66,6 +67,26 @@ export interface SessionResponse {
 	token: string;
 	expires_at: string;
 	user: SessionUser;
+}
+
+/** A chat message, as returned by the chat message endpoints (M5.1). */
+export interface ChatMessage {
+	id: string;
+	sender_id: string;
+	body: string;
+	created_at: string;
+}
+
+/** An inbox thread row, as returned by GET /threads. */
+export interface ChatThreadSummary {
+	id: string;
+	listing_id: string;
+	race_name: string;
+	race_slug: string;
+	role: 'buyer' | 'seller'; // the caller's role in this thread
+	other_party: string; // display name of the other participant
+	last_message_at: string | null;
+	unread_count: number;
 }
 
 /** A seller's own listing, as returned by GET /me/listings. */

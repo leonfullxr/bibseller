@@ -239,7 +239,7 @@ func toSummary(l sqlcgen.Listing, sellerName string) Summary {
 	return Summary{
 		ID: l.ID, Status: l.Status, PriceCents: l.PriceCents, Currency: l.Currency,
 		OriginalPriceCents: l.OriginalPriceCents, Description: l.Description,
-		SellerName: sellerName, CreatedAt: l.CreatedAt,
+		SellerID: l.SellerID, SellerName: sellerName, CreatedAt: l.CreatedAt,
 	}
 }
 

@@ -39,6 +39,7 @@ type Summary struct {
 	Currency           string    `json:"currency"`
 	OriginalPriceCents *int32    `json:"original_price_cents"`
 	Description        *string   `json:"description"`
+	SellerID           uuid.UUID `json:"seller_id"` // lets the buyer UI hide "contact" on own listing
 	SellerName         string    `json:"seller_name"`
 	CreatedAt          time.Time `json:"created_at"`
 }
@@ -106,6 +107,7 @@ func (h *Handler) listByRace(w http.ResponseWriter, r *http.Request) {
 			PriceCents: row.PriceCents, Currency: row.Currency,
 			OriginalPriceCents: row.OriginalPriceCents,
 			Description:        row.Description,
+			SellerID:           row.SellerID,
 			SellerName:         row.SellerName, CreatedAt: row.CreatedAt,
 		}
 	}
@@ -145,6 +147,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 			PriceCents: row.Listing.PriceCents, Currency: row.Listing.Currency,
 			OriginalPriceCents: row.Listing.OriginalPriceCents,
 			Description:        row.Listing.Description,
+			SellerID:           row.Listing.SellerID,
 			SellerName:         row.SellerName, CreatedAt: row.Listing.CreatedAt,
 		},
 		Race: raceContext{
