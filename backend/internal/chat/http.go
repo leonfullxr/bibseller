@@ -192,6 +192,12 @@ func (h *Handler) startThread(w http.ResponseWriter, r *http.Request) {
 	thread, err := qtx.CreateThread(r.Context(), sqlcgen.CreateThreadParams{
 		ID: ids.New(), ListingID: listingID, BuyerID: caller.ID,
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The listing left 'active' between the check above and this guarded
+		// insert: no new thread is opened on a non-active listing.
+		httpx.Error(w, http.StatusConflict, "listing_not_active", "this listing is no longer active")
+		return
+	}
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not open thread")
 		return

@@ -1,12 +1,25 @@
 -- name: CreateThread :one
--- Find-or-create the (listing, buyer) thread. The DO UPDATE no-op makes the
--- existing row return on conflict, so the handler always gets the thread back
--- with its pre-existing last_message_at - NULL only for a brand-new thread,
--- which is how the first message is detected (to email the seller once).
-INSERT INTO chat_threads (id, listing_id, buyer_id)
-VALUES ($1, $2, $3)
-ON CONFLICT (listing_id, buyer_id) DO UPDATE SET listing_id = EXCLUDED.listing_id
-RETURNING *;
+-- Find-or-create the (listing, buyer) thread, creating only while the listing is
+-- still active at write time. This closes the TOCTOU between the handler's
+-- active-check and this insert; ON CONFLICT DO NOTHING avoids writing a dead row
+-- when the thread already exists (no MVCC churn on re-contact). The row comes
+-- back with its real last_message_at - NULL only for a brand-new thread, which
+-- is how the first message is detected. Zero rows means "no thread yet and the
+-- listing is not active", which the handler maps to 409.
+WITH created AS (
+    INSERT INTO chat_threads (id, listing_id, buyer_id)
+    SELECT $1, $2, $3
+    WHERE EXISTS (SELECT 1 FROM listings WHERE id = $2 AND status = 'active')
+    ON CONFLICT (listing_id, buyer_id) DO NOTHING
+    RETURNING id, listing_id, buyer_id, created_at, last_message_at, buyer_last_read_at, seller_last_read_at
+)
+SELECT id, listing_id, buyer_id, created_at, last_message_at, buyer_last_read_at, seller_last_read_at
+FROM created
+UNION ALL
+SELECT id, listing_id, buyer_id, created_at, last_message_at, buyer_last_read_at, seller_last_read_at
+FROM chat_threads
+WHERE listing_id = $2 AND buyer_id = $3
+LIMIT 1;
 
 -- name: GetThreadParticipants :one
 -- The two participants (buyer, and the listing's seller) plus last_message_at,

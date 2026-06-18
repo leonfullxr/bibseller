@@ -275,6 +275,27 @@ func TestConverseAndInbox(t *testing.T) {
 	}
 }
 
+// TestStartThreadReuse proves find-or-create is idempotent: a buyer contacting
+// the same listing twice reuses the one thread (the ON CONFLICT DO NOTHING path)
+// and both messages land in it.
+func TestStartThreadReuse(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+
+	first := startThread(t, h, listingID, buyerTok, "hello")
+	second := startThread(t, h, listingID, buyerTok, "still here")
+	if first != second {
+		t.Fatalf("re-contact created a new thread: %s != %s", first, second)
+	}
+	if msgs := messages(t, h, first, "", buyerTok); len(msgs) != 2 {
+		t.Fatalf("thread should hold both messages, got %d", len(msgs))
+	}
+}
+
 // TestThreadAuthz proves only participants can read/write a thread and a seller
 // cannot open a thread on their own listing.
 func TestThreadAuthz(t *testing.T) {
