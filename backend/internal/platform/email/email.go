@@ -40,6 +40,11 @@ var verificationEmail = map[string]content{
 		body: "Welcome to Bibseller. Confirm your email address:\r\n\r\n%s\r\n\r\n" +
 			"This link expires in 24 hours. If you didn't sign up, ignore this email.\r\n",
 	},
+	"es": {
+		subject: "Verifica tu correo de Bibseller",
+		body: "Te damos la bienvenida a Bibseller. Confirma tu dirección de correo:\r\n\r\n%s\r\n\r\n" +
+			"Este enlace caduca en 24 horas. Si no te registraste, ignora este correo.\r\n",
+	},
 }
 
 var passwordResetEmail = map[string]content{
@@ -48,12 +53,21 @@ var passwordResetEmail = map[string]content{
 		body: "Someone asked to reset your Bibseller password. Set a new one:\r\n\r\n%s\r\n\r\n" +
 			"This link expires in 1 hour. If you didn't ask for this, ignore this email.\r\n",
 	},
+	"es": {
+		subject: "Restablece tu contraseña de Bibseller",
+		body: "Alguien ha solicitado restablecer tu contraseña de Bibseller. Establece una nueva:\r\n\r\n%s\r\n\r\n" +
+			"Este enlace caduca en 1 hora. Si no lo solicitaste, ignora este correo.\r\n",
+	},
 }
 
 var newMessageEmail = map[string]content{
 	"en": {
 		subject: "New message about your Bibseller listing",
 		body:    "A buyer started a conversation about one of your listings. Read and reply:\r\n\r\n%s\r\n",
+	},
+	"es": {
+		subject: "Nuevo mensaje sobre tu anuncio de Bibseller",
+		body:    "Alguien ha iniciado una conversación sobre uno de tus anuncios. Léelo y responde:\r\n\r\n%s\r\n",
 	},
 }
 

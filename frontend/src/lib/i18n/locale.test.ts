@@ -9,6 +9,7 @@ import {
 } from './locale';
 import { createPlural, createTranslator } from './messages';
 import { en } from './en';
+import { es } from './es';
 import { transferPolicies } from '$lib/policy';
 
 describe('localeFromPath / stripLocale / pathForLocale', () => {
@@ -74,12 +75,11 @@ describe('isBot', () => {
 });
 
 describe('createTranslator', () => {
-	it('returns the English string and falls back when es is unfilled', () => {
-		const tEn = createTranslator('en');
-		const tEs = createTranslator('es');
-		expect(tEn('nav.races')).toBe('Races');
-		// es.ts is empty in M8.1, so every key falls back to English.
-		expect(tEs('nav.races')).toBe('Races');
+	it('returns the string for the active locale', () => {
+		// es is fully translated as of M8.2; the en/es key-set match is asserted
+		// in the "es dictionary (M8.2)" block above (and enforced by es's type).
+		expect(createTranslator('en')('nav.races')).toBe('Races');
+		expect(createTranslator('es')('nav.races')).toBe('Carreras');
 	});
 
 	it('interpolates {placeholder} params', () => {
@@ -99,6 +99,18 @@ describe('createPlural', () => {
 
 	it('falls back to the number (never blank) for a missing base', () => {
 		expect(createPlural('en')('raceCard.nope', 2)).toBe('2');
+	});
+});
+
+describe('es dictionary (M8.2)', () => {
+	it('has exactly the same keys as en - no missing, no extra', () => {
+		expect(Object.keys(es).sort()).toEqual(Object.keys(en).sort());
+	});
+
+	it('has no empty translations', () => {
+		for (const [key, value] of Object.entries(es)) {
+			expect(value.trim(), key).not.toBe('');
+		}
 	});
 });
 
