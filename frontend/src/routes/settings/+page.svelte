@@ -1,24 +1,26 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	const { t } = getI18n();
 
 	// Mirrors the API allowlist (backend/internal/user); the catalog's country set.
 	const countries = ['AT', 'BE', 'DE', 'ES', 'FR', 'IT', 'NL', 'PL', 'PT'];
 </script>
 
 <svelte:head>
-	<title>Settings - Bibseller</title>
+	<title>{t('settings.title')}</title>
 </svelte:head>
 
-<h1>Settings</h1>
+<h1>{t('settings.heading')}</h1>
 
 <section class="panel">
-	<h2>Profile</h2>
+	<h2>{t('settings.profile')}</h2>
 
 	<form method="POST" action="?/profile" use:enhance>
-		<label for="display_name">Display name</label>
+		<label for="display_name">{t('register.displayName')}</label>
 		<input
 			id="display_name"
 			name="display_name"
@@ -29,33 +31,33 @@
 			value={form?.value ?? data.user.display_name}
 		/>
 
-		<label for="locale">Language</label>
+		<label for="locale">{t('lang.switch')}</label>
 		<select id="locale" name="locale" value={data.user.locale}>
-			<option value="en">English</option>
-			<option value="es">Español</option>
+			<option value="en">{t('lang.en')}</option>
+			<option value="es">{t('lang.es')}</option>
 		</select>
 
-		<label for="country">Country</label>
+		<label for="country">{t('settings.country')}</label>
 		<select id="country" name="country" value={data.user.country ?? ''}>
-			<option value="">Not set</option>
+			<option value="">{t('settings.countryNotSet')}</option>
 			{#each countries as c (c)}<option value={c}>{c}</option>{/each}
 		</select>
 
 		{#if form?.error}
 			<p class="feedback error" role="alert">{form.error}</p>
 		{:else if form?.success}
-			<p class="feedback success" role="status">Profile updated.</p>
+			<p class="feedback success" role="status">{t('settings.profileUpdated')}</p>
 		{/if}
 
-		<button type="submit">Save</button>
+		<button type="submit">{t('settings.save')}</button>
 	</form>
 </section>
 
 <section class="panel">
-	<h2>Password</h2>
+	<h2>{t('settings.password')}</h2>
 
 	<form method="POST" action="?/changePassword" use:enhance>
-		<label for="current_password">Current password</label>
+		<label for="current_password">{t('settings.currentPassword')}</label>
 		<input
 			id="current_password"
 			name="current_password"
@@ -64,7 +66,7 @@
 			autocomplete="current-password"
 		/>
 
-		<label for="new_password">New password</label>
+		<label for="new_password">{t('reset.newPassword')}</label>
 		<input
 			id="new_password"
 			name="new_password"
@@ -74,7 +76,7 @@
 			autocomplete="new-password"
 		/>
 
-		<label for="confirm_password">Confirm new password</label>
+		<label for="confirm_password">{t('settings.confirmNewPassword')}</label>
 		<input
 			id="confirm_password"
 			name="confirm_password"
@@ -87,34 +89,30 @@
 		{#if form?.pwError}
 			<p class="feedback error" role="alert">{form.pwError}</p>
 		{:else if form?.pwSuccess}
-			<p class="feedback success" role="status">
-				Password changed. Other devices have been signed out.
-			</p>
+			<p class="feedback success" role="status">{t('settings.passwordChanged')}</p>
 		{/if}
 
-		<button type="submit">Change password</button>
+		<button type="submit">{t('settings.changePassword')}</button>
 	</form>
 </section>
 
 <section class="panel">
-	<h2>Sessions</h2>
+	<h2>{t('settings.sessions')}</h2>
 
-	<p class="note">Sign out of Bibseller on every device, including this one.</p>
+	<p class="note">{t('settings.sessionsNote')}</p>
 
 	<form method="POST" action="?/logoutAll" use:enhance>
-		<button type="submit">Log out all devices</button>
+		<button type="submit">{t('settings.logoutAll')}</button>
 	</form>
 </section>
 
 <section class="panel">
-	<h2>Delete account</h2>
+	<h2>{t('settings.deleteAccount')}</h2>
 
-	<p class="note">
-		Permanently delete your account and its data. Available once full GDPR tooling ships (M7).
-	</p>
+	<p class="note">{t('settings.deleteNote')}</p>
 
-	<button type="button" disabled title="Account deletion arrives with trust and safety (M7)">
-		Delete account - coming soon
+	<button type="button" disabled title={t('settings.deleteTitle')}>
+		{t('settings.deleteSoon')}
 	</button>
 </section>
 

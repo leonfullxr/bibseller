@@ -1,20 +1,22 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { form }: PageProps = $props();
+	const { t, link } = getI18n();
 </script>
 
 <svelte:head>
-	<title>Create account - Bibseller</title>
+	<title>{t('register.title')}</title>
 </svelte:head>
 
 <section class="panel">
-	<h1>Create account</h1>
+	<h1>{t('register.heading')}</h1>
 
 	<form method="POST" use:enhance>
-		<label for="display_name">Display name</label>
+		<label for="display_name">{t('register.displayName')}</label>
 		<input
 			id="display_name"
 			name="display_name"
@@ -25,7 +27,7 @@
 			value={form?.display_name ?? ''}
 		/>
 
-		<label for="email">Email</label>
+		<label for="email">{t('auth.email')}</label>
 		<input
 			id="email"
 			name="email"
@@ -35,7 +37,7 @@
 			value={form?.email ?? ''}
 		/>
 
-		<label for="password">Password</label>
+		<label for="password">{t('auth.password')}</label>
 		<!-- minlength mirrors the server rule; autocomplete="new-password"
 		     tells password managers to offer a generated one. -->
 		<input
@@ -51,11 +53,11 @@
 			<p class="feedback" role="alert">{form.error}</p>
 		{/if}
 
-		<button type="submit">Create account</button>
+		<button type="submit">{t('register.heading')}</button>
 	</form>
 
 	<p class="alt">
-		Already have an account? <a href={resolve('/login')}>Log in</a>
+		{t('register.haveAccount')} <a href={link(resolve('/login'))}>{t('nav.login')}</a>
 	</p>
 </section>
 

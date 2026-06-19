@@ -23,8 +23,8 @@ import (
 // flow is exercised by seeding a token row directly, not by parsing email.
 type noopMailer struct{}
 
-func (noopMailer) SendVerification(_, _ string) error  { return nil }
-func (noopMailer) SendPasswordReset(_, _ string) error { return nil }
+func (noopMailer) SendVerification(_, _, _ string) error  { return nil }
+func (noopMailer) SendPasswordReset(_, _, _ string) error { return nil }
 
 func handler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)

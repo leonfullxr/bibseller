@@ -18,8 +18,8 @@ import (
 // the auth package stays independent of the SMTP implementation: cmd/api
 // injects an email.SMTPMailer, tests inject a no-op.
 type Mailer interface {
-	SendVerification(to, link string) error
-	SendPasswordReset(to, link string) error
+	SendVerification(to, link, locale string) error
+	SendPasswordReset(to, link, locale string) error
 }
 
 // startEmailVerification mints a verification token, persists its hash, and
@@ -27,7 +27,7 @@ type Mailer interface {
 // but never fails the surrounding request - the user can always resend. The
 // token row is written synchronously so the link works the instant the email
 // lands; the SMTP send, which can block on the network, runs in the background.
-func (h *Handler) startEmailVerification(ctx context.Context, userID uuid.UUID, email string) {
+func (h *Handler) startEmailVerification(ctx context.Context, userID uuid.UUID, email, locale string) {
 	token, tokenHash, err := newToken()
 	if err != nil {
 		slog.Error("verification token mint failed", "err", err, "user_id", userID)
@@ -41,7 +41,7 @@ func (h *Handler) startEmailVerification(ctx context.Context, userID uuid.UUID, 
 	}
 	link := h.appURL + "/verify?token=" + token
 	go func() {
-		if err := h.mailer.SendVerification(email, link); err != nil {
+		if err := h.mailer.SendVerification(email, link, locale); err != nil {
 			slog.Error("verification email send failed", "err", err, "user_id", userID)
 		}
 	}()
@@ -95,6 +95,6 @@ func (h *Handler) resendVerification(w http.ResponseWriter, r *http.Request) {
 	}
 	// Invalidate outstanding tokens before issuing a fresh one.
 	_ = h.q.DeleteEmailVerificationsForUser(r.Context(), user.ID)
-	h.startEmailVerification(r.Context(), user.ID, user.Email)
+	h.startEmailVerification(r.Context(), user.ID, user.Email, user.Locale)
 	w.WriteHeader(http.StatusNoContent)
 }

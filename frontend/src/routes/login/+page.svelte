@@ -1,20 +1,22 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { form }: PageProps = $props();
+	const { t, link } = getI18n();
 </script>
 
 <svelte:head>
-	<title>Log in - Bibseller</title>
+	<title>{t('login.title')}</title>
 </svelte:head>
 
 <section class="panel">
-	<h1>Log in</h1>
+	<h1>{t('nav.login')}</h1>
 
 	<form method="POST" use:enhance>
-		<label for="email">Email</label>
+		<label for="email">{t('auth.email')}</label>
 		<input
 			id="email"
 			name="email"
@@ -24,19 +26,19 @@
 			value={form?.email ?? ''}
 		/>
 
-		<label for="password">Password</label>
+		<label for="password">{t('auth.password')}</label>
 		<input id="password" name="password" type="password" required autocomplete="current-password" />
 
 		{#if form?.error}
 			<p class="feedback" role="alert">{form.error}</p>
 		{/if}
 
-		<button type="submit">Log in</button>
+		<button type="submit">{t('nav.login')}</button>
 	</form>
 
-	<p class="alt"><a href={resolve('/forgot')}>Forgot your password?</a></p>
+	<p class="alt"><a href={link(resolve('/forgot'))}>{t('login.forgot')}</a></p>
 	<p class="alt">
-		New here? <a href={resolve('/register')}>Create an account</a>
+		{t('login.newHere')} <a href={link(resolve('/register'))}>{t('login.createAccount')}</a>
 	</p>
 </section>
 

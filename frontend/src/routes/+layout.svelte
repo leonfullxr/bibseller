@@ -1,42 +1,77 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import type { ResolvedPathname } from '$app/types';
+	import { page } from '$app/state';
+	import { createTranslator, pathForLocale, setI18n, stripLocale, type I18n } from '$lib/i18n';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children, data } = $props();
+
+	// Build the bound translator + link helper for the active locale and share
+	// them down the tree via context. Locale only changes on a full reload (the
+	// first-visit redirect or the switcher's plain form POST), but keeping it
+	// reactive costs nothing and keeps the helpers in sync with data.
+	const locale = $derived(data.locale);
+	const translate = $derived(createTranslator(locale));
+	const i18n: I18n = {
+		get locale() {
+			return locale;
+		},
+		t: (key, params) => translate(key, params),
+		link: (path) => pathForLocale(locale, path) as ResolvedPathname
+	};
+	setI18n(i18n);
+	const { t, link } = i18n;
+
+	const switchTo = $derived(data.locale === 'en' ? 'es' : 'en');
+	// hreflang alternates for the current page, from its locale-free path.
+	const basePath = $derived(stripLocale(page.url.pathname));
+	const enHref = $derived(page.url.origin + pathForLocale('en', basePath));
+	const esHref = $derived(page.url.origin + pathForLocale('es', basePath));
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head>
+	<link rel="icon" href={favicon} />
+	<link rel="alternate" hreflang="en" href={enHref} />
+	<link rel="alternate" hreflang="es" href={esHref} />
+	<link rel="alternate" hreflang="x-default" href={enHref} />
+</svelte:head>
 
 <div class="shell">
 	<header>
 		<div class="bar">
-			<a href={resolve('/')} class="brand">bib<span>seller</span></a>
+			<a href={link(resolve('/'))} class="brand">bib<span>seller</span></a>
 			<nav>
-				<a href={resolve('/races')}>Races</a>
+				<a href={link(resolve('/races'))}>{t('nav.races')}</a>
 				{#if data.user}
-					<a href={resolve('/sell')}>Sell</a>
-					<a href={resolve('/account/listings')}>My listings</a>
+					<a href={link(resolve('/sell'))}>{t('nav.sell')}</a>
+					<a href={link(resolve('/account/listings'))}>{t('nav.myListings')}</a>
 					{#if data.user.email_verified}
-						<a href={resolve('/account/inbox')}>Inbox</a>
+						<a href={link(resolve('/account/inbox'))}>{t('nav.inbox')}</a>
 					{/if}
-					<a href={resolve('/settings')}>{data.user.display_name}</a>
-					<form method="POST" action={resolve('/logout')}>
-						<button type="submit">Log out</button>
+					<a href={link(resolve('/settings'))}>{data.user.display_name}</a>
+					<form method="POST" action={link(resolve('/logout'))}>
+						<button type="submit">{t('nav.logout')}</button>
 					</form>
 				{:else}
-					<a href={resolve('/login')}>Log in</a>
-					<a href={resolve('/register')}>Register</a>
+					<a href={link(resolve('/login'))}>{t('nav.login')}</a>
+					<a href={link(resolve('/register'))}>{t('nav.register')}</a>
 				{/if}
+				<form method="POST" action={link(resolve('/locale'))} class="lang">
+					<input type="hidden" name="to" value={switchTo} />
+					<input type="hidden" name="next" value={basePath} />
+					<button type="submit">{switchTo === 'es' ? t('lang.es') : t('lang.en')}</button>
+				</form>
 			</nav>
 		</div>
 	</header>
 
 	{#if data.user && !data.user.email_verified}
 		<div class="verify-banner">
-			<span>Verify your email to unlock selling and chat.</span>
-			<form method="POST" action={resolve('/verify/resend')}>
-				<button type="submit">Resend email</button>
+			<span>{t('banner.verifyEmail')}</span>
+			<form method="POST" action={link(resolve('/verify/resend'))}>
+				<button type="submit">{t('banner.resend')}</button>
 			</form>
 		</div>
 	{/if}
@@ -47,8 +82,8 @@
 
 	<footer>
 		<div class="bar foot">
-			<span>Zero commission, EU-wide. Non-profit by design.</span>
-			<a href="https://github.com/leonfullxr/bibseller" rel="external">GitHub</a>
+			<span>{t('footer.tagline')}</span>
+			<a href="https://github.com/leonfullxr/bibseller" rel="external">{t('footer.github')}</a>
 		</div>
 	</footer>
 </div>

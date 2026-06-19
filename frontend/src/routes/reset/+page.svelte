@@ -1,32 +1,31 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	const { t, link } = getI18n();
 </script>
 
 <svelte:head>
-	<title>Set a new password - Bibseller</title>
+	<title>{t('reset.title')}</title>
 </svelte:head>
 
 <section class="panel">
-	<h1>Set a new password</h1>
+	<h1>{t('reset.heading')}</h1>
 
 	{#if form?.done}
-		<p class="feedback ok" role="status">
-			Your password has been updated. You've been signed out everywhere - sign in with your new
-			password.
-		</p>
-		<p class="alt"><a href={resolve('/login')}>Log in</a></p>
+		<p class="feedback ok" role="status">{t('reset.done')}</p>
+		<p class="alt"><a href={link(resolve('/login'))}>{t('nav.login')}</a></p>
 	{:else if !data.token}
-		<p class="feedback" role="alert">This reset link is missing its token. Request a new one.</p>
-		<p class="alt"><a href={resolve('/forgot')}>Request a reset link</a></p>
+		<p class="feedback" role="alert">{t('reset.missingToken')}</p>
+		<p class="alt"><a href={link(resolve('/forgot'))}>{t('reset.requestLink')}</a></p>
 	{:else}
 		<form method="POST" use:enhance>
 			<input type="hidden" name="token" value={data.token} />
 
-			<label for="password">New password</label>
+			<label for="password">{t('reset.newPassword')}</label>
 			<input
 				id="password"
 				name="password"
@@ -36,7 +35,7 @@
 				autocomplete="new-password"
 			/>
 
-			<label for="confirm">Confirm password</label>
+			<label for="confirm">{t('reset.confirmPassword')}</label>
 			<input
 				id="confirm"
 				name="confirm"
@@ -50,7 +49,7 @@
 				<p class="feedback" role="alert">{form.error}</p>
 			{/if}
 
-			<button type="submit">Update password</button>
+			<button type="submit">{t('reset.submit')}</button>
 		</form>
 	{/if}
 </section>

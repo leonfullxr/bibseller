@@ -41,8 +41,8 @@ func seedUser(t *testing.T, pool *pgxpool.Pool) sqlcgen.User {
 
 type noopMailer struct{}
 
-func (noopMailer) SendVerification(_, _ string) error  { return nil }
-func (noopMailer) SendPasswordReset(_, _ string) error { return nil }
+func (noopMailer) SendVerification(_, _, _ string) error  { return nil }
+func (noopMailer) SendPasswordReset(_, _, _ string) error { return nil }
 
 // handler mounts the user routes plus auth - the PATCH gate resolves the
 // session, so tests need a real registration flow to obtain a token.

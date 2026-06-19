@@ -1,29 +1,28 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { form }: PageProps = $props();
+	const { t, link } = getI18n();
 </script>
 
 <svelte:head>
-	<title>Reset password - Bibseller</title>
+	<title>{t('forgot.title')}</title>
 </svelte:head>
 
 <section class="panel">
-	<h1>Reset your password</h1>
+	<h1>{t('forgot.heading')}</h1>
 
 	{#if form?.sent}
-		<p class="feedback ok" role="status">
-			If an account exists for that address, we've sent a link to reset your password. Check your
-			inbox.
-		</p>
-		<p class="alt"><a href={resolve('/login')}>Back to log in</a></p>
+		<p class="feedback ok" role="status">{t('forgot.sent')}</p>
+		<p class="alt"><a href={link(resolve('/login'))}>{t('forgot.backToLogin')}</a></p>
 	{:else}
-		<p class="lede">Enter your email and we'll send you a reset link.</p>
+		<p class="lede">{t('forgot.lede')}</p>
 
 		<form method="POST" use:enhance>
-			<label for="email">Email</label>
+			<label for="email">{t('auth.email')}</label>
 			<input
 				id="email"
 				name="email"
@@ -37,10 +36,10 @@
 				<p class="feedback" role="alert">{form.error}</p>
 			{/if}
 
-			<button type="submit">Send reset link</button>
+			<button type="submit">{t('forgot.submit')}</button>
 		</form>
 
-		<p class="alt"><a href={resolve('/login')}>Back to log in</a></p>
+		<p class="alt"><a href={link(resolve('/login'))}>{t('forgot.backToLogin')}</a></p>
 	{/if}
 </section>
 

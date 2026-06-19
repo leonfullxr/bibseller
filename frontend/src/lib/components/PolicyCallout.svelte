@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { TransferPolicy } from '$lib/api/types';
-	import { policyDisclaimer, policyView } from '$lib/policy';
+	import { getI18n } from '$lib/i18n';
+	import { policyView } from '$lib/policy';
 
 	let {
 		policy,
@@ -12,16 +13,16 @@
 		notes?: string | null;
 	} = $props();
 
+	const { t } = getI18n();
 	const tone = $derived(policyView[policy].tone);
-	const copy = $derived(policyDisclaimer[policy]);
 </script>
 
 <div class="callout {tone}">
-	<p class="title">{copy.title}</p>
-	<p>{copy.body}</p>
+	<p class="title">{t(`policy.disclaimer.${policy}.title`)}</p>
+	<p>{t(`policy.disclaimer.${policy}.body`)}</p>
 	{#if tone === 'official' && officialUrl}
 		<a href={officialUrl} rel="external nofollow noopener" target="_blank" class="official-link">
-			Official transfer process
+			{t('policy.officialLink')}
 		</a>
 	{/if}
 	{#if notes}<p class="notes">“{notes}”</p>{/if}

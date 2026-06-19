@@ -146,7 +146,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 
 	// Fire off the verification email; never blocks or fails registration
 	// (the user can resend). A fresh account is always unverified.
-	h.startEmailVerification(r.Context(), row.ID, row.Email)
+	h.startEmailVerification(r.Context(), row.ID, row.Email, row.Locale)
 	h.respondWithSession(w, r, http.StatusCreated, Account{
 		ID: row.ID, Email: row.Email, DisplayName: row.DisplayName,
 		EmailVerified: false, Locale: row.Locale, Country: row.Country,

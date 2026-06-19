@@ -3,9 +3,11 @@
 	import { resolve } from '$app/paths';
 	import ListingFields from '$lib/components/ListingFields.svelte';
 	import { formatDate } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	const { t, locale, link } = getI18n();
 	const l = $derived(data.listing);
 
 	function centsToInput(c: number | null): string {
@@ -14,14 +16,14 @@
 </script>
 
 <svelte:head>
-	<title>Edit listing - Bibseller</title>
+	<title>{t('editListing.title')}</title>
 </svelte:head>
 
-<nav><a href={resolve('/account/listings')}>Back to my listings</a></nav>
+<nav><a href={link(resolve('/account/listings'))}>{t('editListing.back')}</a></nav>
 
 <header>
-	<h1>Edit listing</h1>
-	<p class="meta">{l.race.name} - {formatDate(l.race.event_date)}</p>
+	<h1>{t('editListing.heading')}</h1>
+	<p class="meta">{l.race.name} - {formatDate(l.race.event_date, locale)}</p>
 </header>
 
 <form method="POST" use:enhance class="panel">
@@ -35,7 +37,7 @@
 		<p class="feedback error" role="alert">{form.error}</p>
 	{/if}
 
-	<button type="submit">Save changes</button>
+	<button type="submit">{t('editListing.save')}</button>
 </form>
 
 <style>

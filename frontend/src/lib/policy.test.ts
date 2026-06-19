@@ -1,22 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import type { TransferPolicy } from '$lib/api/types';
-import { policyDisclaimer, policyLabel, policyView, requiresAck } from './policy';
-
-const policies: TransferPolicy[] = ['platform_sale', 'official_only', 'connect_only', 'unknown'];
+import { policyView, requiresAck, transferPolicies } from './policy';
 
 describe('policy view', () => {
-	it('defines a view, label, and disclaimer for every mode', () => {
-		for (const p of policies) {
+	it('defines a view for every mode', () => {
+		// Labels/disclaimers moved to the i18n dictionary (coverage in i18n/locale.test.ts).
+		for (const p of transferPolicies) {
 			expect(policyView[p]).toBeDefined();
-			expect(policyLabel[p]).toBeTruthy();
-			expect(policyDisclaimer[p].title).toBeTruthy();
-			expect(policyDisclaimer[p].body).toBeTruthy();
 		}
 	});
 
 	it('offers the buy affordance only for platform_sale', () => {
 		// Mirrors the server-side invariant: no buy path exists off platform_sale.
-		for (const p of policies) {
+		for (const p of transferPolicies) {
 			expect(policyView[p].primaryAction === 'buy').toBe(p === 'platform_sale');
 		}
 	});

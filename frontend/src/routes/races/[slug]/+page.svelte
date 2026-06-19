@@ -4,22 +4,33 @@
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const { t, locale, link } = getI18n();
 	const race = $derived(data.race);
+	const bibsForSale = $derived(
+		race.active_listings === 1
+			? t('raceDetail.bibsForSaleOne', { n: race.active_listings })
+			: t('raceDetail.bibsForSaleOther', { n: race.active_listings })
+	);
 </script>
 
 <svelte:head>
-	<title>{race.name} - bibs for sale - Bibseller</title>
+	<title>{t('raceDetail.title', { name: race.name })}</title>
 	<meta
 		name="description"
-		content="Bibs for {race.name} ({formatDate(race.event_date)}, {race.city})."
+		content={t('raceDetail.metaDescription', {
+			name: race.name,
+			date: formatDate(race.event_date, locale),
+			city: race.city
+		})}
 	/>
 </svelte:head>
 
 <nav>
-	<a href={resolve('/races')}>Back to all races</a>
+	<a href={link(resolve('/races'))}>{t('raceDetail.back')}</a>
 </nav>
 
 <header>
@@ -28,14 +39,14 @@
 		<PolicyBadge policy={race.transfer_policy} />
 	</div>
 	<p class="meta">
-		{formatDate(race.event_date)} - {race.city}, {race.country}
+		{formatDate(race.event_date, locale)} - {race.city}, {race.country}
 		{#if race.distance}
 			- {race.distance}{/if}
 		- <span class="sport">{race.sport}</span>
 	</p>
 	{#if race.website_url}
 		<a href={race.website_url} rel="external nofollow noopener" target="_blank" class="website">
-			Race website
+			{t('raceDetail.website')}
 		</a>
 	{/if}
 </header>
@@ -50,16 +61,15 @@
 
 <section>
 	<div class="section-head">
-		<h2>
-			{race.active_listings}
-			{race.active_listings === 1 ? 'bib' : 'bibs'} for sale
-		</h2>
-		<a href={resolve('/sell/[slug]', { slug: race.slug })} class="sell-cta">Sell your bib</a>
+		<h2>{bibsForSale}</h2>
+		<a href={link(resolve('/sell/[slug]', { slug: race.slug }))} class="sell-cta"
+			>{t('raceDetail.sellCta')}</a
+		>
 	</div>
 	{#if data.listings.length === 0}
 		<div class="empty">
-			<p>No bibs listed for this race yet.</p>
-			<p class="hint">Selling yours? Listing opens soon.</p>
+			<p>{t('raceDetail.empty')}</p>
+			<p class="hint">{t('raceDetail.emptyHint')}</p>
 		</div>
 	{:else}
 		<div class="grid">

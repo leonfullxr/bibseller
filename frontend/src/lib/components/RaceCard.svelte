@@ -2,18 +2,26 @@
 	import { resolve } from '$app/paths';
 	import type { RaceSummary } from '$lib/api/types';
 	import { formatDate } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import PolicyBadge from './PolicyBadge.svelte';
 
 	let { race }: { race: RaceSummary } = $props();
+	const { t, locale, link } = getI18n();
+
+	const bibs = $derived(
+		race.active_listings === 1
+			? t('raceCard.bibsOne', { n: race.active_listings })
+			: t('raceCard.bibsOther', { n: race.active_listings })
+	);
 </script>
 
-<a href={resolve('/races/[slug]', { slug: race.slug })} class="card">
+<a href={link(resolve('/races/[slug]', { slug: race.slug }))} class="card">
 	<div class="top">
 		<h3>{race.name}</h3>
 		<PolicyBadge policy={race.transfer_policy} />
 	</div>
 	<p class="meta">
-		{formatDate(race.event_date)} - {race.city}, {race.country}
+		{formatDate(race.event_date, locale)} - {race.city}, {race.country}
 	</p>
 	<div class="tags">
 		{#if race.distance}
@@ -21,8 +29,7 @@
 		{/if}
 		<span class="tag sport">{race.sport}</span>
 		<span class="count" class:active={race.active_listings > 0}>
-			{race.active_listings}
-			{race.active_listings === 1 ? 'bib' : 'bibs'} listed
+			{bibs}
 		</span>
 	</div>
 </a>
