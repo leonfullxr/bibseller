@@ -4,7 +4,7 @@
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate } from '$lib/format';
-	import { getI18n } from '$lib/i18n';
+	import { getI18n, sportLabel } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -38,7 +38,7 @@
 		{formatDate(race.event_date, locale)} - {race.city}, {race.country}
 		{#if race.distance}
 			- {race.distance}{/if}
-		- <span class="sport">{race.sport}</span>
+		- <span class="sport">{sportLabel(t, race.sport)}</span>
 	</p>
 	{#if race.website_url}
 		<a href={race.website_url} rel="external nofollow noopener" target="_blank" class="website">

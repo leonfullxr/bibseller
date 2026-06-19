@@ -27,10 +27,26 @@ export function setI18n(i18n: I18n): void {
 	setContext(I18N_KEY, i18n);
 }
 
+// Components rendered under the root layout always have the context. getI18n
+// throws if it is missing (a "forgot setI18n" bug) rather than handing back
+// undefined that crashes obscurely on the first t(). The one place that can
+// render without it - +error.svelte, above the layout - uses tryGetI18n.
 export function getI18n(): I18n {
-	return getContext(I18N_KEY);
+	const i18n = getContext<I18n | undefined>(I18N_KEY);
+	if (!i18n) throw new Error('getI18n() called outside an i18n context (root layout missing?)');
+	return i18n;
+}
+
+export function tryGetI18n(): I18n | undefined {
+	return getContext<I18n | undefined>(I18N_KEY);
 }
 
 export * from './locale';
-export { createPlural, createTranslator, type Pluralizer, type Translator } from './messages';
+export {
+	createPlural,
+	createTranslator,
+	sportLabel,
+	type Pluralizer,
+	type Translator
+} from './messages';
 export type { MessageKey } from './en';

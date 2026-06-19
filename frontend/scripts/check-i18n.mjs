@@ -55,9 +55,10 @@ function violations(src) {
 	}
 
 	// 3. Internal nav must keep the locale prefix: an href/action that calls
-	// resolve() without a link() wrapper drops /es on the Spanish site. (We only
-	// see up to the first }, which is enough to spot a bare resolve.)
-	const navRe = /\b(href|action)=\{([^}]*)/g;
+	// resolve() without a link() wrapper drops /es on the Spanish site. Matches
+	// both unquoted `={...}` and quoted `="{...}?{qs}"` forms, reading up to the
+	// first } or " - enough to spot a bare resolve.
+	const navRe = /\b(href|action)=(?:\{|")([^"}]*)/g;
 	for (let m; (m = navRe.exec(masked)); ) {
 		if (/\bresolve\(/.test(m[2]) && !/\blink\(/.test(m[2])) {
 			found.push({

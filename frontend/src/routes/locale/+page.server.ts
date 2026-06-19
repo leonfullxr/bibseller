@@ -20,12 +20,21 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const to: Locale = data.get('to') === 'es' ? 'es' : 'en';
 
-		// `next` is the path (with query) to return to. Only same-origin absolute
-		// paths are allowed - reject protocol-relative (`//host`) and backslash
-		// tricks so the switcher can't be turned into an open redirect. Strip any
-		// locale prefix so a `/es/...` value is not double-prefixed by pathForLocale.
+		// `next` is the path (with optional query) to return to. Split off the
+		// query, then on the pathname only: require a same-origin absolute path
+		// (reject protocol-relative `//host` and backslash tricks) and strip any
+		// locale prefix so a `/es/...` value is not double-prefixed below. The
+		// query is re-appended after pathForLocale so the result is canonical
+		// (`/es/races?q=1`, never `/es/?q=1` or `/es/es?q=1`).
 		const nextRaw = String(data.get('next') ?? '/');
-		const next = /^\/(?![/\\])/.test(nextRaw) ? stripLocale(nextRaw) : '/';
+		const queryAt = nextRaw.indexOf('?');
+		const rawPath = queryAt === -1 ? nextRaw : nextRaw.slice(0, queryAt);
+		let path = '/';
+		let search = '';
+		if (/^\/(?![/\\])/.test(rawPath)) {
+			path = stripLocale(rawPath);
+			search = queryAt === -1 ? '' : nextRaw.slice(queryAt);
+		}
 
 		cookies.set(LOCALE_COOKIE, to, { path: '/', maxAge: LOCALE_COOKIE_MAX_AGE, sameSite: 'lax' });
 
@@ -44,6 +53,6 @@ export const actions: Actions = {
 			locals.user.locale = to;
 		}
 
-		redirect(303, pathForLocale(to, next));
+		redirect(303, pathForLocale(to, path) + search);
 	}
 };

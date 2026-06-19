@@ -2,11 +2,11 @@
 	import { resolve } from '$app/paths';
 	import type { RaceSummary } from '$lib/api/types';
 	import { formatDate } from '$lib/format';
-	import { getI18n } from '$lib/i18n';
+	import { getI18n, sportLabel } from '$lib/i18n';
 	import PolicyBadge from './PolicyBadge.svelte';
 
 	let { race }: { race: RaceSummary } = $props();
-	const { locale, link, plural } = getI18n();
+	const { t, locale, link, plural } = getI18n();
 
 	const bibs = $derived(plural('raceCard.bibs', race.active_listings));
 </script>
@@ -23,7 +23,7 @@
 		{#if race.distance}
 			<span class="tag">{race.distance}</span>
 		{/if}
-		<span class="tag sport">{race.sport}</span>
+		<span class="tag sport">{sportLabel(t, race.sport)}</span>
 		<span class="count" class:active={race.active_listings > 0}>
 			{bibs}
 		</span>

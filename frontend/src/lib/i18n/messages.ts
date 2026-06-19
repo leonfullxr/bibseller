@@ -30,6 +30,15 @@ export function createTranslator(locale: Locale): Translator {
 // only need one|other; a language with more forms (Polish, Arabic) just needs
 // the extra `${base}.few` / `.many` keys added - no code change. Falls back to
 // `${base}.other`, then English, so a missing form never renders undefined.
+// sportLabel translates a sport value coming from the API (e.g. "running").
+// The filter options and the card/detail tags share these `sport.*` keys; raw
+// (unknown) values pass through untranslated so a new server-side sport never
+// renders as a missing key.
+export function sportLabel(t: Translator, sport: string): string {
+	const key = `sport.${sport}` as MessageKey;
+	return key in en ? t(key) : sport;
+}
+
 export function createPlural(locale: Locale): Pluralizer {
 	const dict = messages[locale];
 	const rules = new Intl.PluralRules(locale);

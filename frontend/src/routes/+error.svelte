@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { createTranslator, defaultLocale, getI18n } from '$lib/i18n';
+	import { createTranslator, defaultLocale, tryGetI18n } from '$lib/i18n';
 
 	// The error boundary can render above the root layout (e.g. a failure in
 	// hooks), where the i18n context is not set - fall back to English so the
 	// error page itself never crashes on a missing context.
-	const i18n = getI18n();
+	const i18n = tryGetI18n();
 	const t = i18n?.t ?? createTranslator(defaultLocale);
 	const homeHref = i18n ? i18n.link(resolve('/')) : resolve('/');
 </script>
