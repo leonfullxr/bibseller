@@ -43,8 +43,11 @@ export function detectFromAcceptLanguage(header: string | null): Locale {
 		.split(',')
 		.map((part) => {
 			const [tag, ...params] = part.trim().split(';');
-			const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
-			return { lang: tag.toLowerCase().split('-')[0], q: q ? parseFloat(q.slice(2)) : 1 };
+			const qParam = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
+			// A missing q defaults to 1; a malformed q (q=abc -> NaN) is coerced to 0
+			// so it sorts last and the comparator never sees NaN (unstable order).
+			const q = qParam ? Number.parseFloat(qParam.slice(2)) : 1;
+			return { lang: tag.toLowerCase().split('-')[0], q: Number.isFinite(q) ? q : 0 };
 		})
 		.filter((t) => isLocale(t.lang))
 		.sort((a, b) => b.q - a.q);

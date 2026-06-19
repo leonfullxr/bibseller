@@ -42,6 +42,11 @@ describe('detectFromAcceptLanguage', () => {
 		expect(detectFromAcceptLanguage('en-US,en;q=0.9,es;q=0.8')).toBe('en');
 		expect(detectFromAcceptLanguage('en;q=0.7,es;q=0.95')).toBe('es');
 	});
+
+	it('coerces a malformed q to 0 (deterministic, never NaN)', () => {
+		// es has a broken q -> 0, so the well-formed en wins deterministically.
+		expect(detectFromAcceptLanguage('es;q=abc,en;q=0.5')).toBe('en');
+	});
 });
 
 describe('isBot', () => {

@@ -34,10 +34,12 @@
 	const { t, link } = i18n;
 
 	const switchTo = $derived(data.locale === 'en' ? 'es' : 'en');
-	// hreflang alternates for the current page, from its locale-free path.
+	// hreflang alternates for the current page, from its locale-free path (no query).
 	const basePath = $derived(stripLocale(page.url.pathname));
 	const enHref = $derived(page.url.origin + pathForLocale('en', basePath));
 	const esHref = $derived(page.url.origin + pathForLocale('es', basePath));
+	// The switcher returns to the same page including its query (e.g. race filters).
+	const switchTarget = $derived(basePath + page.url.search);
 </script>
 
 <svelte:head>
@@ -69,7 +71,7 @@
 				{/if}
 				<form method="POST" action={link(resolve('/locale'))} class="lang">
 					<input type="hidden" name="to" value={switchTo} />
-					<input type="hidden" name="next" value={basePath} />
+					<input type="hidden" name="next" value={switchTarget} />
 					<button type="submit">{switchTo === 'es' ? t('lang.es') : t('lang.en')}</button>
 				</form>
 			</nav>

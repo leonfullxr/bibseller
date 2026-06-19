@@ -1,7 +1,13 @@
 import { redirect } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
 import { sessionHeader } from '$lib/server/session';
-import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, type Locale, pathForLocale } from '$lib/i18n/locale';
+import {
+	LOCALE_COOKIE,
+	LOCALE_COOKIE_MAX_AGE,
+	type Locale,
+	pathForLocale,
+	stripLocale
+} from '$lib/i18n/locale';
 import type { Actions } from './$types';
 
 // The nav language switcher posts here. Sets the locale cookie (which both
@@ -14,11 +20,12 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const to: Locale = data.get('to') === 'es' ? 'es' : 'en';
 
-		// `next` is the locale-free path to return to. Only same-origin absolute
+		// `next` is the path (with query) to return to. Only same-origin absolute
 		// paths are allowed - reject protocol-relative (`//host`) and backslash
-		// tricks so the switcher can't be turned into an open redirect.
+		// tricks so the switcher can't be turned into an open redirect. Strip any
+		// locale prefix so a `/es/...` value is not double-prefixed by pathForLocale.
 		const nextRaw = String(data.get('next') ?? '/');
-		const next = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : '/';
+		const next = /^\/(?![/\\])/.test(nextRaw) ? stripLocale(nextRaw) : '/';
 
 		cookies.set(LOCALE_COOKIE, to, { path: '/', maxAge: LOCALE_COOKIE_MAX_AGE, sameSite: 'lax' });
 
