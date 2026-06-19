@@ -5,24 +5,26 @@
  * is an opaque token, so "who is this?" can only be answered by the API.
  *
  * It also resolves the active locale (D17). The URL is authoritative for what
- * renders - `/es...` is Spanish, everything else English - while the detection
- * chain (signed-in `users.locale` > `Accept-Language`) only decides the
- * first-visit redirect target.
+ * renders - `/es...` is Spanish, everything else English. A *settled* choice
+ * (signed-in `users.locale`, else the `locale` cookie) redirects the URL to
+ * match it; soft signals (geo IP, `Accept-Language`) never redirect - they only
+ * raise the dismissible "switch to Spanish" banner on the English pages.
  */
 import type { Cookies, Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import { apiFetch } from '$lib/api/server';
 import type { SessionUser } from '$lib/api/types';
 import { SESSION_COOKIE, sessionHeader } from '$lib/server/session';
 import {
 	LOCALE_COOKIE,
-	LOCALE_COOKIE_MAX_AGE,
 	type Locale,
-	detectFromAcceptLanguage,
 	isBot,
 	localeFromPath,
 	pathForLocale,
-	stripLocale
+	stripLocale,
+	suggestsSpanish
 } from '$lib/i18n/locale';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -31,30 +33,41 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const urlLocale = localeFromPath(event.url.pathname);
 	event.locals.locale = urlLocale;
+	event.locals.suggestLocale = null;
 
-	// First-visit redirect (D17): the `locale` cookie marks "this visitor has a
-	// locale", so once it is set the URL wins and this never fires again - which
-	// also makes it loop-proof (the redirect target always matches its own
-	// urlLocale). Crawlers are never redirected, keeping canonical URLs crawlable.
-	if (!event.cookies.get(LOCALE_COOKIE) && !isBot(event.request.headers.get('user-agent'))) {
-		const preferred = preferredLocale(user, event.request.headers.get('accept-language'));
-		event.cookies.set(LOCALE_COOKIE, preferred, {
-			path: '/',
-			maxAge: LOCALE_COOKIE_MAX_AGE,
-			sameSite: 'lax'
-		});
-		if (preferred !== urlLocale) {
-			redirect(302, pathForLocale(preferred, stripLocale(event.url.pathname)) + event.url.search);
+	const crawler = isBot(event.request.headers.get('user-agent'));
+
+	// A settled choice is authoritative: redirect so the URL matches it. Crawlers
+	// are never redirected, keeping both language URLs crawlable. No settled
+	// choice => no redirect (the visitor lands on the URL they asked for, English
+	// at the root).
+	const settled = settledLocale(user, event.cookies.get(LOCALE_COOKIE));
+	if (settled && settled !== urlLocale && !crawler) {
+		redirect(302, pathForLocale(settled, stripLocale(event.url.pathname)) + event.url.search);
+	}
+
+	// No settled choice, on an English page, not a crawler: suggest Spanish via a
+	// dismissible banner when the visitor looks Spanish by location. cf-ipcountry
+	// is Cloudflare's geo header in prod; in dev a DEV_IP_COUNTRY env var (or a
+	// `curl -H "cf-ipcountry: ES"`) stands in. The banner persists across pages
+	// until the visitor accepts (cookie=es + /es) or dismisses (cookie=en).
+	if (!settled && !crawler && urlLocale === 'en') {
+		const country =
+			event.request.headers.get('cf-ipcountry') ?? (dev ? (env.DEV_IP_COUNTRY ?? null) : null);
+		if (suggestsSpanish(country, event.request.headers.get('accept-language'))) {
+			event.locals.suggestLocale = 'es';
 		}
 	}
 
 	return resolve(event, { transformPageChunk: ({ html }) => html.replace('%lang%', urlLocale) });
 };
 
-// Signed-in preference wins over the browser's Accept-Language (D17).
-function preferredLocale(user: SessionUser | null, acceptLanguage: string | null): Locale {
+// The settled locale: a signed-in account preference, else the cookie set by the
+// switcher/banner. Soft signals (IP, Accept-Language) are deliberately excluded.
+function settledLocale(user: SessionUser | null, cookie: string | undefined): Locale | null {
 	if (user?.locale === 'en' || user?.locale === 'es') return user.locale;
-	return detectFromAcceptLanguage(acceptLanguage);
+	if (cookie === 'en' || cookie === 'es') return cookie;
+	return null;
 }
 
 async function resolveUser(cookies: Cookies): Promise<SessionUser | null> {

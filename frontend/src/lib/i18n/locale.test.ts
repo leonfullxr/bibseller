@@ -4,7 +4,8 @@ import {
 	isBot,
 	localeFromPath,
 	pathForLocale,
-	stripLocale
+	stripLocale,
+	suggestsSpanish
 } from './locale';
 import { createPlural, createTranslator } from './messages';
 import { en } from './en';
@@ -46,6 +47,20 @@ describe('detectFromAcceptLanguage', () => {
 	it('coerces a malformed q to 0 (deterministic, never NaN)', () => {
 		// es has a broken q -> 0, so the well-formed en wins deterministically.
 		expect(detectFromAcceptLanguage('es;q=abc,en;q=0.5')).toBe('en');
+	});
+});
+
+describe('suggestsSpanish', () => {
+	it('uses geo country when present (case-insensitive), ignoring the browser', () => {
+		expect(suggestsSpanish('ES', null)).toBe(true);
+		expect(suggestsSpanish('es', null)).toBe(true);
+		expect(suggestsSpanish('FR', 'es-ES,es;q=0.9')).toBe(false); // geo wins
+	});
+
+	it('falls back to Accept-Language when geo is unknown', () => {
+		expect(suggestsSpanish(null, 'es-ES,es;q=0.9')).toBe(true);
+		expect(suggestsSpanish('', 'en-US,en')).toBe(false);
+		expect(suggestsSpanish(null, null)).toBe(false);
 	});
 });
 

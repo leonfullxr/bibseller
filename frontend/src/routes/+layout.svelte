@@ -40,6 +40,9 @@
 	const esHref = $derived(page.url.origin + pathForLocale('es', basePath));
 	// The switcher returns to the same page including its query (e.g. race filters).
 	const switchTarget = $derived(basePath + page.url.search);
+	// The suggestion banner reads in the suggested locale (Spanish), so it shows
+	// English now and Spanish once es.ts is filled (M8.2).
+	const suggestT = $derived(createTranslator(data.suggestLocale ?? 'es'));
 </script>
 
 <svelte:head>
@@ -77,6 +80,19 @@
 			</nav>
 		</div>
 	</header>
+
+	{#if data.suggestLocale === 'es'}
+		<div class="suggest-banner">
+			<span>{suggestT('banner.suggestText')}</span>
+			<form method="POST" action={link(resolve('/locale'))}>
+				<input type="hidden" name="next" value={switchTarget} />
+				<button type="submit" name="to" value="es">{suggestT('banner.suggestAccept')}</button>
+				<button type="submit" name="to" value="en" class="ghost"
+					>{suggestT('banner.suggestDismiss')}</button
+				>
+			</form>
+		</div>
+	{/if}
 
 	{#if data.user && !data.user.email_verified}
 		<div class="verify-banner">
@@ -199,6 +215,48 @@
 
 	.verify-banner button:hover {
 		background: var(--amber-100);
+	}
+
+	.suggest-banner {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		background: var(--emerald-50);
+		border-bottom: 1px solid var(--emerald-300);
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		color: var(--emerald-900);
+	}
+
+	.suggest-banner form {
+		display: contents;
+	}
+
+	.suggest-banner button {
+		cursor: pointer;
+		border-radius: 0.375rem;
+		border: 1px solid var(--emerald-600);
+		background: var(--emerald-600);
+		padding: 0.25rem 0.625rem;
+		font: inherit;
+		font-weight: 600;
+		color: white;
+	}
+
+	.suggest-banner button:hover {
+		background: var(--emerald-700);
+	}
+
+	.suggest-banner button.ghost {
+		border-color: var(--emerald-300);
+		background: transparent;
+		color: var(--emerald-900);
+	}
+
+	.suggest-banner button.ghost:hover {
+		background: var(--emerald-100);
 	}
 
 	main {

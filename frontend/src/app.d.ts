@@ -9,6 +9,9 @@ declare global {
 		interface Locals {
 			user: SessionUser | null;
 			locale: Locale;
+			// When set, the English page shows a dismissible "switch to Spanish"
+			// banner (geo/Accept-Language suggestion; never an automatic redirect).
+			suggestLocale: Locale | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

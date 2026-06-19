@@ -54,6 +54,18 @@ export function detectFromAcceptLanguage(header: string | null): Locale {
 	return (ranked[0]?.lang as Locale) ?? defaultLocale;
 }
 
+/**
+ * Whether to suggest Spanish to a visitor with no settled locale: their geo
+ * country (Cloudflare's `cf-ipcountry`) is ES, or - when no geo signal is
+ * available (e.g. local dev) - their browser prefers Spanish. A soft signal:
+ * it raises the dismissible banner, never a redirect (D17). `country` of `''`
+ * or `null` means "unknown" and falls through to the browser.
+ */
+export function suggestsSpanish(country: string | null, acceptLanguage: string | null): boolean {
+	if (country) return country.toUpperCase() === 'ES';
+	return detectFromAcceptLanguage(acceptLanguage) === 'es';
+}
+
 // ponytail: substring heuristic, not a maintained bot list. Its only job is to
 // keep crawlers on the canonical URL they requested (no detection redirect), so
 // hreflang stays clean. Swap for a real list if SEO ever misbehaves.
