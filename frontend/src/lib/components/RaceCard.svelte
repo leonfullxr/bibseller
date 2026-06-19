@@ -6,13 +6,9 @@
 	import PolicyBadge from './PolicyBadge.svelte';
 
 	let { race }: { race: RaceSummary } = $props();
-	const { t, locale, link } = getI18n();
+	const { locale, link, plural } = getI18n();
 
-	const bibs = $derived(
-		race.active_listings === 1
-			? t('raceCard.bibsOne', { n: race.active_listings })
-			: t('raceCard.bibsOther', { n: race.active_listings })
-	);
+	const bibs = $derived(plural('raceCard.bibs', race.active_listings));
 </script>
 
 <a href={link(resolve('/races/[slug]', { slug: race.slug }))} class="card">

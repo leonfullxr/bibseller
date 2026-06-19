@@ -8,13 +8,9 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	const { t, locale, link } = getI18n();
+	const { t, locale, link, plural } = getI18n();
 	const race = $derived(data.race);
-	const bibsForSale = $derived(
-		race.active_listings === 1
-			? t('raceDetail.bibsForSaleOne', { n: race.active_listings })
-			: t('raceDetail.bibsForSaleOther', { n: race.active_listings })
-	);
+	const bibsForSale = $derived(plural('raceDetail.bibsForSale', race.active_listings));
 </script>
 
 <svelte:head>

@@ -12,11 +12,12 @@
 import { getContext, setContext } from 'svelte';
 import type { ResolvedPathname } from '$app/types';
 import type { Locale } from './locale';
-import type { Translator } from './messages';
+import type { Pluralizer, Translator } from './messages';
 
 export interface I18n {
 	locale: Locale;
 	t: Translator;
+	plural: Pluralizer;
 	link: (path: ResolvedPathname) => ResolvedPathname;
 }
 
@@ -31,5 +32,5 @@ export function getI18n(): I18n {
 }
 
 export * from './locale';
-export { createTranslator, type Translator } from './messages';
+export { createPlural, createTranslator, type Pluralizer, type Translator } from './messages';
 export type { MessageKey } from './en';

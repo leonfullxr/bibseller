@@ -6,7 +6,7 @@ import {
 	pathForLocale,
 	stripLocale
 } from './locale';
-import { createTranslator } from './messages';
+import { createPlural, createTranslator } from './messages';
 import { en } from './en';
 import { transferPolicies } from '$lib/policy';
 
@@ -65,7 +65,16 @@ describe('createTranslator', () => {
 	it('interpolates {placeholder} params', () => {
 		const t = createTranslator('en');
 		expect(t('listingCard.listedBy', { name: 'Ana' })).toBe('Listed by Ana');
-		expect(t('raceCard.bibsOther', { n: 3 })).toBe('3 bibs listed');
+		expect(t('raceCard.bibs.other', { n: 3 })).toBe('3 bibs listed');
+	});
+});
+
+describe('createPlural', () => {
+	it('selects the CLDR plural form for n and fills {n}', () => {
+		const p = createPlural('en');
+		expect(p('raceCard.bibs', 1)).toBe('1 bib listed');
+		expect(p('raceCard.bibs', 0)).toBe('0 bibs listed');
+		expect(p('raceCard.bibs', 5)).toBe('5 bibs listed');
 	});
 });
 

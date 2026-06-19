@@ -3,7 +3,9 @@
 // it blanks <script>/<style>/comments and {...} expressions - preserving line
 // numbers - then flags leftover literal text between tags and literal values of
 // the user-facing attributes below. Dynamic data ({race.sport}, {form.error})
-// and t(...) output are expressions, so they are never flagged.
+// and t(...) output are expressions, so they are never flagged. It also flags an
+// href/action that calls resolve() without a link() wrapper, which would drop
+// the /es prefix on the Spanish site.
 //
 // Scope is .svelte UI only. Server-side / API error strings are deliberately
 // out of scope for now (tracked separately); this guard does not scan them.
@@ -52,7 +54,20 @@ function violations(src) {
 		}
 	}
 
-	// 3. Literal text between tags: blank {..} expressions (innermost-out, so
+	// 3. Internal nav must keep the locale prefix: an href/action that calls
+	// resolve() without a link() wrapper drops /es on the Spanish site. (We only
+	// see up to the first }, which is enough to spot a bare resolve.)
+	const navRe = /\b(href|action)=\{([^}]*)/g;
+	for (let m; (m = navRe.exec(masked)); ) {
+		if (/\bresolve\(/.test(m[2]) && !/\blink\(/.test(m[2])) {
+			found.push({
+				line: lineOf(masked, m.index),
+				text: `${m[1]}={resolve(...)} not wrapped in link()`
+			});
+		}
+	}
+
+	// 4. Literal text between tags: blank {..} expressions (innermost-out, so
 	// nested {a, {b}} fully clears) and tags, then scan what is left.
 	let text = masked;
 	let prev;

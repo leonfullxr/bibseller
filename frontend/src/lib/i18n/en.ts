@@ -92,9 +92,10 @@ export const en = {
 	'races.clearFilters': 'Clear filters',
 	'races.nextPage': 'Next page ->',
 
-	// Race + listing cards. Explicit one/other keys instead of an ICU plural lib (D14).
-	'raceCard.bibsOne': '{n} bib listed',
-	'raceCard.bibsOther': '{n} bibs listed',
+	// Race + listing cards. CLDR plural forms via Intl.PluralRules (no ICU lib, D14);
+	// en/es use one|other - add .few/.many keys if a locale needs them.
+	'raceCard.bibs.one': '{n} bib listed',
+	'raceCard.bibs.other': '{n} bibs listed',
 	'listingCard.priceOnRequest': 'Price on request',
 	'listingCard.belowFace': 'below face value',
 	'listingCard.listedBy': 'Listed by {name}',
@@ -104,8 +105,8 @@ export const en = {
 	'raceDetail.metaDescription': 'Bibs for {name} ({date}, {city}).',
 	'raceDetail.back': 'Back to all races',
 	'raceDetail.website': 'Race website',
-	'raceDetail.bibsForSaleOne': '{n} bib for sale',
-	'raceDetail.bibsForSaleOther': '{n} bibs for sale',
+	'raceDetail.bibsForSale.one': '{n} bib for sale',
+	'raceDetail.bibsForSale.other': '{n} bibs for sale',
 	'raceDetail.sellCta': 'Sell your bib',
 	'raceDetail.empty': 'No bibs listed for this race yet.',
 	'raceDetail.emptyHint': 'Selling yours? Listing opens soon.',

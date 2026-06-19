@@ -9,7 +9,7 @@ export const load: PageServerLoad = ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async ({ request, cookies, locals }) => {
 		const data = await request.formData();
 		const email = String(data.get('email') ?? '').trim();
 		const displayName = String(data.get('display_name') ?? '').trim();
@@ -37,7 +37,9 @@ export const actions: Actions = {
 			res = await apiFetch('/api/v1/auth/register', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, password, display_name: displayName })
+				// Forward the locale the signup happened in so the account + its
+				// verification email default to it (the API re-validates).
+				body: JSON.stringify({ email, password, display_name: displayName, locale: locals.locale })
 			});
 		} catch {
 			return fail(502, { ...values, error: 'The API is unreachable.' });

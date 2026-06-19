@@ -427,6 +427,38 @@ func TestRegisterValidation(t *testing.T) {
 	}
 }
 
+// TestRegisterLocale: the signup locale is honored and persisted; a missing or
+// unsupported locale falls back to English (defense-in-depth on the API side).
+func TestRegisterLocale(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+
+	for name, tc := range map[string]struct{ field, want string }{
+		"spanish honored": {`,"locale":"es"`, "es"},
+		"english default": {``, "en"},
+		"unknown -> en":   {`,"locale":"xx"`, "en"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			email := "t-" + ids.New().String() + "@test.local"
+			body := `{"email":"` + email + `","password":"correct horse battery staple","display_name":"Locale Tester"` + tc.field + `}`
+			rec := post(t, h, "/api/v1/auth/register", body, "")
+			if rec.Code != http.StatusCreated {
+				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
+			}
+			var resp sessionResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("bad JSON: %v", err)
+			}
+			t.Cleanup(func() {
+				_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, resp.User.ID)
+			})
+			if resp.User.Locale != tc.want {
+				t.Errorf("locale = %q, want %q", resp.User.Locale, tc.want)
+			}
+		})
+	}
+}
+
 func TestCrossSiteMutationBlocked(t *testing.T) {
 	pool := testdb.Pool(t)
 	h := handler(pool)

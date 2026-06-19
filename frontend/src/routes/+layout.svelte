@@ -2,7 +2,14 @@
 	import { resolve } from '$app/paths';
 	import type { ResolvedPathname } from '$app/types';
 	import { page } from '$app/state';
-	import { createTranslator, pathForLocale, setI18n, stripLocale, type I18n } from '$lib/i18n';
+	import {
+		createPlural,
+		createTranslator,
+		pathForLocale,
+		setI18n,
+		stripLocale,
+		type I18n
+	} from '$lib/i18n';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
@@ -14,11 +21,13 @@
 	// reactive costs nothing and keeps the helpers in sync with data.
 	const locale = $derived(data.locale);
 	const translate = $derived(createTranslator(locale));
+	const pluralize = $derived(createPlural(locale));
 	const i18n: I18n = {
 		get locale() {
 			return locale;
 		},
 		t: (key, params) => translate(key, params),
+		plural: (base, n, params) => pluralize(base, n, params),
 		link: (path) => pathForLocale(locale, path) as ResolvedPathname
 	};
 	setI18n(i18n);
