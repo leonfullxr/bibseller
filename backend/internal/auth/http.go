@@ -96,6 +96,7 @@ type registerRequest struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	DisplayName string `json:"display_name"`
+	Locale      string `json:"locale"`
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
@@ -126,9 +127,19 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Honour the locale the signup happened in (the SvelteKit register action
+	// forwards locals.locale) so the verification email and the account default
+	// to it. Defense-in-depth: the client only ever sends a supported locale, so
+	// anything else falls back to English rather than failing the signup. Mirror
+	// of the user-profile allowlist (internal/user).
+	locale := "en"
+	if req.Locale == "es" {
+		locale = "es"
+	}
+
 	row, err := h.q.CreateUser(r.Context(), sqlcgen.CreateUserParams{
 		ID: ids.New(), Email: email, PasswordHash: hash,
-		DisplayName: name, Locale: "en",
+		DisplayName: name, Locale: locale,
 	})
 	// The citext UNIQUE constraint is the source of truth for "email taken" -
 	// a prior SELECT would be a race. 409 admits the account exists, which is
@@ -146,7 +157,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 
 	// Fire off the verification email; never blocks or fails registration
 	// (the user can resend). A fresh account is always unverified.
-	h.startEmailVerification(r.Context(), row.ID, row.Email)
+	h.startEmailVerification(r.Context(), row.ID, row.Email, row.Locale)
 	h.respondWithSession(w, r, http.StatusCreated, Account{
 		ID: row.ID, Email: row.Email, DisplayName: row.DisplayName,
 		EmailVerified: false, Locale: row.Locale, Country: row.Country,

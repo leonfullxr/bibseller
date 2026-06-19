@@ -14,7 +14,7 @@ Live status: [tracking issue #13](https://github.com/leonfullxr/bibseller/issues
 | M5 - Chat (polling v1) | [#8](https://github.com/leonfullxr/bibseller/issues/8) | L | M3 |
 | M6 - Payments: Stripe Connect + state machine | [#10](https://github.com/leonfullxr/bibseller/issues/10) | XL | M4 (M5 first recommended) |
 | M7 - Trust, safety & compliance | [#11](https://github.com/leonfullxr/bibseller/issues/11) | L | lite: M3 - full: M5/M6 |
-| M8 - i18n (Paraglide, en + es) | [#9](https://github.com/leonfullxr/bibseller/issues/9) | M | M2 |
+| M8 - i18n (hand-rolled per D17, en + es) | [#9](https://github.com/leonfullxr/bibseller/issues/9) | M | M2 |
 | M9 - Production: hosting, observability, backups | [#12](https://github.com/leonfullxr/bibseller/issues/12) | L | pre-beta ([D8](CONTEXT.md#founder-decisions-log)) |
 | Ops - Race catalog & policy verification | [#6](https://github.com/leonfullxr/bibseller/issues/6) | M, ongoing | M1; fully parallel |
 

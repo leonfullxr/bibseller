@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getI18n } from '$lib/i18n';
+
 	// The price/face-value/description inputs shared by the create and edit
 	// listing forms. The parent owns the <form>, submit button, and feedback.
 	let {
@@ -6,9 +8,11 @@
 		original = '',
 		description = ''
 	}: { price?: string; original?: string; description?: string } = $props();
+
+	const { t } = getI18n();
 </script>
 
-<label for="price">Asking price (EUR)</label>
+<label for="price">{t('listingFields.price')}</label>
 <input
 	id="price"
 	name="price"
@@ -17,10 +21,10 @@
 	step="0.01"
 	inputmode="decimal"
 	value={price}
-	placeholder="e.g. 45"
+	placeholder={t('listingFields.pricePlaceholder')}
 />
 
-<label for="original_price">Original price / face value (EUR)</label>
+<label for="original_price">{t('listingFields.original')}</label>
 <input
 	id="original_price"
 	name="original_price"
@@ -29,17 +33,17 @@
 	step="0.01"
 	inputmode="decimal"
 	value={original}
-	placeholder="optional"
+	placeholder={t('listingFields.optional')}
 />
-<p class="hint">Enter the face value and your asking price is capped at it - no scalping.</p>
+<p class="hint">{t('listingFields.hint')}</p>
 
-<label for="description">Description</label>
+<label for="description">{t('listingFields.description')}</label>
 <textarea
 	id="description"
 	name="description"
 	rows="3"
 	maxlength="2000"
-	placeholder="optional - size, pickup details, etc.">{description}</textarea
+	placeholder={t('listingFields.descriptionPlaceholder')}>{description}</textarea
 >
 
 <style>

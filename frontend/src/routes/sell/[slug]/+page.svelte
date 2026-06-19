@@ -5,24 +5,28 @@
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	const { t, locale, link } = getI18n();
 	const race = $derived(data.race);
 </script>
 
 <svelte:head>
-	<title>List your bib for {race.name} - Bibseller</title>
+	<title>{t('sellForm.title', { name: race.name })}</title>
 </svelte:head>
 
-<nav><a href={resolve('/sell')}>Back to race search</a></nav>
+<nav><a href={link(resolve('/sell'))}>{t('sellForm.back')}</a></nav>
 
 <header>
 	<div class="title-row">
-		<h1>List your bib</h1>
+		<h1>{t('sellForm.heading')}</h1>
 		<PolicyBadge policy={race.transfer_policy} />
 	</div>
-	<p class="meta">{race.name} - {formatDate(race.event_date)} - {race.city}, {race.country}</p>
+	<p class="meta">
+		{race.name} - {formatDate(race.event_date, locale)} - {race.city}, {race.country}
+	</p>
 </header>
 
 <div class="callout-wrap">
@@ -35,8 +39,8 @@
 
 {#if !data.verified}
 	<p class="notice">
-		Verify your email to publish a listing.
-		<a href={resolve('/settings')}>Account settings</a>
+		{t('sellForm.verifyNotice')}
+		<a href={link(resolve('/settings'))}>{t('listingDetail.accountSettings')}</a>
 	</p>
 {:else}
 	<form method="POST" use:enhance class="panel">
@@ -52,7 +56,7 @@
 			<p class="feedback error" role="alert">{form.error}</p>
 		{/if}
 
-		<button type="submit">Publish listing</button>
+		<button type="submit">{t('sellForm.publish')}</button>
 	</form>
 {/if}
 

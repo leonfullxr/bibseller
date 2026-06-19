@@ -2,52 +2,56 @@
 	import { resolve } from '$app/paths';
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import { formatDate } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const { t, locale, link } = getI18n();
 </script>
 
 <svelte:head>
-	<title>Sell a bib - Bibseller</title>
+	<title>{t('sell.title')}</title>
 </svelte:head>
 
-<h1>Sell a bib</h1>
-<p class="lede">Find your race, then list your bib. You set the price (capped at face value).</p>
+<h1>{t('sell.heading')}</h1>
+<p class="lede">{t('sell.lede')}</p>
 
 {#if !data.verified}
 	<p class="notice">
-		Verify your email to publish a listing - you can still find your race below.
-		<a href={resolve('/settings')}>Account settings</a>
+		{t('sell.verifyNotice')}
+		<a href={link(resolve('/settings'))}>{t('listingDetail.accountSettings')}</a>
 	</p>
 {/if}
 
-<form method="GET" action={resolve('/sell')} class="search">
+<form method="GET" action={link(resolve('/sell'))} class="search">
 	<input
 		type="search"
 		name="q"
 		value={data.q}
-		placeholder="Race or city…"
-		aria-label="Search races by name or city"
+		placeholder={t('races.filter.searchPlaceholder')}
+		aria-label={t('sell.searchAria')}
 	/>
-	<button type="submit">Search</button>
+	<button type="submit">{t('home.search')}</button>
 </form>
 
 {#if data.races.length === 0}
 	<p class="empty">
-		No upcoming races match. Try another search, or
-		<a href={resolve('/races')}>browse all races</a>.
+		{t('sell.emptyPre')}
+		<a href={link(resolve('/races'))}>{t('sell.browseAllLink')}</a>.
 	</p>
 {:else}
 	<ul class="races">
 		{#each data.races as race (race.id)}
 			<li>
 				<div class="info">
-					<a href={resolve('/sell/[slug]', { slug: race.slug })} class="name">{race.name}</a>
-					<p class="meta">{formatDate(race.event_date)} - {race.city}, {race.country}</p>
+					<a href={link(resolve('/sell/[slug]', { slug: race.slug }))} class="name">{race.name}</a>
+					<p class="meta">{formatDate(race.event_date, locale)} - {race.city}, {race.country}</p>
 				</div>
 				<div class="right">
 					<PolicyBadge policy={race.transfer_policy} />
-					<a href={resolve('/sell/[slug]', { slug: race.slug })} class="sell">Sell here</a>
+					<a href={link(resolve('/sell/[slug]', { slug: race.slug }))} class="sell"
+						>{t('sell.sellHere')}</a
+					>
 				</div>
 			</li>
 		{/each}

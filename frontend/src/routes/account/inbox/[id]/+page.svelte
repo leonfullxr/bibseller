@@ -2,10 +2,12 @@
 	import { onMount, tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { formatDateTime } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { ChatMessage } from '$lib/api/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const { t, locale, link } = getI18n();
 
 	// $derived so they track navigation between threads - SvelteKit reuses this
 	// component across the [id] param rather than remounting.
@@ -100,30 +102,25 @@
 				files = null;
 				if (fileInput) fileInput.value = '';
 			} else if (res.status === 413) {
-				error = 'That image is too large (5 MB max).';
+				error = t('chat.imageTooLarge');
 			} else if (res.status === 429) {
-				error = 'You are sending messages too fast - wait a moment.';
+				error = t('chat.tooFast');
 			} else {
 				// Surface the API's specific reason (bad image, message/caption too long, ...).
 				const detail = (await res.json().catch(() => null)) as {
 					error?: { message?: string };
 				} | null;
-				error = detail?.error?.message ?? 'Could not send your message. Try again.';
+				error = detail?.error?.message ?? t('chat.sendFailed');
 			}
 		} catch {
-			error = 'Network error - check your connection.';
+			error = t('chat.networkError');
 		} finally {
 			sending = false;
 		}
 	}
 
 	async function blockUser() {
-		if (
-			!window.confirm(
-				`Block ${data.thread.other_party}? Neither of you will be able to message the other.`
-			)
-		)
-			return;
+		if (!window.confirm(t('chat.blockConfirm', { name: data.thread.other_party }))) return;
 		try {
 			const res = await fetch('/api/v1/blocks', {
 				method: 'POST',
@@ -131,9 +128,9 @@
 				credentials: 'same-origin',
 				body: JSON.stringify({ blocked_id: data.thread.other_party_id })
 			});
-			notice = res.ok ? 'User blocked.' : 'Could not block the user.';
+			notice = res.ok ? t('chat.blocked') : t('chat.blockFailed');
 		} catch {
-			notice = 'Network error - try again.';
+			notice = t('chat.networkRetry');
 		}
 	}
 
@@ -143,14 +140,14 @@
 				method: 'DELETE',
 				credentials: 'same-origin'
 			});
-			notice = res.ok ? 'User unblocked.' : 'Could not unblock the user.';
+			notice = res.ok ? t('chat.unblocked') : t('chat.unblockFailed');
 		} catch {
-			notice = 'Network error - try again.';
+			notice = t('chat.networkRetry');
 		}
 	}
 
 	async function reportMessage(id: string) {
-		if (!window.confirm('Report this message to the moderators?')) return;
+		if (!window.confirm(t('chat.reportConfirm'))) return;
 		try {
 			const res = await fetch('/api/v1/reports', {
 				method: 'POST',
@@ -158,29 +155,30 @@
 				credentials: 'same-origin',
 				body: JSON.stringify({ subject_type: 'message', subject_id: id, reason: 'other' })
 			});
-			notice = res.ok ? 'Message reported.' : 'Could not report the message.';
+			notice = res.ok ? t('chat.messageReported') : t('chat.messageReportFailed');
 		} catch {
-			notice = 'Could not report the message.';
+			notice = t('chat.messageReportFailed');
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Chat with {data.thread.other_party} - Bibseller</title>
+	<title>{t('chat.title', { name: data.thread.other_party })}</title>
 </svelte:head>
 
-<nav><a href={resolve('/account/inbox')}>Back to inbox</a></nav>
+<nav><a href={link(resolve('/account/inbox'))}>{t('chat.back')}</a></nav>
 
 <header class="head">
 	<h1>{data.thread.other_party}</h1>
 	<p class="about">
-		about <a href={resolve('/listings/[id]', { id: data.thread.listing_id })}
+		{t('chat.about')}
+		<a href={link(resolve('/listings/[id]', { id: data.thread.listing_id }))}
 			>{data.thread.race_name}</a
 		>
 	</p>
 	<div class="safety">
-		<button type="button" onclick={blockUser}>Block</button>
-		<button type="button" onclick={unblockUser}>Unblock</button>
+		<button type="button" onclick={blockUser}>{t('chat.block')}</button>
+		<button type="button" onclick={unblockUser}>{t('chat.unblock')}</button>
 		{#if notice}<span class="notice" role="status">{notice}</span>{/if}
 	</div>
 </header>
@@ -192,14 +190,16 @@
 				<img
 					class="image"
 					src={`/api/v1/threads/${threadId}/messages/${m.id}/image`}
-					alt={m.body ?? 'Shared image'}
+					alt={m.body ?? t('chat.sharedImage')}
 					loading="lazy"
 				/>
 			{/if}
 			{#if m.body}<p class="body">{m.body}</p>{/if}
 			<div class="msg-foot">
-				<span class="time">{formatDateTime(m.created_at)}</span>
-				<button type="button" class="report-msg" onclick={() => reportMessage(m.id)}>report</button>
+				<span class="time">{formatDateTime(m.created_at, locale)}</span>
+				<button type="button" class="report-msg" onclick={() => reportMessage(m.id)}
+					>{t('chat.reportMsg')}</button
+				>
 			</div>
 		</div>
 	{/each}
@@ -210,8 +210,8 @@
 		bind:value={draft}
 		rows="3"
 		maxlength="4000"
-		aria-label="Your message"
-		placeholder="Write a message, or attach an image..."
+		aria-label={t('chat.messageAria')}
+		placeholder={t('chat.messagePlaceholder')}
 	></textarea>
 	{#if error}
 		<p class="feedback error" role="alert">{error}</p>
@@ -221,11 +221,11 @@
 			class="file"
 			type="file"
 			accept="image/jpeg,image/png"
-			aria-label="Attach an image (JPEG or PNG)"
+			aria-label={t('chat.attachAria')}
 			bind:files
 			bind:this={fileInput}
 		/>
-		<button type="submit" disabled={sending}>{sending ? 'Sending...' : 'Send'}</button>
+		<button type="submit" disabled={sending}>{sending ? t('chat.sending') : t('chat.send')}</button>
 	</div>
 </form>
 

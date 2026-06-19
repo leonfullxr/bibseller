@@ -2,18 +2,20 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { formatDate, formatPrice } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	const { t, locale, link } = getI18n();
 </script>
 
 <svelte:head>
-	<title>My listings - Bibseller</title>
+	<title>{t('myListings.title')}</title>
 </svelte:head>
 
 <div class="head">
-	<h1>My listings</h1>
-	<a href={resolve('/sell')} class="new">Sell a bib</a>
+	<h1>{t('myListings.heading')}</h1>
+	<a href={link(resolve('/sell'))} class="new">{t('sell.heading')}</a>
 </div>
 
 {#if form?.error}
@@ -21,25 +23,32 @@
 {/if}
 
 {#if data.listings.length === 0}
-	<p class="empty">You have no listings yet. <a href={resolve('/sell')}>List a bib</a>.</p>
+	<p class="empty">
+		{t('myListings.emptyPre')}
+		<a href={link(resolve('/sell'))}>{t('myListings.listABib')}</a>.
+	</p>
 {:else}
 	<ul class="listings">
 		{#each data.listings as l (l.id)}
 			<li>
 				<div class="info">
-					<a href={resolve('/races/[slug]', { slug: l.race_slug })} class="race">{l.race_name}</a>
+					<a href={link(resolve('/races/[slug]', { slug: l.race_slug }))} class="race"
+						>{l.race_name}</a
+					>
 					<p class="meta">
-						{formatDate(l.event_date)} - {formatPrice(l.price_cents, l.currency) ??
-							'Price on request'}
+						{formatDate(l.event_date, locale)} - {formatPrice(l.price_cents, l.currency, locale) ??
+							t('listingCard.priceOnRequest')}
 					</p>
 				</div>
 				<div class="right">
 					<span class="status {l.status}">{l.status}</span>
 					{#if l.status === 'active'}
-						<a href={resolve('/account/listings/[id]/edit', { id: l.id })} class="edit">Edit</a>
+						<a href={link(resolve('/account/listings/[id]/edit', { id: l.id }))} class="edit"
+							>{t('myListings.edit')}</a
+						>
 						<form method="POST" action="?/cancel" use:enhance>
 							<input type="hidden" name="id" value={l.id} />
-							<button type="submit" class="cancel">Cancel</button>
+							<button type="submit" class="cancel">{t('myListings.cancel')}</button>
 						</form>
 					{/if}
 				</div>

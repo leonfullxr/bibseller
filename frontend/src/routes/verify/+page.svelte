@@ -1,29 +1,31 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const { t, link } = getI18n();
 </script>
 
-<svelte:head><title>Verify email - Bibseller</title></svelte:head>
+<svelte:head><title>{t('verify.title')}</title></svelte:head>
 
 <section class="verify">
 	{#if data.status === 'ok'}
-		<h1>Email verified</h1>
-		<p>Your email address is confirmed - you're all set.</p>
-		<a href={resolve('/')}>Continue</a>
+		<h1>{t('verify.okHeading')}</h1>
+		<p>{t('verify.okBody')}</p>
+		<a href={link(resolve('/'))}>{t('verify.continue')}</a>
 	{:else if data.status === 'invalid'}
-		<h1>Link invalid or expired</h1>
-		<p>This verification link is no longer valid. Sign in and request a fresh one.</p>
-		<a href={resolve('/login')}>Sign in</a>
+		<h1>{t('verify.invalidHeading')}</h1>
+		<p>{t('verify.invalidBody')}</p>
+		<a href={link(resolve('/login'))}>{t('verify.signIn')}</a>
 	{:else if data.status === 'missing'}
-		<h1>Nothing to verify</h1>
-		<p>Open the verification link from your email to confirm your address.</p>
-		<a href={resolve('/')}>Home</a>
+		<h1>{t('verify.missingHeading')}</h1>
+		<p>{t('verify.missingBody')}</p>
+		<a href={link(resolve('/'))}>{t('verify.home')}</a>
 	{:else}
-		<h1>Something went wrong</h1>
-		<p>We couldn't verify your email right now. Please try again in a moment.</p>
-		<a href={resolve('/')}>Home</a>
+		<h1>{t('verify.errorHeading')}</h1>
+		<p>{t('verify.errorBody')}</p>
+		<a href={link(resolve('/'))}>{t('verify.home')}</a>
 	{/if}
 </section>
 

@@ -2,11 +2,13 @@
 	import { resolve } from '$app/paths';
 	import type { ListingSummary } from '$lib/api/types';
 	import { formatPrice } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 
 	let { listing }: { listing: ListingSummary } = $props();
+	const { t, locale, link } = getI18n();
 
-	const price = $derived(formatPrice(listing.price_cents, listing.currency));
-	const original = $derived(formatPrice(listing.original_price_cents, listing.currency));
+	const price = $derived(formatPrice(listing.price_cents, listing.currency, locale));
+	const original = $derived(formatPrice(listing.original_price_cents, listing.currency, locale));
 	const belowFace = $derived(
 		listing.price_cents != null &&
 			listing.original_price_cents != null &&
@@ -14,20 +16,20 @@
 	);
 </script>
 
-<a href={resolve('/listings/[id]', { id: listing.id })} class="card">
+<a href={link(resolve('/listings/[id]', { id: listing.id }))} class="card">
 	<div class="price-row">
-		<span class="price">{price ?? 'Price on request'}</span>
+		<span class="price">{price ?? t('listingCard.priceOnRequest')}</span>
 		{#if belowFace && original}
 			<span class="original">{original}</span>
 		{/if}
 	</div>
 	{#if belowFace}
-		<span class="deal">below face value</span>
+		<span class="deal">{t('listingCard.belowFace')}</span>
 	{/if}
 	{#if listing.description}
 		<p class="desc">{listing.description}</p>
 	{/if}
-	<p class="seller">Listed by {listing.seller_name}</p>
+	<p class="seller">{t('listingCard.listedBy', { name: listing.seller_name })}</p>
 </a>
 
 <style>

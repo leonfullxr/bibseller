@@ -1,11 +1,12 @@
 <script lang="ts">
 	import type { TransferPolicy } from '$lib/api/types';
-	import { policyLabel } from '$lib/policy';
+	import { getI18n } from '$lib/i18n';
 
 	let { policy }: { policy: TransferPolicy } = $props();
+	const { t } = getI18n();
 </script>
 
-<span class="badge {policy}">{policyLabel[policy]}</span>
+<span class="badge {policy}">{t(`policy.label.${policy}`)}</span>
 
 <style>
 	.badge {

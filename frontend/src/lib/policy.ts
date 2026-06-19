@@ -31,37 +31,13 @@ export function requiresAck(policy: TransferPolicy): boolean {
 	return policy === 'connect_only' || policy === 'unknown';
 }
 
-// Words live apart from facts (the seed of the M8 i18n dictionary). Labels feed
-// the badge and the races filter; one canonical string per mode kills drift.
-export const policyLabel: Record<TransferPolicy, string> = {
-	platform_sale: 'Resale allowed',
-	official_only: 'Official transfer',
-	connect_only: 'Chat only',
-	unknown: 'Policy unverified'
-};
-
-export interface PolicyDisclaimer {
-	title: string;
-	body: string;
-}
-
-// Keyed by policy (not tone) so connect_only and unknown can diverge later
-// without reshaping (docs/CONTEXT.md D10) - their bodies start identical.
-export const policyDisclaimer: Record<TransferPolicy, PolicyDisclaimer> = {
-	platform_sale: {
-		title: 'This race allows bib resale.',
-		body: 'Agree with the seller in chat, then pay securely through the platform - funds are held until the transfer is confirmed. Zero commission.'
-	},
-	official_only: {
-		title: 'This race runs its own official name-change process.',
-		body: 'Find each other and agree on the details here - the transfer itself (and any official fee) goes through the race organizer. The platform never handles money for this race.'
-	},
-	connect_only: {
-		title: 'This race restricts bib transfers.',
-		body: "The platform only connects you: it handles no money here and takes no responsibility for any arrangement between you and the other party. The race's own rules apply - check them before agreeing to anything."
-	},
-	unknown: {
-		title: 'Transfer policy not verified yet - treat this race as chat-only.',
-		body: "The platform only connects you: it handles no money here and takes no responsibility for any arrangement between you and the other party. The race's own rules apply - check them before agreeing to anything."
-	}
-};
+// The four transfer policies, for iterating the modes (the races filter, tests).
+// The display words now live in the i18n dictionary (docs/CONTEXT.md -> Language,
+// D17): $lib/i18n/en.ts keys policy.label.* and policy.disclaimer.*. This module
+// keeps only the policy facts, read via the typed keys in PolicyBadge/PolicyCallout.
+export const transferPolicies: TransferPolicy[] = [
+	'platform_sale',
+	'official_only',
+	'connect_only',
+	'unknown'
+];

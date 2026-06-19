@@ -1,38 +1,42 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { formatDate } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const { t: tr, locale, link } = getI18n();
 </script>
 
 <svelte:head>
-	<title>Inbox - Bibseller</title>
+	<title>{tr('inbox.title')}</title>
 </svelte:head>
 
-<h1>Inbox</h1>
+<h1>{tr('inbox.heading')}</h1>
 
 {#if data.threads.length === 0}
 	<p class="empty">
-		No conversations yet. Browse <a href={resolve('/races')}>races</a> and contact a seller to start one.
+		{tr('inbox.emptyPre')}
+		<a href={link(resolve('/races'))}>{tr('inbox.emptyRacesLink')}</a>
+		{tr('inbox.emptyPost')}
 	</p>
 {:else}
 	<ul class="threads">
 		{#each data.threads as t (t.id)}
 			<li>
 				<a
-					href={resolve('/account/inbox/[id]', { id: t.id })}
+					href={link(resolve('/account/inbox/[id]', { id: t.id }))}
 					class="row"
 					class:unread={t.unread_count > 0}
 				>
 					<div class="who">
 						<span class="name">{t.other_party}</span>
-						<span class="tag">{t.role === 'buyer' ? 'seller' : 'buyer'}</span>
+						<span class="tag">{t.role === 'buyer' ? tr('role.seller') : tr('role.buyer')}</span>
 					</div>
 					<span class="race">{t.race_name}</span>
 					<div class="right">
 						{#if t.last_message_at}
-							<span class="when">{formatDate(t.last_message_at.slice(0, 10))}</span>
+							<span class="when">{formatDate(t.last_message_at.slice(0, 10), locale)}</span>
 						{/if}
 						{#if t.unread_count > 0}
 							<span class="badge">{t.unread_count}</span>

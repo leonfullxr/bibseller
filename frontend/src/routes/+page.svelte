@@ -1,52 +1,39 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { getI18n } from '$lib/i18n';
 	import RaceCard from '$lib/components/RaceCard.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const { t, link } = getI18n();
 
-	const modes = [
-		{
-			name: 'Platform sale',
-			desc: 'The race allows resale: list, chat, and pay securely through the platform.'
-		},
-		{
-			name: 'Official process',
-			desc: 'The race runs its own name change: we connect you and link the official procedure.'
-		},
-		{
-			name: 'Connect only',
-			desc: 'Restricted or unverified races: we provide the chat, the rest stays between you two.'
-		}
-	];
+	const modes = $derived([
+		{ name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
+		{ name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
+		{ name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
+	]);
 </script>
 
 <svelte:head>
-	<title>Bibseller - race bibs find new runners</title>
-	<meta
-		name="description"
-		content="Non-profit, EU-wide marketplace connecting runners who can't start with runners who missed registration."
-	/>
+	<title>{t('home.title')}</title>
+	<meta name="description" content={t('home.metaDescription')} />
 </svelte:head>
 
 <section class="hero">
-	<h1>Race bibs find <span>new runners</span></h1>
-	<p class="tagline">
-		Injured? Plans changed? Missed registration? A zero-commission marketplace that connects sellers
-		and buyers of race bibs - always within each race's own rules.
-	</p>
+	<h1>{t('home.heroTitle')} <span>{t('home.heroTitleHighlight')}</span></h1>
+	<p class="tagline">{t('home.tagline')}</p>
 
-	<form method="GET" action={resolve('/races')} class="search">
-		<input type="search" name="q" placeholder="Search a race or city…" />
-		<button type="submit">Search</button>
+	<form method="GET" action={link(resolve('/races'))} class="search">
+		<input type="search" name="q" placeholder={t('home.searchPlaceholder')} />
+		<button type="submit">{t('home.search')}</button>
 	</form>
-	<a href={resolve('/races')} class="browse-all">or browse all races</a>
+	<a href={link(resolve('/races'))} class="browse-all">{t('home.browseAll')}</a>
 
 	{#if data.apiStatus !== 'ok'}
 		<div class="api-status">
 			<span class="dot"></span>
 			<span class="api-msg">
-				API unreachable - run <code>make dev</code>
+				{t('home.apiUnreachable')} <code>make dev</code>
 			</span>
 		</div>
 	{/if}
@@ -55,8 +42,8 @@
 {#if data.upcoming.length > 0}
 	<section class="upcoming">
 		<div class="upcoming-head">
-			<h2>Upcoming races</h2>
-			<a href={resolve('/races')}>See all</a>
+			<h2>{t('home.upcoming')}</h2>
+			<a href={link(resolve('/races'))}>{t('home.seeAll')}</a>
 		</div>
 		<div class="grid">
 			{#each data.upcoming as race (race.id)}
@@ -76,8 +63,9 @@
 </section>
 
 <p class="construction">
-	Under construction - follow the
-	<a href="https://github.com/leonfullxr/bibseller/issues/13" rel="external">roadmap</a>.
+	{t('home.underConstruction')}
+	<a href="https://github.com/leonfullxr/bibseller/issues/13" rel="external">{t('home.roadmap')}</a
+	>.
 </p>
 
 <style>

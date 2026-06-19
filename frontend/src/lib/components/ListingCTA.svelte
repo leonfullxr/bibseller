@@ -1,9 +1,12 @@
 <script lang="ts">
 	import type { TransferPolicy } from '$lib/api/types';
+	import { getI18n } from '$lib/i18n';
 	import { policyView } from '$lib/policy';
 
 	let { policy, officialUrl = null }: { policy: TransferPolicy; officialUrl?: string | null } =
 		$props();
+
+	const { t } = getI18n();
 
 	// The buy path exists ONLY for platform_sale, and even there it ships with M6
 	// (honest disabled stub). Messaging is live (M5) via the contact composer on
@@ -13,12 +16,12 @@
 
 <div class="cta">
 	{#if action === 'buy'}
-		<button type="button" disabled class="buy" title="Secure checkout arrives with payments (M6)">
-			Buy securely - coming soon
+		<button type="button" disabled class="buy" title={t('listingCta.buyTitle')}>
+			{t('listingCta.buy')}
 		</button>
 	{:else if action === 'official' && officialUrl}
 		<a href={officialUrl} rel="external nofollow noopener" target="_blank" class="official">
-			Official transfer process
+			{t('policy.officialLink')}
 		</a>
 	{/if}
 </div>

@@ -40,7 +40,7 @@ func (h *Handler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 			slog.Error("reset request: clearing old tokens failed", "err", err, "user_id", user.ID)
 			break
 		}
-		h.startPasswordReset(r.Context(), user.ID, user.Email)
+		h.startPasswordReset(r.Context(), user.ID, user.Email, user.Locale)
 	case errors.Is(err, pgx.ErrNoRows):
 		// Unknown email - the no-enumeration path; fall through to the same 204.
 	default:
@@ -51,7 +51,7 @@ func (h *Handler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) startPasswordReset(ctx context.Context, userID uuid.UUID, email string) {
+func (h *Handler) startPasswordReset(ctx context.Context, userID uuid.UUID, email, locale string) {
 	token, tokenHash, err := newToken()
 	if err != nil {
 		slog.Error("reset token mint failed", "err", err, "user_id", userID)
@@ -65,7 +65,7 @@ func (h *Handler) startPasswordReset(ctx context.Context, userID uuid.UUID, emai
 	}
 	link := h.appURL + "/reset?token=" + token
 	go func() {
-		if err := h.mailer.SendPasswordReset(email, link); err != nil {
+		if err := h.mailer.SendPasswordReset(email, link, locale); err != nil {
 			slog.Error("reset email send failed", "err", err, "user_id", userID)
 		}
 	}()

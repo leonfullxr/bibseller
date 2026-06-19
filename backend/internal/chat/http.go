@@ -44,7 +44,7 @@ const (
 // chat stays independent of the SMTP implementation: cmd/api injects the shared
 // email.SMTPMailer, tests inject a no-op.
 type Mailer interface {
-	SendNewMessage(to, link string) error
+	SendNewMessage(to, link, locale string) error
 }
 
 // Storage holds and serves the private image objects. Declared here (the
@@ -518,7 +518,7 @@ func (h *Handler) notifySeller(sellerID uuid.UUID) {
 			slog.Error("chat: seller lookup for notification failed", "err", err, "seller_id", sellerID)
 			return
 		}
-		if err := h.mailer.SendNewMessage(seller.Email, h.appURL+"/account/inbox"); err != nil {
+		if err := h.mailer.SendNewMessage(seller.Email, h.appURL+"/account/inbox", seller.Locale); err != nil {
 			slog.Error("chat: new-message email send failed", "err", err, "seller_id", sellerID)
 		}
 	}()

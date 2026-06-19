@@ -10,7 +10,12 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter()
+			adapter: adapter(),
+			// Root-relative paths (/races, not ./races). The default (relative: true)
+			// breaks the i18n /es prefix (D17): a relative ./races prepended with /es
+			// yields /es./races. We deploy adapter-node at the domain root, so
+			// absolute paths are correct here.
+			paths: { relative: false }
 		})
 	],
 	server: {

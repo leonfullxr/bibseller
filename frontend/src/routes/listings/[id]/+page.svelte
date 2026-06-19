@@ -5,15 +5,17 @@
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate, formatPrice } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import { requiresAck } from '$lib/policy';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	const { t, locale, link } = getI18n();
 	const listing = $derived(data.listing);
 	const race = $derived(data.listing.race);
 
-	const price = $derived(formatPrice(listing.price_cents, listing.currency));
-	const original = $derived(formatPrice(listing.original_price_cents, listing.currency));
+	const price = $derived(formatPrice(listing.price_cents, listing.currency, locale));
+	const original = $derived(formatPrice(listing.original_price_cents, listing.currency, locale));
 	const belowFace = $derived(
 		listing.price_cents != null &&
 			listing.original_price_cents != null &&
@@ -45,12 +47,10 @@
 					details: reportDetails.trim() || undefined
 				})
 			});
-			reportStatus = res.ok
-				? 'Thanks - this listing has been reported.'
-				: 'Could not file the report. Try again.';
+			reportStatus = res.ok ? t('report.success') : t('report.failed');
 			if (res.ok) reportDetails = '';
 		} catch {
-			reportStatus = 'Network error - try again.';
+			reportStatus = t('report.networkError');
 		} finally {
 			reporting = false;
 		}
@@ -58,21 +58,21 @@
 </script>
 
 <svelte:head>
-	<title>Bib for {race.name} - Bibseller</title>
+	<title>{t('listingDetail.title', { name: race.name })}</title>
 </svelte:head>
 
 <nav>
-	<a href={resolve('/races/[slug]', { slug: race.slug })}>
-		Back to {race.name}
+	<a href={link(resolve('/races/[slug]', { slug: race.slug }))}>
+		{t('listingDetail.back', { name: race.name })}
 	</a>
 </nav>
 
 <div class="panel" class:unavailable={!available}>
 	<div class="head">
 		<div>
-			<h1>Bib for {race.name}</h1>
+			<h1>{t('listingDetail.heading', { name: race.name })}</h1>
 			<p class="meta">
-				{formatDate(race.event_date)} - {race.city}, {race.country}
+				{formatDate(race.event_date, locale)} - {race.city}, {race.country}
 				{#if race.distance}
 					- {race.distance}{/if}
 			</p>
@@ -82,15 +82,15 @@
 
 	{#if !available}
 		<div class="gone">
-			This listing is no longer available ({listing.status}).
+			{t('listingDetail.unavailable', { status: listing.status })}
 		</div>
 	{/if}
 
 	<div class="price-row">
-		<span class="price">{price ?? 'Price on request'}</span>
+		<span class="price">{price ?? t('listingCard.priceOnRequest')}</span>
 		{#if belowFace && original}
 			<span class="original">{original}</span>
-			<span class="deal">below face value</span>
+			<span class="deal">{t('listingCard.belowFace')}</span>
 		{/if}
 	</div>
 
@@ -98,7 +98,10 @@
 		<p class="desc">{listing.description}</p>
 	{/if}
 	<p class="listed-by">
-		Listed by {listing.seller_name} on {formatDate(listing.created_at.slice(0, 10))}
+		{t('listingDetail.listedByOn', {
+			name: listing.seller_name,
+			date: formatDate(listing.created_at.slice(0, 10), locale)
+		})}
 	</p>
 
 	{#if available}
@@ -114,21 +117,22 @@
 
 {#if available}
 	<section class="contact">
-		<h2>Contact the seller</h2>
+		<h2>{t('listingDetail.contact')}</h2>
 
 		{#if !data.user}
 			<p class="hint">
-				<a href={resolve('/login')}>Log in</a> to message the seller.
+				<a href={link(resolve('/login'))}>{t('nav.login')}</a>
+				{t('listingDetail.toMessageSeller')}
 			</p>
 		{:else if !data.user.email_verified}
 			<p class="hint">
-				Verify your email to message the seller.
-				<a href={resolve('/settings')}>Account settings</a>
+				{t('listingDetail.verifyToMessage')}
+				<a href={link(resolve('/settings'))}>{t('listingDetail.accountSettings')}</a>
 			</p>
 		{:else if isOwn}
 			<p class="hint">
-				This is your listing - manage it from
-				<a href={resolve('/account/listings')}>your listings</a>.
+				{t('listingDetail.ownPre')}
+				<a href={link(resolve('/account/listings'))}>{t('listingDetail.yourListings')}</a>.
 			</p>
 		{:else}
 			<form method="POST" action="?/contact" use:enhance class="composer">
@@ -137,17 +141,14 @@
 					rows="4"
 					required
 					maxlength="4000"
-					aria-label="Message to the seller"
-					placeholder="Hi - is this bib still available?">{form?.body ?? ''}</textarea
+					aria-label={t('listingDetail.messageAria')}
+					placeholder={t('listingDetail.messagePlaceholder')}>{form?.body ?? ''}</textarea
 				>
 
 				{#if needsAck}
 					<label class="ack">
 						<input type="checkbox" name="ack" required />
-						<span>
-							I understand the platform handles no money and takes no responsibility for this
-							transfer - the race's own rules apply.
-						</span>
+						<span>{t('listingDetail.ackText')}</span>
 					</label>
 				{/if}
 
@@ -155,7 +156,7 @@
 					<p class="feedback error" role="alert">{form.error}</p>
 				{/if}
 
-				<button type="submit">Send message</button>
+				<button type="submit">{t('listingDetail.send')}</button>
 			</form>
 		{/if}
 	</section>
@@ -163,24 +164,24 @@
 
 {#if data.user}
 	<details class="report">
-		<summary>Report this listing</summary>
+		<summary>{t('report.summary')}</summary>
 		<form class="report-form" onsubmit={reportListing}>
-			<select bind:value={reportReason} aria-label="Reason for report">
-				<option value="forbidden_transfer">Forbidden transfer</option>
-				<option value="scam">Scam</option>
-				<option value="offensive">Offensive</option>
-				<option value="other">Other</option>
+			<select bind:value={reportReason} aria-label={t('report.reasonAria')}>
+				<option value="forbidden_transfer">{t('report.reason.forbidden_transfer')}</option>
+				<option value="scam">{t('report.reason.scam')}</option>
+				<option value="offensive">{t('report.reason.offensive')}</option>
+				<option value="other">{t('report.reason.other')}</option>
 			</select>
 			<textarea
 				bind:value={reportDetails}
 				rows="2"
 				maxlength="2000"
-				aria-label="Report details (optional)"
-				placeholder="Details (optional)"
+				aria-label={t('report.detailsAria')}
+				placeholder={t('report.detailsPlaceholder')}
 			></textarea>
 			{#if reportStatus}<p class="report-status" role="status">{reportStatus}</p>{/if}
 			<button type="submit" disabled={reporting}
-				>{reporting ? 'Reporting...' : 'Submit report'}</button
+				>{reporting ? t('report.submitting') : t('report.submit')}</button
 			>
 		</form>
 	</details>

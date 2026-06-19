@@ -3,14 +3,18 @@
 	import { page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import RaceCard from '$lib/components/RaceCard.svelte';
-	import { policyLabel } from '$lib/policy';
+	import { getI18n } from '$lib/i18n';
+	import { transferPolicies } from '$lib/policy';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const { t, link } = getI18n();
 
 	const countries = ['AT', 'BE', 'DE', 'ES', 'FR', 'IT', 'NL', 'PL', 'PT'];
-	const sports = ['running', 'trail', 'triathlon', 'cycling', 'obstacle', 'other'];
-	const policies = Object.entries(policyLabel).map(([value, label]) => ({ value, label }));
+	const sports = ['running', 'trail', 'triathlon', 'cycling', 'obstacle', 'other'] as const;
+	const policies = $derived(
+		transferPolicies.map((value) => ({ value, label: t(`policy.label.${value}`) }))
+	);
 
 	const nextQuery = $derived.by(() => {
 		if (!data.nextCursor) return null;
@@ -21,45 +25,50 @@
 </script>
 
 <svelte:head>
-	<title>Browse races - Bibseller</title>
-	<meta name="description" content="Find race bibs for sale across EU running events." />
+	<title>{t('races.title')}</title>
+	<meta name="description" content={t('races.metaDescription')} />
 </svelte:head>
 
-<h1>Browse races</h1>
+<h1>{t('races.heading')}</h1>
 
-<form method="GET" action={resolve('/races')} class="filters">
+<form method="GET" action={link(resolve('/races'))} class="filters">
 	<label>
-		Search
-		<input type="search" name="q" value={data.filters.q} placeholder="Race or city…" />
+		{t('races.filter.search')}
+		<input
+			type="search"
+			name="q"
+			value={data.filters.q}
+			placeholder={t('races.filter.searchPlaceholder')}
+		/>
 	</label>
 	<label>
-		Country
+		{t('races.filter.country')}
 		<select name="country" value={data.filters.country}>
-			<option value="">All</option>
+			<option value="">{t('races.filter.all')}</option>
 			{#each countries as c (c)}<option value={c}>{c}</option>{/each}
 		</select>
 	</label>
 	<label>
-		Sport
+		{t('races.filter.sport')}
 		<select name="sport" value={data.filters.sport} class="sport">
-			<option value="">All</option>
-			{#each sports as s (s)}<option value={s}>{s}</option>{/each}
+			<option value="">{t('races.filter.all')}</option>
+			{#each sports as s (s)}<option value={s}>{t(`sport.${s}`)}</option>{/each}
 		</select>
 	</label>
 	<label>
-		Transfer policy
+		{t('races.filter.policy')}
 		<select name="policy" value={data.filters.policy}>
-			<option value="">All</option>
+			<option value="">{t('races.filter.all')}</option>
 			{#each policies as p (p.value)}<option value={p.value}>{p.label}</option>{/each}
 		</select>
 	</label>
-	<button type="submit">Filter</button>
+	<button type="submit">{t('races.filter.submit')}</button>
 </form>
 
 {#if data.races.length === 0}
 	<div class="empty">
-		<p>No races match those filters.</p>
-		<a href={resolve('/races')}>Clear filters</a>
+		<p>{t('races.empty')}</p>
+		<a href={link(resolve('/races'))}>{t('races.clearFilters')}</a>
 	</div>
 {:else}
 	<div class="grid">
@@ -69,7 +78,7 @@
 	</div>
 	{#if nextQuery}
 		<div class="more">
-			<a href="{resolve('/races')}?{nextQuery}">Next page -></a>
+			<a href="{link(resolve('/races'))}?{nextQuery}">{t('races.nextPage')}</a>
 		</div>
 	{/if}
 {/if}

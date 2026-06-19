@@ -22,8 +22,8 @@ import (
 
 type noopMailer struct{}
 
-func (noopMailer) SendVerification(_, _ string) error  { return nil }
-func (noopMailer) SendPasswordReset(_, _ string) error { return nil }
+func (noopMailer) SendVerification(_, _, _ string) error  { return nil }
+func (noopMailer) SendPasswordReset(_, _, _ string) error { return nil }
 
 func authedHandler(pool *pgxpool.Pool) http.Handler {
 	q := sqlcgen.New(pool)

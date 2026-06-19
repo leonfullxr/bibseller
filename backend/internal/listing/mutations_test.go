@@ -23,8 +23,8 @@ import (
 
 type noopMailer struct{}
 
-func (noopMailer) SendVerification(_, _ string) error  { return nil }
-func (noopMailer) SendPasswordReset(_, _ string) error { return nil }
+func (noopMailer) SendVerification(_, _, _ string) error  { return nil }
+func (noopMailer) SendPasswordReset(_, _, _ string) error { return nil }
 
 // authedHandler mounts the listing routes behind ResolveUser, plus auth.Routes
 // so a test can register and obtain a real session cookie.
