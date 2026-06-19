@@ -45,6 +45,11 @@ export function createPlural(locale: Locale): Pluralizer {
 	return (base, n, params) => {
 		const key = `${base}.${rules.select(n)}` as MessageKey;
 		const other = `${base}.other` as MessageKey;
-		return interpolate(dict[key] ?? en[key] ?? dict[other] ?? en[other] ?? '', { n, ...params });
+		// Last-resort fallback is the number itself, never '' - a typo'd base then
+		// shows e.g. "5" rather than blank UI.
+		return interpolate(dict[key] ?? en[key] ?? dict[other] ?? en[other] ?? String(n), {
+			n,
+			...params
+		});
 	};
 }

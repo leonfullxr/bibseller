@@ -96,6 +96,10 @@ describe('createPlural', () => {
 		expect(p('raceCard.bibs', 0)).toBe('0 bibs listed');
 		expect(p('raceCard.bibs', 5)).toBe('5 bibs listed');
 	});
+
+	it('falls back to the number (never blank) for a missing base', () => {
+		expect(createPlural('en')('raceCard.nope', 2)).toBe('2');
+	});
 });
 
 describe('policy dictionary coverage', () => {

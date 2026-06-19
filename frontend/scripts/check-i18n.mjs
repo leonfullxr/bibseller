@@ -13,8 +13,10 @@
 // Run: node scripts/check-i18n.mjs  (also wired into `npm run lint`).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('../src', import.meta.url).pathname;
+// fileURLToPath (not .pathname) so the path is correct on Windows too.
+const ROOT = fileURLToPath(new URL('../src', import.meta.url));
 const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
 
 // Literal text that is intentionally not translated: the brand wordmark and the

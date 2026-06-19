@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { apiFetch } from '$lib/api/server';
 import { sessionHeader } from '$lib/server/session';
 import {
@@ -36,7 +37,15 @@ export const actions: Actions = {
 			search = queryAt === -1 ? '' : nextRaw.slice(queryAt);
 		}
 
-		cookies.set(LOCALE_COOKIE, to, { path: '/', maxAge: LOCALE_COOKIE_MAX_AGE, sameSite: 'lax' });
+		// Server-only (httpOnly): the cookie drives server-side routing and is never
+		// read by client script. Secure in prod; not on http://localhost in dev.
+		cookies.set(LOCALE_COOKIE, to, {
+			path: '/',
+			maxAge: LOCALE_COOKIE_MAX_AGE,
+			httpOnly: true,
+			secure: !dev,
+			sameSite: 'lax'
+		});
 
 		if (locals.user) {
 			// Best-effort persistence; the cookie already covers this browser. The

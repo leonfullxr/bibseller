@@ -37,12 +37,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const crawler = isBot(event.request.headers.get('user-agent'));
 
+	// Locale routing applies to real page navigations only - GET/HEAD that accept
+	// HTML. This keeps the redirect off asset/data requests (/_app/*, __data.json)
+	// and off form POSTs (which would otherwise be 302'd away from their action).
+	const method = event.request.method;
+	const isPageNav =
+		(method === 'GET' || method === 'HEAD') &&
+		(event.request.headers.get('accept') ?? '').includes('text/html');
+
 	// A settled choice is authoritative: redirect so the URL matches it. Crawlers
 	// are never redirected, keeping both language URLs crawlable. No settled
 	// choice => no redirect (the visitor lands on the URL they asked for, English
 	// at the root).
 	const settled = settledLocale(user, event.cookies.get(LOCALE_COOKIE));
-	if (settled && settled !== urlLocale && !crawler) {
+	if (isPageNav && settled && settled !== urlLocale && !crawler) {
 		redirect(302, pathForLocale(settled, stripLocale(event.url.pathname)) + event.url.search);
 	}
 
@@ -51,7 +59,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// is Cloudflare's geo header in prod; in dev a DEV_IP_COUNTRY env var (or a
 	// `curl -H "cf-ipcountry: ES"`) stands in. The banner persists across pages
 	// until the visitor accepts (cookie=es + /es) or dismisses (cookie=en).
-	if (!settled && !crawler && urlLocale === 'en') {
+	if (isPageNav && !settled && !crawler && urlLocale === 'en') {
 		const country =
 			event.request.headers.get('cf-ipcountry') ?? (dev ? (env.DEV_IP_COUNTRY ?? null) : null);
 		if (suggestsSpanish(country, event.request.headers.get('accept-language'))) {
