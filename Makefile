@@ -69,6 +69,12 @@ smoke: ## end-to-end assertions against the seeded local stack (wipes dev data)
 PROD_COMPOSE := docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml
 
 prod-up: ## build + start the self-host prod stack (needs deploy/.env.prod)
+	@test -f deploy/.env.prod || { echo "ERROR: deploy/.env.prod missing (copy from deploy/.env.prod.example)"; exit 1; }
+	@if grep -qE 'replace-with|\.example' deploy/.env.prod; then \
+	  echo "ERROR: deploy/.env.prod still has placeholder values to fill:"; \
+	  grep -nE 'replace-with|\.example' deploy/.env.prod | sed -E 's/=.*/=<PLACEHOLDER>/'; \
+	  exit 1; \
+	fi
 	$(PROD_COMPOSE) up -d --build
 
 prod-down: ## stop the prod stack (volumes are kept)
