@@ -5,7 +5,7 @@ import type { PageServerLoad } from './$types';
 
 const PASSTHROUGH = ['country', 'sport', 'policy', 'q', 'cursor'] as const;
 
-export const load: PageServerLoad = async ({ url, fetch, setHeaders }) => {
+export const load: PageServerLoad = async ({ url, fetch, setHeaders, locals }) => {
 	const params = new URLSearchParams();
 	for (const key of PASSTHROUGH) {
 		const v = url.searchParams.get(key);
@@ -17,7 +17,11 @@ export const load: PageServerLoad = async ({ url, fetch, setHeaders }) => {
 
 	const data = await apiGet<Page<RaceSummary>>(`/api/v1/races?${params}`, fetch);
 
-	setHeaders({ 'cache-control': 'public, max-age=60' });
+	// Gate the cache header on auth: the page HTML embeds the layout nav (the
+	// signed-in user's name, inbox, log out), so a signed-in response must never
+	// sit in a shared cache. Anonymous browse stays publicly cacheable (CONTEXT
+	// M3 cache note - mirrors listings/[id]).
+	setHeaders({ 'cache-control': locals.user ? 'private, no-store' : 'public, max-age=60' });
 	return {
 		races: data.items,
 		nextCursor: data.next_cursor,

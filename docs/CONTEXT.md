@@ -90,7 +90,7 @@ Working rules:
 ## Known notes & accepted trade-offs
 
 - `ListRaces` correlated subquery for `active_listings`: bounded by page size (<=100 index-only lookups via the partial index), not unbounded N+1. Revisit if p95 on `/api/v1/races` degrades (then: `LEFT JOIN … COUNT(*) FILTER` or a counter column).
-- `Cache-Control: public` on catalog responses assumes anonymous traffic. M3 checklist item: once sessions exist, authed responses must not share caches (add `Vary: Cookie` or gate the header on session absence).
+- `Cache-Control` on catalog pages is gated on auth (resolved, was the M3 checklist item): signed-in responses are `private, no-store` because the page embeds the layout nav, anonymous stay `public, max-age=60`. Applies to `/races`, `/races/[slug]`, `/listings/[id]`; a smoke assertion guards it.
 - Exact-page-size pagination edge: when results == page size, a `next_cursor` is emitted whose page is empty. Harmless; the empty state renders. Fix only if users notice.
 - `text-scale` meta tag in `app.html` comes from the official SvelteKit scaffold; inert in browsers, deliberately left untouched.
 - sqlc/goose run as pinned `go run pkg@version` (not go.mod tools): sqlc's tree forces a `go 1.26` directive that golangci-lint can't lint yet. Revisit when golangci targets current Go.
