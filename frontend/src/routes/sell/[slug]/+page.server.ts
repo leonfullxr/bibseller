@@ -1,5 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch, apiGet } from '$lib/api/server';
+import { apiErrorKey } from '$lib/api/errors';
+import { createTranslator } from '$lib/i18n';
 import type { RaceDetail } from '$lib/api/types';
 import { parseListingPrice } from '$lib/listing';
 import { sessionHeader } from '$lib/server/session';
@@ -14,14 +16,12 @@ export const load: PageServerLoad = async ({ params, locals, fetch }) => {
 export const actions: Actions = {
 	default: async ({ request, cookies, locals }) => {
 		if (!locals.user) redirect(303, '/login');
+		const t = createTranslator(locals.locale);
 
 		const form = await request.formData();
 		const raceID = String(form.get('race_id') ?? '');
 		if (raceID === '') {
-			return fail(400, {
-				error: 'Missing race - please start again from the race page.',
-				values: snapshot(form)
-			});
+			return fail(400, { error: t('formError.missingRace'), values: snapshot(form) });
 		}
 		const description = String(form.get('description') ?? '').trim();
 		const parsed = parseListingPrice(
@@ -29,7 +29,7 @@ export const actions: Actions = {
 			String(form.get('original_price') ?? '')
 		);
 		if (!parsed.ok) {
-			return fail(400, { error: parsed.error, values: snapshot(form) });
+			return fail(400, { error: t(parsed.key), values: snapshot(form) });
 		}
 
 		let res: Response;
@@ -45,21 +45,18 @@ export const actions: Actions = {
 				})
 			});
 		} catch {
-			return fail(502, { error: 'The API is unreachable.', values: snapshot(form) });
+			return fail(502, { error: t('apiError.unreachable'), values: snapshot(form) });
 		}
 
 		if (res.status === 403) {
-			return fail(403, {
-				error: 'Verify your email before publishing a listing.',
-				values: snapshot(form)
-			});
+			return fail(403, { error: t('formError.verifyToPublish'), values: snapshot(form) });
 		}
 		if (!res.ok) {
 			const body = (await res.json().catch(() => null)) as {
-				error?: { message?: string };
+				error?: { code?: string };
 			} | null;
 			return fail(res.status >= 500 ? 502 : res.status, {
-				error: body?.error?.message ?? 'Could not publish the listing.',
+				error: t(apiErrorKey(body?.error?.code)),
 				values: snapshot(form)
 			});
 		}

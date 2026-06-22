@@ -1,5 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
+import { apiErrorKey } from '$lib/api/errors';
+import { createTranslator } from '$lib/i18n';
 import type { SessionResponse } from '$lib/api/types';
 import { setSessionCookie } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
@@ -10,6 +12,7 @@ export const load: PageServerLoad = ({ locals }) => {
 
 export const actions: Actions = {
 	default: async ({ request, cookies, locals }) => {
+		const t = createTranslator(locals.locale);
 		const data = await request.formData();
 		const email = String(data.get('email') ?? '').trim();
 		const displayName = String(data.get('display_name') ?? '').trim();
@@ -23,13 +26,13 @@ export const actions: Actions = {
 		// Server-side mirror of the HTML5 constraints (the attributes are UX,
 		// not enforcement). The Go API re-validates again - it can't trust us.
 		if (!email.includes('@')) {
-			return fail(400, { ...values, error: 'Enter a valid email address.' });
+			return fail(400, { ...values, error: t('formError.invalidEmail') });
 		}
 		if (displayName.length < 2 || displayName.length > 50) {
-			return fail(400, { ...values, error: 'Display name must be between 2 and 50 characters.' });
+			return fail(400, { ...values, error: t('formError.displayNameLength') });
 		}
 		if (password.length < 8) {
-			return fail(400, { ...values, error: 'Password must be at least 8 characters.' });
+			return fail(400, { ...values, error: t('formError.passwordTooShort') });
 		}
 
 		let res: Response;
@@ -42,18 +45,18 @@ export const actions: Actions = {
 				body: JSON.stringify({ email, password, display_name: displayName, locale: locals.locale })
 			});
 		} catch {
-			return fail(502, { ...values, error: 'The API is unreachable.' });
+			return fail(502, { ...values, error: t('apiError.unreachable') });
 		}
 
 		if (!res.ok) {
-			// Surface the API's error-envelope message ("email_taken" -> 409,
-			// validation -> 400) into the form.
+			// Translate the API's stable error code (email_taken -> 409, validation
+			// -> 400); never surface its English message to an es user.
 			const body = (await res.json().catch(() => null)) as {
-				error?: { message?: string };
+				error?: { code?: string };
 			} | null;
 			return fail(res.status >= 500 ? 502 : res.status, {
 				...values,
-				error: body?.error?.message ?? 'Could not create the account.'
+				error: t(apiErrorKey(body?.error?.code))
 			});
 		}
 

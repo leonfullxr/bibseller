@@ -19,10 +19,12 @@ export async function apiGet<T>(path: string, fetchFn: typeof fetch = fetch): Pr
 	try {
 		res = await fetchFn(apiUrl(base(), path));
 	} catch {
-		error(502, 'The API is unreachable.');
+		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}
-	if (res.status === 404) error(404, 'Not found');
-	if (res.status === 400) error(400, 'Invalid request');
-	if (!res.ok) error(502, 'The API returned an unexpected error.');
+	if (res.status === 404) error(404, { message: 'Not found', key: 'apiError.not_found' });
+	if (res.status === 400)
+		error(400, { message: 'Invalid request', key: 'apiError.invalid_parameter' });
+	if (!res.ok)
+		error(502, { message: 'The API returned an unexpected error.', key: 'apiError.unknown' });
 	return res.json() as Promise<T>;
 }

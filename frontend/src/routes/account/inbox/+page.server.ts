@@ -13,9 +13,9 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 	try {
 		res = await apiFetch('/api/v1/threads', { headers: sessionHeader(cookies) });
 	} catch {
-		error(502, 'The API is unreachable.');
+		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}
-	if (!res.ok) error(502, 'Could not load your inbox.');
+	if (!res.ok) error(502, { message: 'Could not load your inbox.', key: 'apiError.loadFailed' });
 
 	const data = (await res.json()) as { items: ChatThreadSummary[] };
 	return { threads: data.items };

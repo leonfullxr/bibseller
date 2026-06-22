@@ -1,4 +1,5 @@
 /** Listing form helpers shared by the create (/sell) and edit flows. */
+import type { MessageKey } from '$lib/i18n/en';
 
 export interface ParsedPrice {
 	priceCents: number | null;
@@ -13,14 +14,14 @@ export interface ParsedPrice {
 export function parseListingPrice(
 	priceRaw: string,
 	originalRaw: string
-): { ok: true; value: ParsedPrice } | { ok: false; error: string } {
+): { ok: true; value: ParsedPrice } | { ok: false; key: MessageKey } {
 	const price = toCents(priceRaw);
 	const original = toCents(originalRaw);
 	if (price === 'invalid' || original === 'invalid') {
-		return { ok: false, error: 'Enter a valid amount, e.g. 45 or 45.00.' };
+		return { ok: false, key: 'formError.invalidAmount' };
 	}
 	if (price != null && original != null && price > original) {
-		return { ok: false, error: 'Asking price cannot exceed the original face value.' };
+		return { ok: false, key: 'formError.priceExceedsFace' };
 	}
 	return { ok: true, value: { priceCents: price, originalCents: original } };
 }

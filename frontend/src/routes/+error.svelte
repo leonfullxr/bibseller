@@ -26,7 +26,7 @@
 	<h1>
 		{page.status === 404 ? t('error.notFound') : t('error.generic')}
 	</h1>
-	<p class="msg">{page.error?.message}</p>
+	<p class="msg">{page.error?.key ? t(page.error.key) : page.error?.message}</p>
 	<a href={homeHref} class="home">{t('error.backHome')}</a>
 </div>
 

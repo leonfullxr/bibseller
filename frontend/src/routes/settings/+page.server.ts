@@ -1,5 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
+import { apiErrorKey } from '$lib/api/errors';
+import { createTranslator } from '$lib/i18n';
 import { clearSessionCookie, sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,6 +13,7 @@ export const load: PageServerLoad = ({ locals }) => {
 export const actions: Actions = {
 	profile: async ({ request, cookies, locals }) => {
 		if (!locals.user) redirect(303, '/login');
+		const t = createTranslator(locals.locale);
 
 		const data = await request.formData();
 		const displayName = String(data.get('display_name') ?? '').trim();
@@ -26,10 +29,7 @@ export const actions: Actions = {
 		// rejected here while the API would accept it.
 		const nameLen = [...displayName].length;
 		if (nameLen < 2 || nameLen > 50) {
-			return fail(400, {
-				value: displayName,
-				error: 'Display name must be between 2 and 50 characters.'
-			});
+			return fail(400, { value: displayName, error: t('formError.displayNameLength') });
 		}
 
 		let res: Response;
@@ -41,17 +41,17 @@ export const actions: Actions = {
 				body: JSON.stringify({ display_name: displayName, locale, country })
 			});
 		} catch {
-			return fail(502, { value: displayName, error: 'The API is unreachable.' });
+			return fail(502, { value: displayName, error: t('apiError.unreachable') });
 		}
 
 		if (!res.ok) {
-			// The Go API's error envelope carries a human message; surface it.
+			// Translate the API's stable error code; never surface its English message.
 			const body = (await res.json().catch(() => null)) as {
-				error?: { message?: string };
+				error?: { code?: string };
 			} | null;
 			return fail(res.status >= 500 ? 502 : res.status, {
 				value: displayName,
-				error: body?.error?.message ?? 'The API rejected the update.'
+				error: t(apiErrorKey(body?.error?.code))
 			});
 		}
 
@@ -66,6 +66,7 @@ export const actions: Actions = {
 
 	changePassword: async ({ request, cookies, locals }) => {
 		if (!locals.user) redirect(303, '/login');
+		const t = createTranslator(locals.locale);
 
 		const data = await request.formData();
 		const current = String(data.get('current_password') ?? '');
@@ -75,10 +76,10 @@ export const actions: Actions = {
 		// Server-side mirror of the HTML5 constraints; the 8-char floor matches
 		// the API. The current password is checked there, not here.
 		if (next.length < 8) {
-			return fail(400, { pwError: 'New password must be at least 8 characters.' });
+			return fail(400, { pwError: t('formError.newPasswordTooShort') });
 		}
 		if (next !== confirm) {
-			return fail(400, { pwError: 'The two new passwords do not match.' });
+			return fail(400, { pwError: t('formError.newPasswordMismatch') });
 		}
 
 		let res: Response;
@@ -89,15 +90,15 @@ export const actions: Actions = {
 				body: JSON.stringify({ current_password: current, new_password: next })
 			});
 		} catch {
-			return fail(502, { pwError: 'The API is unreachable.' });
+			return fail(502, { pwError: t('apiError.unreachable') });
 		}
 
 		if (res.status === 401) {
-			return fail(400, { pwError: 'Your current password is incorrect.' });
+			return fail(400, { pwError: t('formError.currentPasswordWrong') });
 		}
 		if (!res.ok) {
 			return fail(res.status >= 500 ? 502 : res.status, {
-				pwError: 'Could not change your password.'
+				pwError: t('formError.changePasswordFailed')
 			});
 		}
 

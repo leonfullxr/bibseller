@@ -284,5 +284,50 @@ export const es: Record<MessageKey, string> = {
 
 	'error.notFound': 'Esa página no existe.',
 	'error.generic': 'Algo salió mal.',
-	'error.backHome': 'Volver al inicio'
+	'error.backHome': 'Volver al inicio',
+
+	// Errores de la API (#49): se eligen por el `code` estable del sobre, no por
+	// su mensaje en inglés; un code sin entrada recae en apiError.unknown.
+	'apiError.unknown': 'Algo salió mal. Inténtalo de nuevo.',
+	'apiError.unreachable': 'No se puede contactar con la API.',
+	'apiError.not_found': 'No encontrado.',
+	'apiError.invalid_parameter': 'Solicitud no válida.',
+	'apiError.email_taken': 'Ya existe una cuenta con este correo.',
+	'apiError.race_past': 'Esta carrera ya se ha celebrado.',
+	'apiError.loadFailed': 'No se pudo cargar esta página. Inténtalo de nuevo.',
+
+	// Errores de formulario/validación escritos en el frontend (server actions).
+	'formError.invalidEmail': 'Introduce un correo electrónico válido.',
+	'formError.displayNameLength': 'El nombre visible debe tener entre 2 y 50 caracteres.',
+	'formError.passwordTooShort': 'La contraseña debe tener al menos 8 caracteres.',
+	'formError.newPasswordTooShort': 'La nueva contraseña debe tener al menos 8 caracteres.',
+	'formError.passwordMismatch': 'Las dos contraseñas no coinciden.',
+	'formError.newPasswordMismatch': 'Las dos contraseñas nuevas no coinciden.',
+	'formError.loginRequired': 'Introduce tu correo y tu contraseña.',
+	'formError.invalidCredentials': 'Correo o contraseña incorrectos.',
+	'formError.loginFailed': 'No se pudo iniciar sesión.',
+	'formError.currentPasswordWrong': 'Tu contraseña actual es incorrecta.',
+	'formError.changePasswordFailed': 'No se pudo cambiar la contraseña.',
+	'formError.resetTokenMissing': 'A este enlace de restablecimiento le falta el token.',
+	'formError.resetTokenInvalid': 'Este enlace de restablecimiento no es válido o ha caducado.',
+	'formError.resetFailed': 'No se pudo restablecer la contraseña.',
+	'formError.resetEmailFailed':
+		'No se pudo enviar el correo de restablecimiento. Inténtalo de nuevo.',
+	'formError.tooManyRequests': 'Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo.',
+	'formError.missingRace': 'Falta la carrera; vuelve a empezar desde la página de la carrera.',
+	'formError.missingListingId': 'Falta el identificador del anuncio.',
+	'formError.invalidAmount': 'Introduce un importe válido, p. ej. 45 o 45.00.',
+	'formError.priceExceedsFace': 'El precio de venta no puede superar el valor nominal original.',
+	'formError.verifyToContact': 'Verifica tu correo antes de contactar con quien vende.',
+	'formError.verifyToPublish': 'Verifica tu correo antes de publicar un anuncio.',
+	'formError.emptyMessage': 'Escribe primero un mensaje para quien vende.',
+	'formError.ackRequired': 'Acepta las condiciones para continuar.',
+	'formError.ackFailed': 'No se pudo registrar tu aceptación. Inténtalo de nuevo.',
+	'formError.cannotContact': 'No puedes contactar con quien vende para este anuncio.',
+	'formError.listingUnavailable': 'Este anuncio ya no está disponible.',
+	'formError.contactFailed': 'No se pudo iniciar la conversación.',
+	'formError.editOwnOnly': 'Solo puedes editar tus propios anuncios.',
+	'formError.editNotActive': 'Este anuncio ya no está activo y no se puede editar.',
+	'formError.editFailed': 'No se pudo actualizar el anuncio.',
+	'formError.cancelFailed': 'No se pudo cancelar el anuncio.'
 };
