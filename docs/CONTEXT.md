@@ -1,7 +1,7 @@
 # Project context & decision log
 
 The single source of truth for product decisions and working agreements.
-Read together with [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DATA_MODEL.md](DATA_MODEL.md), [ROADMAP.md](ROADMAP.md). When code or docs disagree with this file, this file wins until amended. Every founder decision lands here with its date and rationale - append, don't rewrite history.
+Read together with [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DATA_MODEL.md](DATA_MODEL.md), [ROADMAP.md](ROADMAP.md), [DEPLOYMENT.md](DEPLOYMENT.md). When code or docs disagree with this file, this file wins until amended. Every founder decision lands here with its date and rationale - append, don't rewrite history.
 
 ## Mission
 
