@@ -38,6 +38,7 @@ Policy view - the frontend's single derivation of a race's `transfer_policy` int
 | D17 | 2026-06-18 | i18n approach (M8) | Hand-rolled message dictionaries + English-root / `/es`-prefix routing | Reaffirms D14 (no i18n library) over issue #9's "Paraglide" title: en+es is small enough to hand-roll a typed dictionary + `t()` accessor, keeping the stdlib-first learning goal. Locale URL strategy: English at the root, Spanish under `/es` with `hreflang` alternates (best for search traffic); locale resolved by signed-in `users.locale` > `locale` cookie > `Accept-Language` > `en`. Lands in M8.1 (#45) + M8.2 (#46). |
 | D18 | 2026-06-19 | Locale detection: suggest, don't force (refines D17) | Land in English; a *settled* choice (signed-in `users.locale`, else the `locale` cookie) redirects the URL to match it; soft signals never auto-redirect. A no-cookie visitor who looks Spanish by location (`cf-ipcountry`=ES, Cloudflare's prod geo header; `Accept-Language` as fallback when geo is absent) gets a dismissible "switch to Spanish" banner: accept -> cookie=es + `/es`, dismiss -> cookie=en. | Auto-redirecting by detected locale is discouraged by Google (can block crawling of the other language) and fights the English landing page the founder wants; a banner is the recommended pattern and keeps both URLs crawlable. Server-side error-string i18n shipped in #49 (API returns codes; frontend maps `t(apiError.${code})`). Lands in M8.1 (#45). |
 | D19 | 2026-06-22 | Cookie posture (M7-lite) | Essential-only: the single `__Host-session` cookie; no analytics or tracking cookies, so no consent banner | Follows D12 (own auth + Postgres sessions). A strictly-necessary session cookie needs no consent under the ePrivacy Directive; stated on the Privacy page (#54). Revisit if analytics or third-party embeds are added. |
+| D20 | 2026-06-22 | Beta hosting | Self-host on the founder's machine via a Cloudflare Tunnel for the public beta; Hetzner + Cloudflare is the documented always-on migration target | Extends D8 (zero hosting cost) and keeps `cf-ipcountry` (D18) working since Cloudflare fronts the tunnel. Accept the laptop as a single point of failure with downtime at beta scale; offsite backups mandatory; email relays through a smarthost (residential IPs cannot deliver direct). Both models + the migration path live in DEPLOYMENT.md; the self-host build is M9.1 (#60). |
 
 ## Scope boundaries
 
@@ -101,7 +102,7 @@ Working rules:
 | Question | Decide by | Current lean |
 |---|---|---|
 | Refund fee absorption (Stripe keeps the original fee on refunds) | M6 | Platform eats it at beta volumes |
-| Hosting provider (deploy timing settled by D8) | M9 | Hetzner Falkenstein |
+| Hosting provider | decided (D20) | Self-host for beta; Hetzner the managed migration target |
 | Prod email provider | M3 (Mailpit covers dev) | Brevo / Scaleway TEM (EU) |
 | Prod object storage | Pre-beta (MinIO covers dev) | Cloudflare R2 |
 | Branding / domain ("Bibseller" is a working name) | Pre-beta | - |

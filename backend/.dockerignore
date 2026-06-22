@@ -1,0 +1,4 @@
+# Keep the Go build context lean (the binary needs only the Go sources).
+.env
+.env.*
+**/*_test.go

@@ -12,7 +12,7 @@ SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
 .PHONY: help infra dev migrate migrate-down sqlc sqlc-check seed \
         test test-backend test-frontend lint lint-backend lint-frontend \
-        verify smoke
+        verify smoke prod-up prod-down prod-logs prod-migrate prod-backup
 
 help: ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -63,3 +63,27 @@ verify: ## pre-commit gate: lint + typecheck + tests + sqlc drift (docs/CONTEXT.
 
 smoke: ## end-to-end assertions against the seeded local stack (wipes dev data)
 	./scripts/smoke.sh
+
+# --- Production: self-host (docs/DEPLOYMENT.md -> Model A) -------------------
+# Secrets live in deploy/.env.prod (gitignored; copy from .env.prod.example).
+PROD_COMPOSE := docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml
+
+prod-up: ## build + start the self-host prod stack (needs deploy/.env.prod)
+	$(PROD_COMPOSE) up -d --build
+
+prod-down: ## stop the prod stack (volumes are kept)
+	$(PROD_COMPOSE) down
+
+prod-logs: ## tail prod logs
+	$(PROD_COMPOSE) logs -f --tail=100
+
+prod-migrate: ## apply goose migrations to the prod DB (reads deploy/.env.prod)
+	set -a; . ./deploy/.env.prod; set +a; \
+	cd backend && $(GOOSE) -dir db/migrations postgres \
+	  "postgres://$$POSTGRES_USER:$$POSTGRES_PASSWORD@localhost:5432/$$POSTGRES_DB?sslmode=disable" up
+
+prod-backup: ## pg_dump the prod DB to ./backups (then copy OFFSITE)
+	@mkdir -p backups
+	$(PROD_COMPOSE) exec -T db sh -c 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' \
+	  | gzip > backups/db-$$(date +%F-%H%M).sql.gz
+	@echo "Wrote backups/. Copy it OFFSITE - the laptop is a single point of failure."
