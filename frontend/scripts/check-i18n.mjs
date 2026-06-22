@@ -7,8 +7,8 @@
 // href/action that calls resolve() without a link() wrapper, which would drop
 // the /es prefix on the Spanish site.
 //
-// Scope is .svelte UI only. Server-side / API error strings are deliberately
-// out of scope for now (tracked separately); this guard does not scan them.
+// Scope is .svelte UI only. Server-side / API error strings are keyed too (#49)
+// but enforced by types + review, not this heuristic; this guard does not scan them.
 //
 // Run: node scripts/check-i18n.mjs  (also wired into `npm run lint`).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
