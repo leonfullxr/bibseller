@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch, apiGet } from '$lib/api/server';
+import { createTranslator } from '$lib/i18n';
 import type { ListingDetail } from '$lib/api/types';
 import { parseListingPrice } from '$lib/listing';
 import { sessionHeader } from '$lib/server/session';
@@ -14,6 +15,7 @@ export const load: PageServerLoad = async ({ params, locals, fetch }) => {
 export const actions: Actions = {
 	default: async ({ params, request, cookies, locals }) => {
 		if (!locals.user) redirect(303, '/login');
+		const t = createTranslator(locals.locale);
 
 		const form = await request.formData();
 		const description = String(form.get('description') ?? '').trim();
@@ -22,7 +24,7 @@ export const actions: Actions = {
 			String(form.get('original_price') ?? '')
 		);
 		if (!parsed.ok) {
-			return fail(400, { error: parsed.error, values: snapshot(form) });
+			return fail(400, { error: t(parsed.key), values: snapshot(form) });
 		}
 
 		let res: Response;
@@ -37,21 +39,18 @@ export const actions: Actions = {
 				})
 			});
 		} catch {
-			return fail(502, { error: 'The API is unreachable.', values: snapshot(form) });
+			return fail(502, { error: t('apiError.unreachable'), values: snapshot(form) });
 		}
 
 		if (res.status === 403) {
-			return fail(403, { error: 'You can only edit your own listing.', values: snapshot(form) });
+			return fail(403, { error: t('formError.editOwnOnly'), values: snapshot(form) });
 		}
 		if (res.status === 409) {
-			return fail(409, {
-				error: 'This listing is no longer active and cannot be edited.',
-				values: snapshot(form)
-			});
+			return fail(409, { error: t('formError.editNotActive'), values: snapshot(form) });
 		}
 		if (!res.ok) {
 			return fail(res.status >= 500 ? 502 : res.status, {
-				error: 'Could not update the listing.',
+				error: t('formError.editFailed'),
 				values: snapshot(form)
 			});
 		}

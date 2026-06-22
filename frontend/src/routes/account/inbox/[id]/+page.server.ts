@@ -14,12 +14,13 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 	try {
 		threadsRes = await apiFetch('/api/v1/threads', { headers: sessionHeader(cookies) });
 	} catch {
-		error(502, 'The API is unreachable.');
+		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}
-	if (!threadsRes.ok) error(502, 'Could not load the conversation.');
+	if (!threadsRes.ok)
+		error(502, { message: 'Could not load the conversation.', key: 'apiError.loadFailed' });
 	const inbox = (await threadsRes.json()) as { items: ChatThreadSummary[] };
 	const thread = inbox.items.find((t) => t.id === params.id);
-	if (!thread) error(404, 'Conversation not found');
+	if (!thread) error(404, { message: 'Conversation not found', key: 'apiError.not_found' });
 
 	let msgsRes: Response;
 	try {
@@ -27,9 +28,9 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 			headers: sessionHeader(cookies)
 		});
 	} catch {
-		error(502, 'The API is unreachable.');
+		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}
-	if (!msgsRes.ok) error(502, 'Could not load messages.');
+	if (!msgsRes.ok) error(502, { message: 'Could not load messages.', key: 'apiError.loadFailed' });
 	const msgs = (await msgsRes.json()) as { items: ChatMessage[] };
 
 	return { thread, messages: msgs.items, meId: locals.user.id };

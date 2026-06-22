@@ -1,14 +1,16 @@
 import { fail } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
+import { createTranslator } from '$lib/i18n';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
-	default: async ({ request }) => {
+	default: async ({ request, locals }) => {
+		const t = createTranslator(locals.locale);
 		const data = await request.formData();
 		const email = String(data.get('email') ?? '').trim();
 
 		if (!email.includes('@')) {
-			return fail(400, { email, error: 'Enter a valid email address.' });
+			return fail(400, { email, error: t('formError.invalidEmail') });
 		}
 
 		let res: Response;
@@ -23,14 +25,14 @@ export const actions: Actions = {
 				body: JSON.stringify({ email })
 			});
 		} catch {
-			return fail(502, { email, error: 'The API is unreachable.' });
+			return fail(502, { email, error: t('apiError.unreachable') });
 		}
 
 		if (res.status === 429) {
-			return fail(429, { email, error: 'Too many requests. Please wait a minute and try again.' });
+			return fail(429, { email, error: t('formError.tooManyRequests') });
 		}
 		if (!res.ok) {
-			return fail(502, { email, error: 'Could not send the reset email. Please try again.' });
+			return fail(502, { email, error: t('formError.resetEmailFailed') });
 		}
 
 		return { sent: true };

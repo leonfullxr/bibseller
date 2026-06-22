@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
+import { createTranslator } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 
 /** The reset link lands here as /reset?token=... (mirrors the verify flow). */
@@ -8,7 +9,8 @@ export const load: PageServerLoad = ({ url }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request }) => {
+	default: async ({ request, locals }) => {
+		const t = createTranslator(locals.locale);
 		const data = await request.formData();
 		const token = String(data.get('token') ?? '');
 		const password = String(data.get('password') ?? '');
@@ -17,13 +19,13 @@ export const actions: Actions = {
 		// Server-side mirror of the HTML5 constraints; the browser attributes
 		// are UX, not trust. Length floor matches the API (8).
 		if (!token) {
-			return fail(400, { error: 'This reset link is missing its token.' });
+			return fail(400, { error: t('formError.resetTokenMissing') });
 		}
 		if (password.length < 8) {
-			return fail(400, { error: 'Password must be at least 8 characters.' });
+			return fail(400, { error: t('formError.passwordTooShort') });
 		}
 		if (password !== confirm) {
-			return fail(400, { error: 'The two passwords do not match.' });
+			return fail(400, { error: t('formError.passwordMismatch') });
 		}
 
 		let res: Response;
@@ -34,14 +36,14 @@ export const actions: Actions = {
 				body: JSON.stringify({ token, password })
 			});
 		} catch {
-			return fail(502, { error: 'The API is unreachable.' });
+			return fail(502, { error: t('apiError.unreachable') });
 		}
 
 		if (res.status === 400) {
-			return fail(400, { error: 'This reset link is invalid or has expired.' });
+			return fail(400, { error: t('formError.resetTokenInvalid') });
 		}
 		if (!res.ok) {
-			return fail(502, { error: 'Could not reset your password.' });
+			return fail(502, { error: t('formError.resetFailed') });
 		}
 
 		return { done: true };

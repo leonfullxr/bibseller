@@ -28,7 +28,7 @@ describe('parseListingPrice', () => {
 	it('enforces the D2 cap: price cannot exceed face value', () => {
 		const r = parseListingPrice('70', '60');
 		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error).toMatch(/face value/);
+		if (!r.ok) expect(r.key).toBe('formError.priceExceedsFace');
 	});
 
 	it('allows price equal to face value', () => {

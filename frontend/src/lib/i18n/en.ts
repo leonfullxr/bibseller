@@ -306,7 +306,53 @@ export const en = {
 	// Error page.
 	'error.notFound': "That page doesn't exist.",
 	'error.generic': 'Something went wrong.',
-	'error.backHome': 'Back home'
+	'error.backHome': 'Back home',
+
+	// API errors (#49): keyed by the Go envelope's stable `code`, not its English
+	// message, via apiErrorKey(). Any code without an entry falls back to
+	// apiError.unknown - so no English API string is ever fed to the translator.
+	'apiError.unknown': 'Something went wrong. Please try again.',
+	'apiError.unreachable': 'The API is unreachable.',
+	'apiError.not_found': 'Not found.',
+	'apiError.invalid_parameter': 'Invalid request.',
+	'apiError.email_taken': 'An account with this email already exists.',
+	'apiError.race_past': 'This race has already taken place.',
+	'apiError.loadFailed': 'Could not load this page. Please try again.',
+
+	// Form/validation errors authored on the frontend (server actions). These are
+	// our own copy, not the API's - the API re-validates and is the authority.
+	'formError.invalidEmail': 'Enter a valid email address.',
+	'formError.displayNameLength': 'Display name must be between 2 and 50 characters.',
+	'formError.passwordTooShort': 'Password must be at least 8 characters.',
+	'formError.newPasswordTooShort': 'New password must be at least 8 characters.',
+	'formError.passwordMismatch': 'The two passwords do not match.',
+	'formError.newPasswordMismatch': 'The two new passwords do not match.',
+	'formError.loginRequired': 'Enter your email and password.',
+	'formError.invalidCredentials': 'Invalid email or password.',
+	'formError.loginFailed': 'Could not log in.',
+	'formError.currentPasswordWrong': 'Your current password is incorrect.',
+	'formError.changePasswordFailed': 'Could not change your password.',
+	'formError.resetTokenMissing': 'This reset link is missing its token.',
+	'formError.resetTokenInvalid': 'This reset link is invalid or has expired.',
+	'formError.resetFailed': 'Could not reset your password.',
+	'formError.resetEmailFailed': 'Could not send the reset email. Please try again.',
+	'formError.tooManyRequests': 'Too many requests. Please wait a minute and try again.',
+	'formError.missingRace': 'Missing race - please start again from the race page.',
+	'formError.missingListingId': 'Missing listing id.',
+	'formError.invalidAmount': 'Enter a valid amount, e.g. 45 or 45.00.',
+	'formError.priceExceedsFace': 'Asking price cannot exceed the original face value.',
+	'formError.verifyToContact': 'Verify your email before contacting a seller.',
+	'formError.verifyToPublish': 'Verify your email before publishing a listing.',
+	'formError.emptyMessage': 'Write a message to the seller first.',
+	'formError.ackRequired': 'Please acknowledge the terms to continue.',
+	'formError.ackFailed': 'Could not record your acknowledgment. Try again.',
+	'formError.cannotContact': 'You cannot contact the seller for this listing.',
+	'formError.listingUnavailable': 'This listing is no longer available.',
+	'formError.contactFailed': 'Could not start the conversation.',
+	'formError.editOwnOnly': 'You can only edit your own listing.',
+	'formError.editNotActive': 'This listing is no longer active and cannot be edited.',
+	'formError.editFailed': 'Could not update the listing.',
+	'formError.cancelFailed': 'Could not cancel the listing.'
 } as const;
 
 export type MessageKey = keyof typeof en;
