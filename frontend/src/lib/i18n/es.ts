@@ -25,6 +25,8 @@ export const es: Record<MessageKey, string> = {
 	'footer.tagline': 'Sin comisiones, en toda la UE. Sin ánimo de lucro por diseño.',
 	'footer.github': 'GitHub',
 	'footer.terms': 'Términos',
+	'footer.privacy': 'Privacidad',
+	'footer.contact': 'Contacto',
 
 	'home.title': 'Bibseller - los dorsales encuentran nuevos corredores',
 	'home.metaDescription':
@@ -364,5 +366,46 @@ export const es: Record<MessageKey, string> = {
 		'Salvo cuando la plataforma procesa un pago de una carrera con reventa permitida, las transacciones son estrictamente entre usuarios y la plataforma no se responsabiliza de ellas. Nada de lo aquí dispuesto excluye la responsabilidad que no pueda excluirse según la ley aplicable.',
 	'legal.terms.changesHeading': 'Cambios y contacto',
 	'legal.terms.changesBody':
-		'Podemos actualizar estos términos; los cambios importantes se publicarán en esta página. Una dirección de contacto para consultas llegará con la página de contacto.'
+		'Podemos actualizar estos términos; los cambios importantes se publicarán en esta página. Las consultas, a través de nuestra página de contacto.',
+
+	// Política de privacidad (M7.2, #54). BORRADOR pendiente de revisión legal (D10).
+	'legal.privacy.title': 'Política de privacidad - Bibseller',
+	'legal.privacy.metaDescription': 'Cómo trata Bibseller tus datos personales.',
+	'legal.privacy.heading': 'Política de privacidad',
+	'legal.privacy.intro':
+		'Esta política explica qué datos personales tiene Bibseller, por qué, y los derechos que tienes sobre ellos.',
+	'legal.privacy.dataHeading': 'Qué guardamos',
+	'legal.privacy.dataBody':
+		'Tu cuenta (correo, nombre visible, idioma preferido, país), los dorsales que publicas, los mensajes e imágenes que intercambias en el chat y las denuncias o bloqueos que realizas.',
+	'legal.privacy.basisHeading': 'Por qué lo guardamos',
+	'legal.privacy.basisBody':
+		'Para gestionar el mercado que pediste usar: mostrar tus anuncios, entregar tus mensajes y mantener la plataforma segura. Nunca vendemos tus datos.',
+	'legal.privacy.retentionHeading': 'Cuánto tiempo lo conservamos',
+	'legal.privacy.retentionBody':
+		'Los datos de la cuenta se conservan mientras tu cuenta esté activa. Los mensajes del chat se eliminan según un calendario de retención continuo. Algunos registros pueden conservarse más tiempo cuando la ley lo exige.',
+	'legal.privacy.rightsHeading': 'Tus derechos',
+	'legal.privacy.rightsBody':
+		'Puedes acceder a tus datos personales, corregirlos, exportarlos o eliminarlos. La exportación y eliminación con autoservicio llegarán con nuestras herramientas completas de RGPD; mientras tanto, escríbenos y atenderemos tu solicitud.',
+	'legal.privacy.cookiesHeading': 'Cookies',
+	'legal.privacy.cookiesBody':
+		'Usamos una única cookie estrictamente necesaria para mantener tu sesión iniciada. No usamos cookies de analítica ni de seguimiento, así que no hay banner de consentimiento.',
+	'legal.privacy.contactHeading': 'Contacto',
+	'legal.privacy.contactBody':
+		'Para cualquier consulta o solicitud sobre privacidad, escríbenos a través de nuestra página de contacto.',
+
+	// Contacto / aviso legal (M7.2, #54). Punto de contacto único a efectos de la DSA.
+	'legal.contact.title': 'Contacto - Bibseller',
+	'legal.contact.metaDescription':
+		'Cómo contactar con Bibseller, incluido nuestro punto de contacto para las autoridades.',
+	'legal.contact.heading': 'Contacto',
+	'legal.contact.intro': 'Cómo ponerte en contacto con Bibseller.',
+	'legal.contact.operatorHeading': 'Quién gestiona Bibseller',
+	'legal.contact.operatorBody':
+		'Bibseller se gestiona como un mercado sin ánimo de lucro. La entidad responsable, el domicilio y un correo de contacto se publicarán aquí antes de la beta pública.',
+	'legal.contact.dsaHeading': 'Punto de contacto (Ley de Servicios Digitales)',
+	'legal.contact.dsaBody':
+		'También será nuestro punto de contacto único para usuarios y autoridades conforme a la Ley de Servicios Digitales de la UE. Puedes escribirnos en español o en inglés.',
+	'legal.contact.reportHeading': 'Denunciar un anuncio',
+	'legal.contact.reportBody':
+		'Para denunciar un anuncio ilícito o que incumpla las normas, usa el botón Denunciar de ese anuncio: revisamos todas las denuncias.'
 };
