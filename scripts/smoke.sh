@@ -130,6 +130,16 @@ for m in json.load(sys.stdin).get("messages", []):
 		fail "no verification email reached Mailpit for $AUTH_EMAIL"
 	fi
 
+	# Catalog pages embed the layout nav (the signed-in user's name/inbox), so a
+	# signed-in response must not be publicly cacheable or a shared cache could
+	# serve one user's nav to another. Anonymous browse stays public (CONTEXT M3).
+	curl -s -D - -o /dev/null "$WEB/races" | grep -iq '^cache-control:.*public' &&
+		pass "anonymous /races is publicly cacheable" || fail "anonymous /races lost its public cache header"
+	curl -s -D - -o /dev/null -H "Cookie: __Host-session=$TOKEN" "$WEB/races" |
+		grep -iqE '^cache-control:.*(private|no-store)' &&
+		pass "signed-in /races is private (no shared-cache leak)" ||
+		fail "signed-in /races is not private/no-store"
+
 	curl -s -o /dev/null -X POST -H "Cookie: __Host-session=$TOKEN" "$API/api/v1/auth/logout"
 else
 	fail "could not register a smoke user (token/user id missing)"
