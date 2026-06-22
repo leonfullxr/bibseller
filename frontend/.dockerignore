@@ -1,0 +1,7 @@
+# The build does its own npm ci + build; never copy these into the context.
+node_modules
+build
+.svelte-kit
+.env
+.env.*
+*.md

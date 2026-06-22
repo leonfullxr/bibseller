@@ -1,0 +1,25 @@
+# Fronted by Cloudflare (TLS at the edge); Caddy speaks plain HTTP here and
+# routes by path. cloudflared reaches this on the internal network as caddy:80.
+:80 {
+	# Same-origin API: the browser only ever uses relative /api URLs (no CORS),
+	# so this path routing to the Go service is load-bearing.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# Everything else -> the SvelteKit node server.
+	handle {
+		reverse_proxy web:3000
+	}
+
+	# Conservative security headers (a fuller CSP pass is M9-full). HSTS is set
+	# by Cloudflare at the edge.
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	encode gzip zstd
+}

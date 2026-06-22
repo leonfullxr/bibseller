@@ -1,0 +1,114 @@
+# Production stack for the self-host model (docs/DEPLOYMENT.md -> Model A).
+# Cloudflare terminates TLS at the edge and reaches Caddy through the tunnel;
+# every hop below is plain HTTP on the internal network. Secrets live in
+# deploy/.env.prod (gitignored; see .env.prod.example). Driven by the
+# `make prod-*` targets, or directly:
+#   docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml up -d --build
+name: bibseller-prod
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    # Bound to localhost only so `make prod-migrate` / `prod-backup` can reach it
+    # from the host. Never expose Postgres on a public interface.
+    ports: ['127.0.0.1:5432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  # One-shot: create the bucket on first boot (idempotent), then exit.
+  minio-init:
+    image: minio/mc
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY} ${S3_SECRET_KEY} &&
+      mc mb --ignore-existing local/${S3_BUCKET}
+      "
+    restart: 'no'
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    environment:
+      ENV: production
+      PORT: '8080'
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      SMTP_ADDR: mail:25
+      EMAIL_FROM: ${EMAIL_FROM}
+      APP_URL: ${PUBLIC_ORIGIN}
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    depends_on:
+      db: { condition: service_healthy }
+      minio: { condition: service_healthy }
+
+  web:
+    build: ../frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      # ORIGIN makes url.origin + SvelteKit CSRF correct behind the proxy/tunnel.
+      ORIGIN: ${PUBLIC_ORIGIN}
+      # Internal address the server-side load functions use to reach the API.
+      API_URL: http://api:8080
+    depends_on: [api]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [api, web]
+    # No published ports: only cloudflared (same network) reaches caddy:80.
+
+  # Send-only Postfix relay. The app sends plain mail to mail:25 (internal,
+  # unauthenticated); Postfix queues and relays it, authenticated over TLS,
+  # through the smarthost (residential IPs cannot deliver direct - DEPLOYMENT.md).
+  mail:
+    image: boky/postfix
+    restart: unless-stopped
+    environment:
+      ALLOWED_SENDER_DOMAINS: ${MAIL_SENDER_DOMAIN}
+      RELAYHOST: ${MAIL_RELAYHOST}
+      RELAYHOST_USERNAME: ${MAIL_RELAYHOST_USERNAME}
+      RELAYHOST_PASSWORD: ${MAIL_RELAYHOST_PASSWORD}
+
+  # Outbound-only tunnel to Cloudflare's edge: no public IP, no inbound ports.
+  # Set the tunnel's public hostname to route to http://caddy:80 in the
+  # Cloudflare Zero Trust dashboard.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on: [caddy]
+
+volumes:
+  pgdata:
+  miniodata:
