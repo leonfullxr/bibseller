@@ -110,7 +110,10 @@
 	<footer>
 		<div class="bar foot">
 			<span>{t('footer.tagline')}</span>
-			<a href="https://github.com/leonfullxr/bibseller" rel="external">{t('footer.github')}</a>
+			<nav class="foot-links">
+				<a href={link(resolve('/terms'))}>{t('footer.terms')}</a>
+				<a href="https://github.com/leonfullxr/bibseller" rel="external">{t('footer.github')}</a>
+			</nav>
 		</div>
 	</footer>
 </div>
@@ -277,6 +280,11 @@
 		font-size: 0.75rem;
 		line-height: 1rem;
 		color: var(--slate-500);
+	}
+
+	.foot-links {
+		display: flex;
+		gap: 1rem;
 	}
 
 	.foot a:hover {
