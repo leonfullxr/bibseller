@@ -28,6 +28,8 @@ export const en = {
 	'footer.tagline': 'Zero commission, EU-wide. Non-profit by design.',
 	'footer.github': 'GitHub',
 	'footer.terms': 'Terms',
+	'footer.privacy': 'Privacy',
+	'footer.contact': 'Contact',
 
 	// Home.
 	'home.title': 'Bibseller - race bibs find new runners',
@@ -388,7 +390,48 @@ export const en = {
 		'Except where the platform processes a payment for a resale-allowed race, transactions are strictly between users and the platform is not responsible for them. Nothing here excludes liability that cannot be excluded under applicable law.',
 	'legal.terms.changesHeading': 'Changes and contact',
 	'legal.terms.changesBody':
-		'We may update these terms; material changes will be posted on this page. A contact address for questions arrives with the contact page.'
+		'We may update these terms; material changes will be posted on this page. Questions go to our contact page.',
+
+	// Privacy Policy (M7.2, #54). DRAFT pending counsel review (D10).
+	'legal.privacy.title': 'Privacy Policy - Bibseller',
+	'legal.privacy.metaDescription': 'How Bibseller handles your personal data.',
+	'legal.privacy.heading': 'Privacy Policy',
+	'legal.privacy.intro':
+		'This policy explains what personal data Bibseller holds, why, and the rights you have over it.',
+	'legal.privacy.dataHeading': 'What we hold',
+	'legal.privacy.dataBody':
+		'Your account (email, display name, preferred language, country), the bibs you list, the messages and images you exchange in chat, and any reports or blocks you make.',
+	'legal.privacy.basisHeading': 'Why we hold it',
+	'legal.privacy.basisBody':
+		'To run the marketplace you asked to use: showing your listings, delivering your messages, and keeping the platform safe. We never sell your data.',
+	'legal.privacy.retentionHeading': 'How long we keep it',
+	'legal.privacy.retentionBody':
+		'Account data stays while your account is open. Chat messages are removed on a rolling retention schedule. Some records may be kept longer where the law requires.',
+	'legal.privacy.rightsHeading': 'Your rights',
+	'legal.privacy.rightsBody':
+		'You can access, correct, export, or delete your personal data. Self-serve export and deletion arrive with our full GDPR tooling; until then, contact us and we will action your request.',
+	'legal.privacy.cookiesHeading': 'Cookies',
+	'legal.privacy.cookiesBody':
+		'We set one strictly necessary cookie to keep you signed in. We use no analytics or tracking cookies, so there is no consent banner.',
+	'legal.privacy.contactHeading': 'Contact',
+	'legal.privacy.contactBody':
+		'For any privacy question or request, reach us through our contact page.',
+
+	// Contact / imprint (M7.2, #54). Doubles as the DSA single point of contact.
+	'legal.contact.title': 'Contact - Bibseller',
+	'legal.contact.metaDescription':
+		'How to contact Bibseller, including our point of contact for authorities.',
+	'legal.contact.heading': 'Contact',
+	'legal.contact.intro': 'How to reach Bibseller.',
+	'legal.contact.operatorHeading': 'Who runs Bibseller',
+	'legal.contact.operatorBody':
+		'Bibseller is run as a non-profit marketplace. The operating entity, registered address, and a contact email will be published here before the public beta.',
+	'legal.contact.dsaHeading': 'Point of contact (Digital Services Act)',
+	'legal.contact.dsaBody':
+		'This will also be our single point of contact for users and authorities under the EU Digital Services Act. You may write to us in English or Spanish.',
+	'legal.contact.reportHeading': 'Reporting a listing',
+	'legal.contact.reportBody':
+		'To report an unlawful or rule-breaking listing, use the Report button on that listing - we review every report.'
 } as const;
 
 export type MessageKey = keyof typeof en;

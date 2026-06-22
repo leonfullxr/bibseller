@@ -112,6 +112,8 @@
 			<span>{t('footer.tagline')}</span>
 			<nav class="foot-links">
 				<a href={link(resolve('/terms'))}>{t('footer.terms')}</a>
+				<a href={link(resolve('/privacy'))}>{t('footer.privacy')}</a>
+				<a href={link(resolve('/contact'))}>{t('footer.contact')}</a>
 				<a href="https://github.com/leonfullxr/bibseller" rel="external">{t('footer.github')}</a>
 			</nav>
 		</div>
