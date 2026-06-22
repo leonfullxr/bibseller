@@ -1,6 +1,16 @@
 # Fronted by Cloudflare (TLS at the edge); Caddy speaks plain HTTP here and
 # routes by path. cloudflared reaches this on the internal network as caddy:80.
 :80 {
+	# Workaround for the SvelteKit asset-path doubling (paths.relative: false +
+	# entry chunks in /_app/immutable/entry/): Vite's __vitePreload resolves its
+	# root-relative dep strings against the entry module URL, producing
+	# /_app/immutable/entry/_app/immutable/... (404 -> blocked by nosniff -> no
+	# CSS/JS). Rewrite those back to the real asset path. Only matches the doubled
+	# form, never the real /_app/immutable/entry/{start,app}.js. Proper fix (the
+	# paths.relative vs i18n-link tension) tracked separately.
+	@doubled_asset path_regexp dbl ^/_app/immutable/entry/(_app/immutable/.+)$
+	rewrite @doubled_asset /{re.dbl.1}
+
 	# Same-origin API: the browser only ever uses relative /api URLs (no CORS),
 	# so this path routing to the Go service is load-bearing.
 	handle /api/* {
