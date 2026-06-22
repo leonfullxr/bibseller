@@ -27,6 +27,7 @@ export const en = {
 	'banner.suggestDismiss': 'Dismiss',
 	'footer.tagline': 'Zero commission, EU-wide. Non-profit by design.',
 	'footer.github': 'GitHub',
+	'footer.terms': 'Terms',
 
 	// Home.
 	'home.title': 'Bibseller - race bibs find new runners',
@@ -352,7 +353,42 @@ export const en = {
 	'formError.editOwnOnly': 'You can only edit your own listing.',
 	'formError.editNotActive': 'This listing is no longer active and cannot be edited.',
 	'formError.editFailed': 'Could not update the listing.',
-	'formError.cancelFailed': 'Could not cancel the listing.'
+	'formError.cancelFailed': 'Could not cancel the listing.',
+
+	// Legal pages (M7-lite, #11). DRAFT copy pending counsel review (D10); the
+	// (legal) route group renders these under a draft banner.
+	'legal.draftNotice': 'Draft - pending legal review and not yet binding.',
+	'legal.terms.title': 'Terms of Service - Bibseller',
+	'legal.terms.metaDescription': 'The terms governing use of the Bibseller marketplace.',
+	'legal.terms.heading': 'Terms of Service',
+	'legal.terms.intro':
+		'Bibseller is a zero-commission marketplace that connects runners who want to pass on a race bib with runners looking for one. We provide the channel; we are not a party to any transfer between users.',
+	'legal.terms.roleHeading': 'Our role',
+	'legal.terms.roleBody':
+		'We never charge commission and may only pass through payment-processor fees where secure payment is offered. What you may do with a bib is set by each race organiser, and the platform applies those rules per race.',
+	'legal.terms.policyHeading': 'Responsibilities by race transfer policy',
+	'legal.terms.policyIntro':
+		'Every race carries a transfer policy that determines what the platform does and who is responsible for what:',
+	'legal.terms.policy.platform_sale':
+		"Resale allowed: the race permits transfers. You arrange the details in chat and, once secure payment ships, may pay through the platform; the bib transfer and race entry stay subject to the organiser's process.",
+	'legal.terms.policy.official_only':
+		'Official process: the race runs its own change-of-name procedure. We connect you and link to it; the transfer and any official fees happen with the organiser, never through the platform.',
+	'legal.terms.policy.connect_only':
+		"Connect only: the race restricts transfers. The platform only introduces you - it handles no money and takes no part in any agreement. The race's rules apply, and you confirm you understand this before contacting a seller.",
+	'legal.terms.policy.unknown':
+		"Unverified: until we confirm a race's policy we treat it as connect-only - introduction only, no money through the platform.",
+	'legal.terms.userHeading': 'Your responsibilities',
+	'legal.terms.userBody':
+		"List bibs accurately, follow each race's transfer rules, and never ask above a bib's original face value. Do not use Bibseller for anything unlawful.",
+	'legal.terms.conductHeading': 'Prohibited conduct and repeat infringers',
+	'legal.terms.conductBody':
+		"We may remove listings or messages and restrict or close accounts that break these terms or a race's rules. Accounts that repeatedly infringe will be terminated.",
+	'legal.terms.liabilityHeading': 'Liability',
+	'legal.terms.liabilityBody':
+		'Except where the platform processes a payment for a resale-allowed race, transactions are strictly between users and the platform is not responsible for them. Nothing here excludes liability that cannot be excluded under applicable law.',
+	'legal.terms.changesHeading': 'Changes and contact',
+	'legal.terms.changesBody':
+		'We may update these terms; material changes will be posted on this page. A contact address for questions arrives with the contact page.'
 } as const;
 
 export type MessageKey = keyof typeof en;

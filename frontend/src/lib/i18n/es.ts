@@ -24,6 +24,7 @@ export const es: Record<MessageKey, string> = {
 	'banner.suggestDismiss': 'Ahora no',
 	'footer.tagline': 'Sin comisiones, en toda la UE. Sin ánimo de lucro por diseño.',
 	'footer.github': 'GitHub',
+	'footer.terms': 'Términos',
 
 	'home.title': 'Bibseller - los dorsales encuentran nuevos corredores',
 	'home.metaDescription':
@@ -329,5 +330,39 @@ export const es: Record<MessageKey, string> = {
 	'formError.editOwnOnly': 'Solo puedes editar tus propios anuncios.',
 	'formError.editNotActive': 'Este anuncio ya no está activo y no se puede editar.',
 	'formError.editFailed': 'No se pudo actualizar el anuncio.',
-	'formError.cancelFailed': 'No se pudo cancelar el anuncio.'
+	'formError.cancelFailed': 'No se pudo cancelar el anuncio.',
+
+	// Páginas legales (M7-lite, #11). Copia BORRADOR pendiente de revisión legal (D10).
+	'legal.draftNotice': 'Borrador - pendiente de revisión legal y aún no vinculante.',
+	'legal.terms.title': 'Términos del servicio - Bibseller',
+	'legal.terms.metaDescription': 'Las condiciones que rigen el uso del mercado de Bibseller.',
+	'legal.terms.heading': 'Términos del servicio',
+	'legal.terms.intro':
+		'Bibseller es un mercado sin comisiones que conecta a quienes quieren ceder un dorsal con quienes buscan uno. Ponemos el canal; no somos parte de ninguna transferencia entre usuarios.',
+	'legal.terms.roleHeading': 'Nuestro papel',
+	'legal.terms.roleBody':
+		'Nunca cobramos comisión y solo repercutimos las tarifas del procesador de pagos cuando se ofrece el pago seguro. Lo que puedes hacer con un dorsal lo decide cada organización; la plataforma aplica esas normas en cada carrera.',
+	'legal.terms.policyHeading': 'Responsabilidades según la política de transferencia de la carrera',
+	'legal.terms.policyIntro':
+		'Cada carrera tiene una política de transferencia que determina qué hace la plataforma y quién es responsable de qué:',
+	'legal.terms.policy.platform_sale':
+		'Reventa permitida: la carrera permite las transferencias. Acuerdas los detalles en el chat y, cuando llegue el pago seguro, podrás pagar a través de la plataforma; la transferencia del dorsal y la inscripción siguen sujetas al proceso de la organización.',
+	'legal.terms.policy.official_only':
+		'Proceso oficial: la carrera gestiona su propio cambio de titular. Te ponemos en contacto y enlazamos ese proceso; la transferencia y cualquier tasa oficial se realizan con la organización, nunca a través de la plataforma.',
+	'legal.terms.policy.connect_only':
+		'Solo contacto: la carrera restringe las transferencias. La plataforma solo os pone en contacto: no gestiona dinero ni participa en ningún acuerdo. Se aplican las normas de la carrera y confirmas que lo entiendes antes de contactar con quien vende.',
+	'legal.terms.policy.unknown':
+		'Sin verificar: hasta que confirmemos la política de una carrera, la tratamos como solo contacto: únicamente os ponemos en contacto, sin dinero a través de la plataforma.',
+	'legal.terms.userHeading': 'Tus responsabilidades',
+	'legal.terms.userBody':
+		'Publica los dorsales con información veraz, respeta las normas de transferencia de cada carrera y nunca pidas más del valor nominal original del dorsal. No uses Bibseller para nada ilícito.',
+	'legal.terms.conductHeading': 'Conducta prohibida e infractores reincidentes',
+	'legal.terms.conductBody':
+		'Podemos retirar anuncios o mensajes y restringir o cerrar cuentas que incumplan estos términos o las normas de una carrera. Las cuentas que infrinjan de forma reiterada se cerrarán.',
+	'legal.terms.liabilityHeading': 'Responsabilidad',
+	'legal.terms.liabilityBody':
+		'Salvo cuando la plataforma procesa un pago de una carrera con reventa permitida, las transacciones son estrictamente entre usuarios y la plataforma no se responsabiliza de ellas. Nada de lo aquí dispuesto excluye la responsabilidad que no pueda excluirse según la ley aplicable.',
+	'legal.terms.changesHeading': 'Cambios y contacto',
+	'legal.terms.changesBody':
+		'Podemos actualizar estos términos; los cambios importantes se publicarán en esta página. Una dirección de contacto para consultas llegará con la página de contacto.'
 };
