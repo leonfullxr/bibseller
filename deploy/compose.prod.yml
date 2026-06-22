@@ -102,6 +102,11 @@ services:
       RELAYHOST: ${MAIL_RELAYHOST}
       RELAYHOST_USERNAME: ${MAIL_RELAYHOST_USERNAME}
       RELAYHOST_PASSWORD: ${MAIL_RELAYHOST_PASSWORD}
+      # The app -> Postfix hop is plaintext on the internal network, so do not
+      # offer STARTTLS here: the app's Go SMTP client would verify Postfix's
+      # self-signed cert against host "mail" and fail. TLS still applies on the
+      # Postfix -> Brevo relay hop (the relay config sets smtp_tls_security_level).
+      POSTFIX_smtpd_tls_security_level: none
 
   # Outbound-only tunnel to Cloudflare's edge: no public IP, no inbound ports.
   # Set the tunnel's public hostname to route to http://caddy:80 in the
