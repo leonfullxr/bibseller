@@ -7,6 +7,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Origin-specific build: vite's paths.assets bakes this in so prod asset URLs
+# are absolute and Vite's __vitePreload deps are not resolved relative to the
+# entry module (which doubled the path -> no CSS/JS, #66). Must be passed for
+# prod images; empty falls back to dev behavior.
+ARG PUBLIC_ORIGIN
+ENV PUBLIC_ORIGIN=$PUBLIC_ORIGIN
 RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine
