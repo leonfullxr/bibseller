@@ -59,7 +59,9 @@ services:
     environment:
       ENV: production
       PORT: '8080'
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      # libpq keyword/value form (not a postgres:// URL): pgx parses it and it
+      # tolerates @ & % etc. in the password without URL-escaping (#64).
+      DATABASE_URL: host=db port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=disable
       SMTP_ADDR: mail:25
       EMAIL_FROM: ${EMAIL_FROM}
       APP_URL: ${PUBLIC_ORIGIN}
@@ -70,6 +72,22 @@ services:
     depends_on:
       db: { condition: service_healthy }
       minio: { condition: service_healthy }
+
+  # One-shot DB migrator (run via `make prod-migrate`; the profile keeps it out
+  # of `up`). goose runs against the same keyword/value DATABASE_URL as the api,
+  # so compose substitutes the password and it never transits a host shell (#64).
+  migrate:
+    image: golang:1.25-alpine
+    profiles: ['tools']
+    environment:
+      DATABASE_URL: host=db port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=disable
+    volumes:
+      - ../backend/db/migrations:/migrations:ro
+    depends_on:
+      db: { condition: service_healthy }
+    entrypoint: ['sh', '-c']
+    command:
+      - go run github.com/pressly/goose/v3/cmd/goose@v3.27.1 -dir /migrations postgres "$$DATABASE_URL" up
 
   web:
     build: ../frontend
