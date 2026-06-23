@@ -24,17 +24,19 @@ if [ "${1:-}" ]; then
   echo "Using local dump: $DUMP"
 else
   echo "Fetching the latest dump from R2..."
-  docker run --rm -v "$WORK:/out" \
-    -e E="$(getenv R2_ENDPOINT)" -e K="$(getenv R2_ACCESS_KEY)" \
-    -e S="$(getenv R2_SECRET_KEY)" -e B="$(getenv R2_BUCKET)" \
-    --entrypoint /bin/sh "$MC_IMAGE" -c '
-      set -e
-      mc alias set r2 "$E" "$K" "$S" >/dev/null
-      latest=$(mc ls "r2/$B/db/" | awk "{print \$NF}" | sort | tail -n1)
-      [ -n "$latest" ] || { echo "no dumps under r2/$B/db/" >&2; exit 1; }
-      echo "latest on R2: $latest"
-      mc cp "r2/$B/db/$latest" /out/dump.sql.gz
-    '
+  E=$(getenv R2_ENDPOINT); K=$(getenv R2_ACCESS_KEY)
+  S=$(getenv R2_SECRET_KEY); B=$(getenv R2_BUCKET)
+  # The minio/mc image has no awk/grep, so list in the container and pick the
+  # newest dump on the host (names sort chronologically: db-YYYY-MM-DD-...).
+  listing=$(docker run --rm --entrypoint /bin/sh \
+    -e E="$E" -e K="$K" -e S="$S" -e B="$B" "$MC_IMAGE" -c \
+    'mc alias set r2 "$E" "$K" "$S" >/dev/null && mc ls "r2/$B/db/"')
+  latest=$(printf '%s\n' "$listing" | awk '{print $NF}' | grep -E '\.sql\.gz$' | sort | tail -n1 || true)
+  [ -n "$latest" ] || { echo "no dumps under r2/$B/db/" >&2; exit 1; }
+  echo "latest on R2: $latest"
+  docker run --rm -v "$WORK:/out" --entrypoint /bin/sh \
+    -e E="$E" -e K="$K" -e S="$S" -e B="$B" -e F="$latest" "$MC_IMAGE" -c \
+    'mc alias set r2 "$E" "$K" "$S" >/dev/null && mc cp "r2/$B/db/$F" /out/dump.sql.gz'
   DUMP="$WORK/dump.sql.gz"
 fi
 
