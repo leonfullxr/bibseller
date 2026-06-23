@@ -75,14 +75,14 @@
 <section class="how" aria-labelledby="how-title">
 	<h2 id="how-title">{t('home.howTitle')}</h2>
 	<ol class="how-steps">
-		{#each steps as step, i (step.title)}
+		{#each steps as step, i (step.icon)}
 			<li class="how-step">
 				<span class="how-icon"><Icon name={step.icon} /></span>
 				<h3>{step.title}</h3>
 				<p>{step.desc}</p>
 			</li>
 			{#if i < steps.length - 1}
-				<li class="how-arrow" aria-hidden="true"><Icon name="arrow" /></li>
+				<li class="how-arrow" role="presentation" aria-hidden="true"><Icon name="arrow" /></li>
 			{/if}
 		{/each}
 	</ol>

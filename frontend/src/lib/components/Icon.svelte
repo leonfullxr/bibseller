@@ -13,6 +13,7 @@
 	stroke-linecap="round"
 	stroke-linejoin="round"
 	aria-hidden="true"
+	focusable="false"
 >
 	{#if name === 'list'}
 		<rect x="5" y="4" width="14" height="17" rx="2" />
@@ -42,6 +43,8 @@
 	{:else if name === 'arrow'}
 		<path d="M4 12h13" />
 		<path d="M13 7l5 5-5 5" />
+	{:else}
+		<circle cx="12" cy="12" r="9" />
 	{/if}
 </svg>
 
