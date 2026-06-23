@@ -72,7 +72,12 @@ services:
       minio: { condition: service_healthy }
 
   web:
-    build: ../frontend
+    build:
+      context: ../frontend
+      # Baked into the build so prod asset URLs are absolute (no path doubling,
+      # #66). The image is therefore origin-specific - rebuild if the domain changes.
+      args:
+        PUBLIC_ORIGIN: ${PUBLIC_ORIGIN}
     restart: unless-stopped
     environment:
       NODE_ENV: production

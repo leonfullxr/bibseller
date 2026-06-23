@@ -15,7 +15,18 @@ export default defineConfig({
 			// breaks the i18n /es prefix (D17): a relative ./races prepended with /es
 			// yields /es./races. We deploy adapter-node at the domain root, so
 			// absolute paths are correct here.
-			paths: { relative: false }
+			//
+			// assets: in prod, emit absolute (origin-rooted) asset URLs so Vite's
+			// __vitePreload deps are not resolved relative to the entry module URL,
+			// which doubled the path (/_app/immutable/entry/_app/immutable/...) ->
+			// 404 -> no CSS/JS (#66). Empty in dev; set per-origin via the
+			// PUBLIC_ORIGIN build arg (the image is built for one origin).
+			// Cast: paths.assets is typed as an absolute http(s) URL or ''; the env
+			// var is a plain string (empty in dev, the origin in prod).
+			paths: {
+				relative: false,
+				assets: (process.env.PUBLIC_ORIGIN ?? '') as '' | `http://${string}` | `https://${string}`
+			}
 		})
 	],
 	server: {
