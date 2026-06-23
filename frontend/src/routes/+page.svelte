@@ -15,6 +15,8 @@
 		{ icon: 'check', title: t('home.step4Title'), desc: t('home.step4Desc') }
 	]);
 
+	// Ordered 1-6, alternating seller/buyer; the layout reads the `who` to place
+	// each step on its side of the centre flow line.
 	const journey = $derived([
 		{ n: 1, who: 'seller', icon: 'list', label: t('home.j1Title') },
 		{ n: 2, who: 'buyer', icon: 'search', label: t('home.j2Title') },
@@ -23,8 +25,6 @@
 		{ n: 5, who: 'seller', icon: 'handover', label: t('home.j5Title') },
 		{ n: 6, who: 'buyer', icon: 'medal', label: t('home.j6Title') }
 	]);
-	const sellerSteps = $derived(journey.filter((s) => s.who === 'seller'));
-	const buyerSteps = $derived(journey.filter((s) => s.who === 'buyer'));
 
 	const modes = $derived([
 		{ name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
@@ -75,12 +75,15 @@
 <section class="how" aria-labelledby="how-title">
 	<h2 id="how-title">{t('home.howTitle')}</h2>
 	<ol class="how-steps">
-		{#each steps as step (step.title)}
+		{#each steps as step, i (step.title)}
 			<li class="how-step">
 				<span class="how-icon"><Icon name={step.icon} /></span>
 				<h3>{step.title}</h3>
 				<p>{step.desc}</p>
 			</li>
+			{#if i < steps.length - 1}
+				<li class="how-arrow" aria-hidden="true"><Icon name="arrow" /></li>
+			{/if}
 		{/each}
 	</ol>
 	<p class="how-note">{t('home.howNote')}</p>
@@ -89,37 +92,27 @@
 <section class="journey" aria-labelledby="journey-title">
 	<h2 id="journey-title">{t('home.journeyTitle')}</h2>
 	<p class="journey-lead">{t('home.journeyLead')}</p>
-	<div class="lanes">
-		<div class="lane lane-seller">
-			<div class="lane-head">
+	<div class="flow">
+		<div class="flow-heads">
+			<div class="flow-head lane-seller">
 				<span class="lane-avatar"><Icon name="person" /></span>
 				<span class="lane-name">{t('home.journeySeller')}</span>
 			</div>
-			<ol class="lane-steps">
-				{#each sellerSteps as step (step.n)}
-					<li class="lane-step">
-						<span class="lane-num" aria-hidden="true">{step.n}</span>
-						<span class="lane-icon"><Icon name={step.icon} /></span>
-						<span class="lane-label">{step.label}</span>
-					</li>
-				{/each}
-			</ol>
-		</div>
-		<div class="lane lane-buyer">
-			<div class="lane-head">
+			<div class="flow-head lane-buyer">
 				<span class="lane-avatar"><Icon name="person" /></span>
 				<span class="lane-name">{t('home.journeyBuyer')}</span>
 			</div>
-			<ol class="lane-steps">
-				{#each buyerSteps as step (step.n)}
-					<li class="lane-step">
-						<span class="lane-num" aria-hidden="true">{step.n}</span>
-						<span class="lane-icon"><Icon name={step.icon} /></span>
-						<span class="lane-label">{step.label}</span>
-					</li>
-				{/each}
-			</ol>
 		</div>
+		<ol class="flow-steps">
+			{#each journey as step (step.n)}
+				<li class="flow-step flow-{step.who}">
+					<div class="flow-card">
+						<span class="flow-icon"><Icon name={step.icon} /></span>
+						<span class="flow-label">{step.label}</span>
+					</div>
+				</li>
+			{/each}
+		</ol>
 	</div>
 </section>
 
@@ -287,7 +280,7 @@
 		}
 	}
 
-	/* How it works: four friendly icon cards, linked by an arrow. */
+	/* How it works: icon cards joined by arrows that scale with the viewport. */
 	.how {
 		padding-block: 2rem;
 		text-align: center;
@@ -304,49 +297,44 @@
 		list-style: none;
 		margin: 1.75rem 0 0;
 		padding: 0;
-		display: grid;
-		gap: 1rem;
-	}
-
-	@media (min-width: 640px) {
-		.how-steps {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
-		}
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
 	}
 
 	.how-step {
-		position: relative;
+		width: 100%;
 		border-radius: 0.85rem;
 		border: 1px solid var(--slate-200);
 		background: white;
 		padding: 1.5rem 1rem;
 	}
 
-	/* arrow between cards: points down on mobile, right between columns on desktop */
-	.how-step:not(:last-child)::after {
-		content: '';
-		position: absolute;
-		left: 50%;
-		bottom: -0.85rem;
-		transform: translateX(-50%);
-		width: 0;
-		height: 0;
-		border-left: 6px solid transparent;
-		border-right: 6px solid transparent;
-		border-top: 7px solid var(--slate-300);
+	.how-arrow {
+		flex: none;
+		display: grid;
+		place-items: center;
+		color: var(--emerald-600);
+		font-size: clamp(1.25rem, 6vw, 1.75rem);
+		transform: rotate(90deg);
 	}
 
 	@media (min-width: 640px) {
-		.how-step:not(:last-child)::after {
-			left: auto;
-			bottom: auto;
-			right: -0.8rem;
-			top: 50%;
-			transform: translateY(-50%);
-			border-top: 6px solid transparent;
-			border-bottom: 6px solid transparent;
-			border-left: 7px solid var(--slate-300);
-			border-right: 0;
+		.how-steps {
+			flex-direction: row;
+			align-items: stretch;
+			gap: clamp(0.5rem, 2.5vw, 1.75rem);
+		}
+
+		.how-step {
+			flex: 1 1 0;
+			width: auto;
+		}
+
+		.how-arrow {
+			transform: none;
+			font-size: clamp(1rem, 2.5vw, 1.75rem);
 		}
 	}
 
@@ -383,8 +371,8 @@
 		color: var(--slate-400);
 	}
 
-	/* Buyer and seller journey: two people, each heading a column of their own
-	   steps; the numbers 1-6 run between the columns so it reads as a back-and-forth. */
+	/* Buyer and seller journey: two people either side of a centre flow line;
+	   each step connects to that line with a coloured node + connector. */
 	.journey {
 		padding-block: 2rem;
 		text-align: center;
@@ -405,29 +393,31 @@
 		color: var(--slate-600);
 	}
 
-	.lanes {
+	.flow {
 		margin: 2rem auto 0;
-		max-width: 22rem;
-		display: grid;
-		gap: 1.75rem;
-		text-align: left;
+		max-width: 30rem;
 	}
 
-	.lane-head {
+	.flow-heads {
+		display: flex;
+		justify-content: center;
+		gap: 1.5rem;
+		margin-bottom: 1.25rem;
+	}
+
+	.flow-head {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		gap: 0.6rem;
-		margin-bottom: 1rem;
+		gap: 0.5rem;
 	}
 
 	.lane-avatar {
 		display: grid;
 		place-items: center;
-		width: 2.75rem;
-		height: 2.75rem;
+		width: 2.5rem;
+		height: 2.5rem;
 		border-radius: 9999px;
-		font-size: 1.6rem;
+		font-size: 1.5rem;
 	}
 
 	.lane-seller .lane-avatar {
@@ -441,7 +431,6 @@
 	}
 
 	.lane-name {
-		font-size: 1.05rem;
 		font-weight: 700;
 	}
 
@@ -453,56 +442,95 @@
 		color: var(--sky-800);
 	}
 
-	.lane-steps {
+	.flow-steps {
 		position: relative;
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 0.85rem;
+		gap: 1rem;
 	}
 
-	/* connector running down each person's column to their steps */
-	.lane-steps::before {
+	/* the centre flow line */
+	.flow-steps::before {
 		content: '';
 		position: absolute;
-		left: 1.1rem;
+		left: 1rem;
 		top: 0.5rem;
 		bottom: 0.5rem;
 		width: 2px;
 		background: var(--slate-200);
 	}
 
-	.lane-step {
+	.flow-step {
 		position: relative;
 		display: flex;
-		align-items: center;
-		gap: 0.7rem;
-		min-height: 2.25rem;
-		padding-left: 2.9rem;
+		min-height: 2.5rem;
+		padding-left: 2.85rem;
 	}
 
-	.lane-num {
+	/* node sitting on the flow line */
+	.flow-step::before {
+		content: '';
 		position: absolute;
-		left: 0.35rem;
+		left: 1rem;
 		top: 50%;
-		transform: translateY(-50%);
-		width: 1.5rem;
-		height: 1.5rem;
+		transform: translate(-50%, -50%);
+		width: 0.8rem;
+		height: 0.8rem;
 		border-radius: 9999px;
-		display: grid;
-		place-items: center;
-		font-size: 0.8rem;
-		font-weight: 700;
-		color: white;
+		border: 2px solid white;
+		z-index: 1;
+	}
+
+	/* connector from the node to the card */
+	.flow-step::after {
+		content: '';
+		position: absolute;
+		left: 1rem;
+		top: 50%;
+		width: 1.85rem;
+		height: 2px;
+	}
+
+	.flow-seller::before {
 		background: var(--emerald-600);
 	}
 
-	.lane-buyer .lane-num {
+	.flow-seller::after {
+		background: var(--emerald-600);
+	}
+
+	.flow-buyer::before {
 		background: var(--sky-600);
 	}
 
-	.lane-icon {
+	.flow-buyer::after {
+		background: var(--sky-600);
+	}
+
+	.flow-card {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		width: 100%;
+		border-radius: 0.85rem;
+		border: 1px solid var(--slate-200);
+		background: white;
+		padding: 0.7rem 0.95rem;
+	}
+
+	.flow-seller .flow-card {
+		border-color: var(--emerald-200);
+		background: var(--emerald-50);
+	}
+
+	.flow-buyer .flow-card {
+		border-color: var(--sky-200);
+		background: var(--sky-50);
+	}
+
+	.flow-icon {
 		flex: none;
 		display: grid;
 		place-items: center;
@@ -510,27 +538,65 @@
 		color: var(--emerald-700);
 	}
 
-	.lane-buyer .lane-icon {
+	.flow-buyer .flow-icon {
 		color: var(--sky-700);
 	}
 
-	.lane-label {
+	.flow-label {
 		font-size: 0.95rem;
 		font-weight: 600;
 		color: var(--slate-900);
 	}
 
 	@media (min-width: 720px) {
-		.lanes {
-			max-width: 44rem;
-			grid-template-columns: 1fr 1fr;
-			gap: 2.5rem;
-			align-items: start;
+		.flow {
+			max-width: 46rem;
 		}
 
-		/* offset the buyer's steps half a row so the numbers zig-zag 1-2-3-4-5-6 */
-		.lane-buyer .lane-steps {
-			margin-top: 1.7rem;
+		.flow-heads {
+			justify-content: space-between;
+			padding-inline: 3rem;
+		}
+
+		.flow-steps::before {
+			left: 50%;
+			transform: translateX(-50%);
+		}
+
+		.flow-step {
+			padding-left: 0;
+		}
+
+		.flow-card {
+			width: calc(50% - 2.85rem);
+		}
+
+		.flow-seller {
+			justify-content: flex-start;
+		}
+
+		.flow-buyer {
+			justify-content: flex-end;
+		}
+
+		.flow-seller .flow-card {
+			flex-direction: row-reverse;
+			text-align: right;
+		}
+
+		.flow-step::before {
+			left: 50%;
+		}
+
+		.flow-seller::after {
+			left: auto;
+			right: 50%;
+			width: 2.85rem;
+		}
+
+		.flow-buyer::after {
+			left: 50%;
+			width: 2.85rem;
 		}
 	}
 
