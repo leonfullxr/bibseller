@@ -13,7 +13,8 @@ SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 .PHONY: help infra dev migrate migrate-down sqlc sqlc-check seed \
         test test-backend test-frontend lint lint-backend lint-frontend \
         verify smoke prod-up prod-down prod-logs prod-migrate prod-backup \
-        staging-up staging-down staging-logs staging-migrate staging-seed
+        staging-up staging-down staging-logs staging-migrate staging-seed \
+        prod-backup-offsite prod-restore-drill
 
 help: ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -89,9 +90,15 @@ prod-migrate: ## apply goose migrations to the prod DB (via the one-shot migrate
 
 prod-backup: ## pg_dump the prod DB to ./backups (then copy OFFSITE)
 	@mkdir -p backups
-	$(PROD_COMPOSE) exec -T db sh -c 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' \
+	$(PROD_COMPOSE) exec -T db sh -c 'pg_dump --no-owner -U "$$POSTGRES_USER" "$$POSTGRES_DB"' \
 	  | gzip > backups/db-$$(date +%F-%H%M).sql.gz
 	@echo "Wrote backups/. Copy it OFFSITE - the laptop is a single point of failure."
+
+prod-backup-offsite: ## full offsite backup: dump + MinIO mirror to R2 (the cron job)
+	./scripts/offsite-backup.sh
+
+prod-restore-drill: ## restore the latest R2 dump into a throwaway DB and verify it
+	./scripts/restore-drill.sh
 
 # --- Staging: ephemeral parallel stack on the same box (docs/DEPLOYMENT.md) --
 # The prod compose file + Caddyfile, isolated by a different compose project name

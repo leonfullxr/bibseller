@@ -324,3 +324,79 @@ Because both run the same app on the same compose behind the same Cloudflare
 account, migration is: stand up Model B, `pg_dump | psql` the database, `mc
 mirror` the object-storage bucket, then repoint the Cloudflare hostname (DNS
 record, or move the tunnel) at the VPS. No application changes.
+
+## Backups and restore
+
+The self-host box is a single point of failure (D20), so backups must leave the
+box and must be proven to restore. Two scripts cover this (D26); both read
+`deploy/.env.prod` and need only docker + curl on the host.
+
+### What runs
+
+`scripts/offsite-backup.sh` (the nightly job, `make prod-backup-offsite`):
+
+1. `pg_dump --no-owner | gzip` to `backups/db-<timestamp>.sql.gz` (the password
+   stays in the container env, never on the host argv - D23; `--no-owner` lets
+   the dump restore into any role).
+2. Copies that dump to Cloudflare R2 under `db/`, via the pinned `minio/mc`
+   image (nothing to install on the host).
+3. Mirrors the MinIO bucket to R2 under `media/`. The mirror is append-only (no
+   `--remove`): a deletion or wipe in MinIO can never propagate and erase the
+   offsite copy. Enable R2 object versioning on the bucket for a further layer.
+4. Prunes local dumps older than 14 days. Offsite retention is an R2 lifecycle
+   rule (e.g. expire `db/` after 30 days) - set it in the R2 dashboard.
+
+On any failure it emails `BACKUP_ALERT_EMAIL` straight through the Brevo
+smarthost (not via the Postfix container, so the alert still sends when the
+stack itself is down) and exits non-zero.
+
+### Schedule it (cron)
+
+The box does not sleep (Model A caveats), so plain cron suffices. As the deploy
+user (the one in the `docker` group), `crontab -e`:
+
+```
+0 3 * * * /home/<user>/bibseller/scripts/offsite-backup.sh >> /home/<user>/bibseller-backup.log 2>&1
+```
+
+The script lives on the `production` branch, so it is present in the prod clone
+after the first promotion. If the box ever does sleep, use a systemd user timer
+with `Persistent=true` instead, so a missed run fires on the next wake.
+
+### The restore drill (monthly)
+
+A backup you have never restored is not a backup. `scripts/restore-drill.sh`
+(`make prod-restore-drill`) proves it:
+
+1. Pulls the latest dump from R2 (proving the offsite artifact, not just a local
+   copy).
+2. Restores it into a throwaway `postgres:16` container - prod and staging are
+   untouched.
+3. Times the restore and asserts the schema restored (goose version present) and
+   the key tables are queryable (`races`, `users`).
+4. Tears the container down; exits non-zero if any assertion fails.
+
+```
+make prod-restore-drill                            # latest from R2
+./scripts/restore-drill.sh backups/db-<ts>.sql.gz  # or a specific local dump
+```
+
+Note the date and restore time each month; a sudden jump in restore time is an
+early warning. PITR with wal-g is the eventual upgrade (deferred) - this
+dump-and-drill loop is the floor that must exist first.
+
+### Restoring prod for real
+
+If you ever need to bring the live database back from a dump:
+
+```
+./scripts/restore-drill.sh backups/db-<ts>.sql.gz   # confirm the dump is good first
+make prod-down
+docker volume rm bibseller-prod_pgdata              # discard the damaged data
+make prod-up                                        # fresh empty DB
+gunzip -c backups/db-<ts>.sql.gz \
+  | docker exec -i bibseller-prod-db-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Media is restored by mirroring R2 back the other way (`mc mirror r2/<bucket>/media
+src/<bucket>`).
