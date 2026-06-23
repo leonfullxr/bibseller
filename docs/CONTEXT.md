@@ -40,6 +40,9 @@ Policy view - the frontend's single derivation of a race's `transfer_policy` int
 | D19 | 2026-06-22 | Cookie posture (M7-lite) | Essential-only: the single `__Host-session` cookie; no analytics or tracking cookies, so no consent banner | Follows D12 (own auth + Postgres sessions). A strictly-necessary session cookie needs no consent under the ePrivacy Directive; stated on the Privacy page (#54). Revisit if analytics or third-party embeds are added. |
 | D20 | 2026-06-22 | Beta hosting | Self-host on the founder's machine via a Cloudflare Tunnel for the public beta; Hetzner + Cloudflare is the documented always-on migration target | Extends D8 (zero hosting cost) and keeps `cf-ipcountry` (D18) working since Cloudflare fronts the tunnel. Accept the laptop as a single point of failure with downtime at beta scale; offsite backups mandatory; email relays through a smarthost (residential IPs cannot deliver direct). Both models + the migration path live in DEPLOYMENT.md; the self-host build is M9.1 (#60). |
 | D21 | 2026-06-22 | Object storage image (M9.1) | Self-hosted MinIO pinned to the last published official OSS release (`RELEASE.2025-09-07`); app + dev both pinned | MinIO's OSS edition went maintenance-only (Dec 2025) then was archived; no new images, so `:latest` is stale/unpatched. Pinning gives a trusted, reproducible image for the beta - we drive MinIO via `mc`, so the stripped-down console is irrelevant. If a CVE forces a move: the `pgsty/minio` community fork (patched) or Cloudflare R2 (free tier); the minio-go client (D16) works unchanged against any S3-compatible target. Beta keeps the app on MinIO's root credentials (single-box); a bucket-scoped access key is a noted future hardening. |
+| D22 | 2026-06-23 | Prod email provider (M9.1) | Brevo as the SMTP smarthost; send from a subdomain (`admin@bibseller.leonfuller.com`) authenticated with SPF + DKIM on Cloudflare DNS, DMARC inherited from the apex | Concretizes D20's "relay through a smarthost". A residential IP cannot deliver mail directly, and the apex `leonfuller.com` (Proton MX, `p=quarantine`) does not authorize Brevo, so unauthenticated sends were silently quarantined. Sending from an authenticated subdomain isolates the app's sending reputation from the founder's other mail and makes DKIM align. Postfix (`boky/postfix`) relays app -> Brevo; the app -> Postfix hop is plaintext on the internal network (no STARTTLS, #65). |
+| D23 | 2026-06-23 | Prod DB connection string (M9.1) | libpq keyword/value DSN (not a `postgres://` URL); migrations run via a one-shot `migrate` compose container, not host shell-sourcing | A random `POSTGRES_PASSWORD` with `@ & %` corrupts a URL DSN and breaks `set -a; . .env.prod` shell-sourcing (#64). The keyword/value form needs no URL-escaping (pgx parses it) and routing the password through compose interpolation keeps it out of any host shell. The api also stopped logging the raw DSN on a parse failure, so a malformed value cannot leak the password (#63). |
+| D24 | 2026-06-23 | Prod web asset URLs (M9.1) | Bake `PUBLIC_ORIGIN` into the web image at build time via `kit.paths.assets`; the image is therefore origin-specific | With `paths.relative:false` (kept so the i18n `link()` helper's `/es` prefix works, D17), Vite's `__vitePreload` emitted root-relative dep strings that resolved against the entry-module URL and doubled the path (`/_app/immutable/entry/_app/...`) -> 404 -> no CSS/JS (#66). Setting `paths.assets` to the origin emits absolute asset URLs (and importer-relative dynamic imports), fixing it without touching the ~57 `link()` call sites. Trade-off: rebuild the web image if the domain changes. Replaces the Caddy rewrite workaround. |
 
 ## Scope boundaries
 
@@ -68,8 +71,8 @@ Out (parked): native apps, ads/premium tiers, race-organizer SaaS, multi-currenc
 | M4 seller flows (listings) | #7 | done - listings CRUD, past-race expiry job, /sell + /account/listings (sub-issues #29-#31, PRs #33-#35); image upload moved to M5 per D15 |
 | M5 chat (the beta's core) | #8 | done - threads/polling/inbox + ack gate, private images (minio-go), report/block + retention job (sub-issues #36-#39, PRs #41-#44) |
 | M8 i18n (en + es per D4) | #9 | done - hand-rolled per D14/D17; sub-issues #45 (foundation + en, PR #48) #46 (Spanish + localized emails, PR #50); server/API error-string i18n via codes shipped in #49 (PR #51) |
-| M7 trust/safety (lite gates beta; full gates payments) | #11 | - |
-| M9 production (starts pre-beta per D8) | #12 | - |
+| M7 trust/safety (lite gates beta; full gates payments) | #11 | M7-lite done - legal pages: ToS (#53, PR #55) + Privacy/contact/cookies (#54, PR #58); report button shipped in M5. M7-full (GDPR/DSA, DAC7 memo, moderation queue) gates payments |
+| M9 production (starts pre-beta per D8) | #12 | M9.1 self-host beta LIVE - Cloudflare Tunnel + Caddy + MinIO + Brevo (D20-D24). M9-full remaining: automated backups + rehearsed restore drill, observability (Sentry/uptime), CI/CD, staging, CSP |
 | Gate 1: chat-only public beta (D3) | #13 | - |
 | M6 payments (Stripe Connect) | #10 | - |
 | Gate 2: payments GA | #13 | - |
@@ -104,7 +107,7 @@ Working rules:
 |---|---|---|
 | Refund fee absorption (Stripe keeps the original fee on refunds) | M6 | Platform eats it at beta volumes |
 | Hosting provider | decided (D20) | Self-host for beta; Hetzner the managed migration target |
-| Prod email provider | M3 (Mailpit covers dev) | Brevo / Scaleway TEM (EU) |
+| Prod email provider | decided (D22) | Brevo smarthost, subdomain-authenticated (SPF+DKIM) |
 | Prod object storage | Pre-beta (MinIO covers dev) | Cloudflare R2 |
 | Branding / domain ("Bibseller" is a working name) | Pre-beta | - |
 | Playwright browser E2E | Revisit at M4 | Deferred (D6) |
