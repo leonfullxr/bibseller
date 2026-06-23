@@ -12,6 +12,13 @@
 		{ name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
 		{ name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
 	]);
+
+	const steps = $derived([
+		{ n: 1, title: t('home.step1Title'), desc: t('home.step1Desc') },
+		{ n: 2, title: t('home.step2Title'), desc: t('home.step2Desc') },
+		{ n: 3, title: t('home.step3Title'), desc: t('home.step3Desc') },
+		{ n: 4, title: t('home.step4Title'), desc: t('home.step4Desc') }
+	]);
 </script>
 
 <svelte:head>
@@ -37,6 +44,20 @@
 			</span>
 		</div>
 	{/if}
+</section>
+
+<section class="how" aria-labelledby="how-title">
+	<h2 id="how-title">{t('home.howTitle')}</h2>
+	<ol class="cycle">
+		{#each steps as step (step.n)}
+			<li>
+				<span class="num" aria-hidden="true">{step.n}</span>
+				<h3>{step.title}</h3>
+				<p>{step.desc}</p>
+			</li>
+		{/each}
+	</ol>
+	<p class="how-note">{t('home.howNote')}</p>
 </section>
 
 {#if data.upcoming.length > 0}
@@ -255,5 +276,150 @@
 
 	.construction a:hover {
 		color: var(--slate-600);
+	}
+
+	.how {
+		padding-block: 2rem;
+		text-align: center;
+	}
+
+	.how h2 {
+		font-size: 1.5rem;
+		line-height: 2rem;
+		font-weight: 700;
+		letter-spacing: -0.015em;
+	}
+
+	/* Mobile-first: a vertical numbered timeline. */
+	.cycle {
+		list-style: none;
+		margin: 1.5rem auto 0;
+		padding: 0;
+		display: grid;
+		gap: 1.25rem;
+		max-width: 22rem;
+		text-align: left;
+	}
+
+	.cycle li {
+		position: relative;
+		padding-left: 2.75rem;
+	}
+
+	.cycle .num {
+		position: absolute;
+		left: 0;
+		top: 0;
+		display: grid;
+		place-items: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 9999px;
+		background: var(--emerald-600);
+		font-size: 0.875rem;
+		font-weight: 700;
+		color: white;
+	}
+
+	/* connecting line down to the next badge */
+	.cycle li:not(:last-child)::after {
+		content: '';
+		position: absolute;
+		left: 0.8125rem;
+		top: 1.75rem;
+		bottom: -1.25rem;
+		width: 2px;
+		background: var(--slate-200);
+	}
+
+	.cycle h3 {
+		font-size: 1rem;
+		font-weight: 600;
+	}
+
+	.cycle p {
+		margin-top: 0.25rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
+	}
+
+	.how-note {
+		margin: 1.5rem auto 0;
+		max-width: 32rem;
+		font-size: 0.8125rem;
+		line-height: 1.25rem;
+		color: var(--slate-400);
+	}
+
+	/* Desktop: arrange the four steps clockwise around a ring (the "cycle"). */
+	/* ponytail: 4 fixed positions, not trig - revisit only if the step count changes. */
+	@media (min-width: 640px) {
+		.cycle {
+			position: relative;
+			display: block;
+			width: min(78vw, 30rem);
+			height: min(78vw, 30rem);
+			max-width: none;
+			margin: 2.5rem auto 0;
+			text-align: center;
+		}
+
+		.cycle::before {
+			content: '';
+			position: absolute;
+			inset: 19%;
+			border: 2px dashed var(--slate-300);
+			border-radius: 9999px;
+		}
+
+		.cycle::after {
+			content: '\21BB';
+			position: absolute;
+			inset: 0;
+			display: grid;
+			place-items: center;
+			font-size: 2.25rem;
+			color: var(--emerald-600);
+		}
+
+		.cycle li {
+			position: absolute;
+			width: 10rem;
+			padding-left: 0;
+		}
+
+		.cycle li:not(:last-child)::after {
+			content: none;
+		}
+
+		.cycle .num {
+			position: static;
+			margin: 0 auto 0.5rem;
+		}
+
+		.cycle li:nth-child(1) {
+			top: 0;
+			left: 50%;
+			transform: translate(-50%, 0);
+		}
+
+		.cycle li:nth-child(2) {
+			top: 50%;
+			right: 0;
+			transform: translate(0, -50%);
+		}
+
+		.cycle li:nth-child(3) {
+			bottom: 0;
+			left: 50%;
+			transform: translate(-50%, 0);
+		}
+
+		.cycle li:nth-child(4) {
+			top: 50%;
+			left: 0;
+			transform: translate(0, -50%);
+		}
 	}
 </style>
