@@ -23,7 +23,7 @@ tested commit forward - you never ship something staging did not run.
 | Environment | What runs it | Branch | Reached at |
 |---|---|---|---|
 | dev | `make dev` - Vite + hot reload + Mailpit, on localhost | feature branch | `localhost:5173` |
-| staging | the prod compose stack, ephemeral, project `bibseller-staging` | `main` | `https://test.<domain>` |
+| staging | the prod compose stack, ephemeral, project `bibseller-staging` | `main` | `https://<staging-host>` |
 | prod | the prod compose stack, always-on, project `bibseller-prod` | `production` | `https://<domain>` |
 
 Staging is not a separate configuration: it is `deploy/compose.prod.yml` and the
@@ -50,9 +50,17 @@ Both stacks run on the self-host machine. Two things keep them apart:
   caddy are reached only through the tunnel), so that is the only possible clash.
 
 Each stack gets its own Cloudflare Tunnel and token: create a second tunnel,
-route `test.<domain>` to `http://caddy:80`, and put that token in
+route `<staging-host>` to `http://caddy:80`, and put that token in
 `deploy/.env.staging`. The two ingresses stay independent, and because `__Host-`
 cookies are pinned to one host, a staging login never reaches prod.
+
+Pick `<staging-host>` as a single label under your zone apex (for example
+`bibsellertest.leonfuller.com`), not `test.<app-host>`. Cloudflare's free
+Universal SSL issues only `apex` and `*.apex`, which covers a one-label host but
+not a two-label one like `test.bibseller.leonfuller.com` - that host gets no edge
+certificate and every request fails the TLS handshake. A deeper wildcard needs
+the paid Advanced Certificate Manager, so the free path is a single-label host,
+which reuses the certificate prod already has with no provisioning wait.
 
 Staging is ephemeral on purpose: bring it up to test, tear it down after. It
 keeps no data worth saving (its own volumes, the preview seed), so idle cost is
