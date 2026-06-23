@@ -65,24 +65,31 @@ func seedThreadMessage(t *testing.T, pool *pgxpool.Pool, store *storage.Client, 
 	if err != nil {
 		t.Fatalf("seed listing: %v", err)
 	}
-	thread, err := q.CreateThread(ctx, sqlcgen.CreateThreadParams{ID: ids.New(), ListingID: l.ID, BuyerID: buyer})
-	if err != nil {
+	// Insert the thread directly rather than via CreateThread: that query only
+	// writes while the listing is still 'active', and the listing-expiry test
+	// (shared test DB) can flip this past-dated listing to 'expired' in the gap,
+	// intermittently yielding zero rows. This test does not exercise that guard -
+	// it just needs a thread to hang a message on. See issue #69.
+	threadID := ids.New()
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO chat_threads (id, listing_id, buyer_id) VALUES ($1, $2, $3)`,
+		threadID, l.ID, buyer); err != nil {
 		t.Fatalf("seed thread: %v", err)
 	}
-	key := "threads/" + thread.ID.String() + "/" + ids.New().String() + ".jpg"
+	key := "threads/" + threadID.String() + "/" + ids.New().String() + ".jpg"
 	if err := store.Put(ctx, key, strings.NewReader("img"), 3, "image/jpeg"); err != nil {
 		t.Fatalf("put object: %v", err)
 	}
 	body := "old message"
 	msg, err := q.InsertMessage(ctx, sqlcgen.InsertMessageParams{
-		ID: ids.New(), ThreadID: thread.ID, SenderID: buyer, Body: &body, ImageKey: &key,
+		ID: ids.New(), ThreadID: threadID, SenderID: buyer, Body: &body, ImageKey: &key,
 	})
 	if err != nil {
 		t.Fatalf("seed message: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM messages WHERE thread_id = $1`, thread.ID)
-		_, _ = pool.Exec(ctx, `DELETE FROM chat_threads WHERE id = $1`, thread.ID)
+		_, _ = pool.Exec(ctx, `DELETE FROM messages WHERE thread_id = $1`, threadID)
+		_, _ = pool.Exec(ctx, `DELETE FROM chat_threads WHERE id = $1`, threadID)
 		_, _ = pool.Exec(ctx, `DELETE FROM listings WHERE id = $1`, l.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM races WHERE id = $1`, race.ID)
 		_ = store.Delete(ctx, key)
