@@ -16,8 +16,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes: [pgdata:/var/lib/postgresql/data]
     # Bound to localhost only so `make prod-migrate` / `prod-backup` can reach it
-    # from the host. Never expose Postgres on a public interface.
-    ports: ['127.0.0.1:5432:5432']
+    # from the host. Never expose Postgres on a public interface. DB_HOST_PORT
+    # lets the parallel staging stack pick a non-clashing port (5433); prod=5432.
+    ports: ['127.0.0.1:${DB_HOST_PORT:-5432}:5432']
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 5s

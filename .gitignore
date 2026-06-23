@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 !deploy/.env.prod.example
+!deploy/.env.staging.example
 
 # dependencies & build output
 node_modules/

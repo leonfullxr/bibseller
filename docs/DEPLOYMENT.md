@@ -15,6 +15,101 @@ Status: design reference for M9 (#12). The runnable artifacts (a prod compose
 file, a Caddyfile, the cloudflared config) are M9 deliverables; the snippets
 here are ready to lift into them. Placeholders are written as `<domain>`.
 
+## Environments and the release workflow
+
+Three environments; two of them are the same compose stack. A release moves one
+tested commit forward - you never ship something staging did not run.
+
+| Environment | What runs it | Branch | Reached at |
+|---|---|---|---|
+| dev | `make dev` - Vite + hot reload + Mailpit, on localhost | feature branch | `localhost:5173` |
+| staging | the prod compose stack, ephemeral, project `bibseller-staging` | `main` | `https://test.<domain>` |
+| prod | the prod compose stack, always-on, project `bibseller-prod` | `production` | `https://<domain>` |
+
+Staging is not a separate configuration: it is `deploy/compose.prod.yml` and the
+same `Caddyfile`, isolated by a different compose project name (its own network
+and `pgdata` / `miniodata` volumes) plus its own `deploy/.env.staging`. So
+"green on staging" means the production build, behind Cloudflare, with the real
+`__Host-session` cookie and `cf-ipcountry` header.
+
+Why localhost is not enough for the final check: the session cookie is
+`__Host-session` with `Secure`, so the browser rejects it without HTTPS; the
+locale banner reads Cloudflare's `cf-ipcountry` (D18); and `PUBLIC_ORIGIN` is
+baked into the web image (D24). Only a Cloudflare-fronted deploy exercises all
+three, which is exactly what staging is for.
+
+### One box, two stacks
+
+Both stacks run on the self-host machine. Two things keep them apart:
+
+- Project name: `make staging-*` passes `-p bibseller-staging`, so Docker
+  namespaces its containers, network, and volumes. Prod's data lives on separate
+  volumes and cannot be touched.
+- Postgres host port: prod publishes `127.0.0.1:5432`, staging sets
+  `DB_HOST_PORT=5433`. Nothing else publishes a host port (web, api, minio, and
+  caddy are reached only through the tunnel), so that is the only possible clash.
+
+Each stack gets its own Cloudflare Tunnel and token: create a second tunnel,
+route `test.<domain>` to `http://caddy:80`, and put that token in
+`deploy/.env.staging`. The two ingresses stay independent, and because `__Host-`
+cookies are pinned to one host, a staging login never reaches prod.
+
+Staging is ephemeral on purpose: bring it up to test, tear it down after. It
+keeps no data worth saving (its own volumes, the preview seed), so idle cost is
+zero.
+
+### One box: a git worktree per branch
+
+The stack builds from the checked-out source, and one clone cannot have both
+branches checked out at once. Use a git worktree so each environment builds its
+own branch:
+
+```
+git checkout production                       # the existing clone -> prod
+git worktree add ../bibseller-staging main    # a second dir -> staging
+```
+
+Run `make prod-*` from the prod clone and `make staging-*` from
+`../bibseller-staging`.
+
+### Test, then deploy
+
+```
+# 1. merge: feature branch -> PR -> CI green -> squash-merge to main
+
+# 2. test the release on staging (in ../bibseller-staging, checked out on main):
+git pull
+make staging-up && make staging-migrate && make staging-seed
+#    click through it, run a smoke check, rehearse the migration (below)
+make staging-down
+
+# 3. promote the SAME commit to prod:
+git checkout production && git merge --ff-only main && git push
+#    then on the box, in the prod clone (checked out on production):
+git pull && make prod-migrate && make prod-up
+```
+
+`merge --ff-only` guarantees `production` is a commit `main` already carried,
+never a fresh merge. If you want a deploy record, open a PR from `main` into
+`production` instead of the fast-forward push: same commit, plus a CI run.
+
+### Migration rehearsal (before a risky migration)
+
+goose migrations are forward-only and run by hand against the live DB, so the
+main deploy risk is a migration that fails on real-shaped data. Rehearse it on a
+fresh staging DB loaded from a prod dump:
+
+```
+make prod-backup                                 # writes backups/db-<ts>.sql.gz
+make staging-down && docker volume rm bibseller-staging_pgdata
+make staging-up                                  # an empty staging DB
+gunzip -c backups/db-<ts>.sql.gz | \
+  docker exec -i bibseller-staging-db-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+make staging-migrate                             # the new migration, on prod-shaped data
+```
+
+If it succeeds here, `make prod-migrate` on the live box is safe.
+
 ## The app, and the one rule that shapes deployment
 
 Four processes plus a mail relay:

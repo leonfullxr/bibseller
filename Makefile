@@ -12,7 +12,8 @@ SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
 .PHONY: help infra dev migrate migrate-down sqlc sqlc-check seed \
         test test-backend test-frontend lint lint-backend lint-frontend \
-        verify smoke prod-up prod-down prod-logs prod-migrate prod-backup
+        verify smoke prod-up prod-down prod-logs prod-migrate prod-backup \
+        staging-up staging-down staging-logs staging-migrate staging-seed
 
 help: ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -91,3 +92,30 @@ prod-backup: ## pg_dump the prod DB to ./backups (then copy OFFSITE)
 	$(PROD_COMPOSE) exec -T db sh -c 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' \
 	  | gzip > backups/db-$$(date +%F-%H%M).sql.gz
 	@echo "Wrote backups/. Copy it OFFSITE - the laptop is a single point of failure."
+
+# --- Staging: ephemeral parallel stack on the same box (docs/DEPLOYMENT.md) --
+# The prod compose file + Caddyfile, isolated by a different compose project name
+# (own network + pgdata/miniodata volumes) and deploy/.env.staging. Tracks `main`
+# (prod tracks `production`); bring it up to test a release, then `staging-down`.
+STAGING_COMPOSE := docker compose -p bibseller-staging --env-file deploy/.env.staging -f deploy/compose.prod.yml
+
+staging-up: ## build + start the ephemeral staging stack (needs deploy/.env.staging)
+	@test -f deploy/.env.staging || { echo "ERROR: deploy/.env.staging missing (copy from deploy/.env.staging.example)"; exit 1; }
+	@if grep -qE 'replace-with|\.example' deploy/.env.staging; then \
+	  echo "ERROR: deploy/.env.staging still has placeholder values to fill:"; \
+	  grep -nE 'replace-with|\.example' deploy/.env.staging | sed -E 's/=.*/=<PLACEHOLDER>/'; \
+	  exit 1; \
+	fi
+	$(STAGING_COMPOSE) up -d --build
+
+staging-down: ## stop the staging stack (volumes are kept)
+	$(STAGING_COMPOSE) down
+
+staging-logs: ## tail staging logs
+	$(STAGING_COMPOSE) logs -f --tail=100
+
+staging-migrate: ## apply goose migrations to the staging DB
+	$(STAGING_COMPOSE) run --rm migrate
+
+staging-seed: ## load preview races into the staging DB (run after staging-migrate)
+	$(STAGING_COMPOSE) exec -T db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' < deploy/seed-preview-races.sql
