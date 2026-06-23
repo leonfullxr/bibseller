@@ -2,22 +2,32 @@
 	import { resolve } from '$app/paths';
 	import { getI18n } from '$lib/i18n';
 	import RaceCard from '$lib/components/RaceCard.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const { t, link } = getI18n();
 
+	const steps = $derived([
+		{ icon: 'list', title: t('home.step1Title'), desc: t('home.step1Desc') },
+		{ icon: 'chat', title: t('home.step2Title'), desc: t('home.step2Desc') },
+		{ icon: 'transfer', title: t('home.step3Title'), desc: t('home.step3Desc') },
+		{ icon: 'check', title: t('home.step4Title'), desc: t('home.step4Desc') }
+	]);
+
+	const journey = $derived([
+		{ n: 1, who: 'seller', icon: 'list', label: t('home.j1Title') },
+		{ n: 2, who: 'buyer', icon: 'search', label: t('home.j2Title') },
+		{ n: 3, who: 'seller', icon: 'chat', label: t('home.j3Title') },
+		{ n: 4, who: 'buyer', icon: 'transfer', label: t('home.j4Title') },
+		{ n: 5, who: 'seller', icon: 'handover', label: t('home.j5Title') },
+		{ n: 6, who: 'buyer', icon: 'medal', label: t('home.j6Title') }
+	]);
+
 	const modes = $derived([
 		{ name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
 		{ name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
 		{ name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
-	]);
-
-	const steps = $derived([
-		{ n: 1, title: t('home.step1Title'), desc: t('home.step1Desc') },
-		{ n: 2, title: t('home.step2Title'), desc: t('home.step2Desc') },
-		{ n: 3, title: t('home.step3Title'), desc: t('home.step3Desc') },
-		{ n: 4, title: t('home.step4Title'), desc: t('home.step4Desc') }
 	]);
 </script>
 
@@ -46,20 +56,6 @@
 	{/if}
 </section>
 
-<section class="how" aria-labelledby="how-title">
-	<h2 id="how-title">{t('home.howTitle')}</h2>
-	<ol class="cycle">
-		{#each steps as step (step.n)}
-			<li>
-				<span class="num" aria-hidden="true">{step.n}</span>
-				<h3>{step.title}</h3>
-				<p>{step.desc}</p>
-			</li>
-		{/each}
-	</ol>
-	<p class="how-note">{t('home.howNote')}</p>
-</section>
-
 {#if data.upcoming.length > 0}
 	<section class="upcoming">
 		<div class="upcoming-head">
@@ -73,6 +69,41 @@
 		</div>
 	</section>
 {/if}
+
+<section class="how" aria-labelledby="how-title">
+	<h2 id="how-title">{t('home.howTitle')}</h2>
+	<ol class="how-steps">
+		{#each steps as step (step.title)}
+			<li class="how-step">
+				<span class="how-icon"><Icon name={step.icon} /></span>
+				<h3>{step.title}</h3>
+				<p>{step.desc}</p>
+			</li>
+		{/each}
+	</ol>
+	<p class="how-note">{t('home.howNote')}</p>
+</section>
+
+<section class="journey" aria-labelledby="journey-title">
+	<h2 id="journey-title">{t('home.journeyTitle')}</h2>
+	<p class="journey-lead">{t('home.journeyLead')}</p>
+	<ol class="lanes">
+		{#each journey as step (step.n)}
+			<li class="lane lane-{step.who}">
+				<span class="lane-num" aria-hidden="true">{step.n}</span>
+				<div class="lane-card">
+					<span class="lane-icon"><Icon name={step.icon} /></span>
+					<div class="lane-text">
+						<span class="lane-who">
+							{step.who === 'seller' ? t('home.journeySeller') : t('home.journeyBuyer')}
+						</span>
+						<span class="lane-label">{step.label}</span>
+					</div>
+				</div>
+			</li>
+		{/each}
+	</ol>
+</section>
 
 <section class="modes">
 	{#each modes as mode (mode.name)}
@@ -232,6 +263,232 @@
 		}
 	}
 
+	/* How it works: four friendly icon cards. */
+	.how {
+		padding-block: 2rem;
+		text-align: center;
+	}
+
+	.how h2 {
+		font-size: 1.5rem;
+		line-height: 2rem;
+		font-weight: 700;
+		letter-spacing: -0.015em;
+	}
+
+	.how-steps {
+		list-style: none;
+		margin: 1.75rem 0 0;
+		padding: 0;
+		display: grid;
+		gap: 1rem;
+	}
+
+	@media (min-width: 640px) {
+		.how-steps {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+
+	.how-step {
+		border-radius: 0.85rem;
+		border: 1px solid var(--slate-200);
+		background: white;
+		padding: 1.5rem 1rem;
+	}
+
+	.how-icon {
+		display: grid;
+		place-items: center;
+		width: 3rem;
+		height: 3rem;
+		margin: 0 auto;
+		border-radius: 9999px;
+		background: var(--emerald-50);
+		color: var(--emerald-600);
+		font-size: 1.5rem;
+	}
+
+	.how-step h3 {
+		margin-top: 0.85rem;
+		font-size: 1rem;
+		font-weight: 600;
+	}
+
+	.how-step p {
+		margin-top: 0.35rem;
+		font-size: 0.85rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
+	}
+
+	.how-note {
+		margin: 1.5rem auto 0;
+		max-width: 32rem;
+		font-size: 0.8125rem;
+		line-height: 1.25rem;
+		color: var(--slate-400);
+	}
+
+	/* Buyer and seller journey: an alternating timeline, seller (emerald) on one
+	   side, buyer (sky) on the other, linked down a centre spine. */
+	.journey {
+		padding-block: 2rem;
+		text-align: center;
+	}
+
+	.journey h2 {
+		font-size: 1.5rem;
+		line-height: 2rem;
+		font-weight: 700;
+		letter-spacing: -0.015em;
+	}
+
+	.journey-lead {
+		margin: 0.5rem auto 0;
+		max-width: 34rem;
+		font-size: 0.95rem;
+		line-height: 1.5rem;
+		color: var(--slate-600);
+	}
+
+	.lanes {
+		list-style: none;
+		margin: 2rem auto 0;
+		padding: 0;
+		max-width: 30rem;
+		position: relative;
+		display: grid;
+		gap: 1rem;
+		text-align: left;
+	}
+
+	.lanes::before {
+		content: '';
+		position: absolute;
+		left: 1.25rem;
+		top: 0.75rem;
+		bottom: 0.75rem;
+		width: 2px;
+		background: var(--slate-200);
+	}
+
+	.lane {
+		position: relative;
+		padding-left: 3.5rem;
+	}
+
+	.lane-num {
+		position: absolute;
+		left: 0.5rem;
+		top: 0.7rem;
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: 9999px;
+		display: grid;
+		place-items: center;
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: white;
+		background: var(--emerald-600);
+	}
+
+	.lane-buyer .lane-num {
+		background: var(--sky-600);
+	}
+
+	.lane-card {
+		display: flex;
+		align-items: center;
+		gap: 0.85rem;
+		border-radius: 0.85rem;
+		border: 1px solid var(--slate-200);
+		background: white;
+		padding: 0.8rem 1rem;
+	}
+
+	.lane-seller .lane-card {
+		border-color: var(--emerald-200);
+		background: var(--emerald-50);
+	}
+
+	.lane-buyer .lane-card {
+		border-color: var(--sky-200);
+		background: var(--sky-50);
+	}
+
+	.lane-icon {
+		flex: none;
+		display: grid;
+		place-items: center;
+		font-size: 1.9rem;
+		color: var(--emerald-700);
+	}
+
+	.lane-buyer .lane-icon {
+		color: var(--sky-700);
+	}
+
+	.lane-text {
+		display: grid;
+		gap: 0.1rem;
+	}
+
+	.lane-who {
+		font-size: 0.7rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--slate-400);
+	}
+
+	.lane-label {
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--slate-900);
+	}
+
+	@media (min-width: 720px) {
+		.lanes {
+			max-width: 46rem;
+		}
+
+		.lanes::before {
+			left: 50%;
+			transform: translateX(-50%);
+		}
+
+		.lane {
+			display: flex;
+			align-items: center;
+			min-height: 3.75rem;
+			padding-left: 0;
+		}
+
+		.lane-seller {
+			justify-content: flex-start;
+		}
+
+		.lane-buyer {
+			justify-content: flex-end;
+		}
+
+		.lane-card {
+			width: calc(50% - 2rem);
+		}
+
+		.lane-seller .lane-card {
+			flex-direction: row-reverse;
+			text-align: right;
+		}
+
+		.lane-num {
+			left: 50%;
+			top: 50%;
+			transform: translate(-50%, -50%);
+		}
+	}
+
 	.modes {
 		display: grid;
 		gap: 1rem;
@@ -276,150 +533,5 @@
 
 	.construction a:hover {
 		color: var(--slate-600);
-	}
-
-	.how {
-		padding-block: 2rem;
-		text-align: center;
-	}
-
-	.how h2 {
-		font-size: 1.5rem;
-		line-height: 2rem;
-		font-weight: 700;
-		letter-spacing: -0.015em;
-	}
-
-	/* Mobile-first: a vertical numbered timeline. */
-	.cycle {
-		list-style: none;
-		margin: 1.5rem auto 0;
-		padding: 0;
-		display: grid;
-		gap: 1.25rem;
-		max-width: 22rem;
-		text-align: left;
-	}
-
-	.cycle li {
-		position: relative;
-		padding-left: 2.75rem;
-	}
-
-	.cycle .num {
-		position: absolute;
-		left: 0;
-		top: 0;
-		display: grid;
-		place-items: center;
-		width: 1.75rem;
-		height: 1.75rem;
-		border-radius: 9999px;
-		background: var(--emerald-600);
-		font-size: 0.875rem;
-		font-weight: 700;
-		color: white;
-	}
-
-	/* connecting line down to the next badge */
-	.cycle li:not(:last-child)::after {
-		content: '';
-		position: absolute;
-		left: 0.8125rem;
-		top: 1.75rem;
-		bottom: -1.25rem;
-		width: 2px;
-		background: var(--slate-200);
-	}
-
-	.cycle h3 {
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.cycle p {
-		margin-top: 0.25rem;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		color: var(--slate-600);
-	}
-
-	.how-note {
-		margin: 1.5rem auto 0;
-		max-width: 32rem;
-		font-size: 0.8125rem;
-		line-height: 1.25rem;
-		color: var(--slate-400);
-	}
-
-	/* Desktop: arrange the four steps clockwise around a ring (the "cycle"). */
-	/* ponytail: 4 fixed positions, not trig - revisit only if the step count changes. */
-	@media (min-width: 640px) {
-		.cycle {
-			position: relative;
-			display: block;
-			width: min(78vw, 30rem);
-			height: min(78vw, 30rem);
-			max-width: none;
-			margin: 2.5rem auto 0;
-			text-align: center;
-		}
-
-		.cycle::before {
-			content: '';
-			position: absolute;
-			inset: 19%;
-			border: 2px dashed var(--slate-300);
-			border-radius: 9999px;
-		}
-
-		.cycle::after {
-			content: '\21BB';
-			position: absolute;
-			inset: 0;
-			display: grid;
-			place-items: center;
-			font-size: 2.25rem;
-			color: var(--emerald-600);
-		}
-
-		.cycle li {
-			position: absolute;
-			width: 10rem;
-			padding-left: 0;
-		}
-
-		.cycle li:not(:last-child)::after {
-			content: none;
-		}
-
-		.cycle .num {
-			position: static;
-			margin: 0 auto 0.5rem;
-		}
-
-		.cycle li:nth-child(1) {
-			top: 0;
-			left: 50%;
-			transform: translate(-50%, 0);
-		}
-
-		.cycle li:nth-child(2) {
-			top: 50%;
-			right: 0;
-			transform: translate(0, -50%);
-		}
-
-		.cycle li:nth-child(3) {
-			bottom: 0;
-			left: 50%;
-			transform: translate(-50%, 0);
-		}
-
-		.cycle li:nth-child(4) {
-			top: 50%;
-			left: 0;
-			transform: translate(0, -50%);
-		}
 	}
 </style>
