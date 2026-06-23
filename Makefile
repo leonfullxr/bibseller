@@ -83,10 +83,8 @@ prod-down: ## stop the prod stack (volumes are kept)
 prod-logs: ## tail prod logs
 	$(PROD_COMPOSE) logs -f --tail=100
 
-prod-migrate: ## apply goose migrations to the prod DB (reads deploy/.env.prod)
-	set -a; . ./deploy/.env.prod; set +a; \
-	cd backend && $(GOOSE) -dir db/migrations postgres \
-	  "postgres://$$POSTGRES_USER:$$POSTGRES_PASSWORD@localhost:5432/$$POSTGRES_DB?sslmode=disable" up
+prod-migrate: ## apply goose migrations to the prod DB (via the one-shot migrate container)
+	$(PROD_COMPOSE) run --rm migrate
 
 prod-backup: ## pg_dump the prod DB to ./backups (then copy OFFSITE)
 	@mkdir -p backups
