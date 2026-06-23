@@ -19,6 +19,7 @@ export const es: Record<MessageKey, string> = {
 	'nav.logout': 'Cerrar sesión',
 	'banner.verifyEmail': 'Verifica tu correo para poder vender y chatear.',
 	'banner.resend': 'Reenviar correo',
+	'banner.verifySent': 'Correo de verificación enviado: revisa tu bandeja de entrada (y spam).',
 	'banner.suggestText': 'Esta página está disponible en español.',
 	'banner.suggestAccept': 'Ver en español',
 	'banner.suggestDismiss': 'Ahora no',

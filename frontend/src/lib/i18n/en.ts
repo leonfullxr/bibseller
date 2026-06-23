@@ -20,6 +20,7 @@ export const en = {
 	'nav.logout': 'Log out',
 	'banner.verifyEmail': 'Verify your email to unlock selling and chat.',
 	'banner.resend': 'Resend email',
+	'banner.verifySent': 'Verification email sent - check your inbox (and spam).',
 	// Spanish-suggestion banner. Rendered with the *suggested* locale's translator
 	// (es), so it shows English now and Spanish once es.ts is filled in M8.2.
 	'banner.suggestText': 'This page is available in Spanish.',

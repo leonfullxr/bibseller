@@ -1,10 +1,19 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const { t, link } = getI18n();
+
+	// On success, refresh the layout's user so the "verify your email" banner
+	// clears immediately. Targeted ('app:user') so this page's own load does not
+	// re-run and re-POST the now-consumed token (which would flip it to "invalid").
+	onMount(() => {
+		if (data.status === 'ok') invalidate('app:user');
+	});
 </script>
 
 <svelte:head><title>{t('verify.title')}</title></svelte:head>
