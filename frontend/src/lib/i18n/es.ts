@@ -65,6 +65,10 @@ export const es: Record<MessageKey, string> = {
 	'home.j4Title': 'Organiza la transferencia',
 	'home.j5Title': 'Lo entrega',
 	'home.j6Title': 'A la línea de salida',
+	'home.contactTitle': 'Ponte en contacto',
+	'home.contactLead':
+		'¿Una carrera que añadir, una duda o sugerencias? Nos encantaría saber de ti.',
+	'home.contactCta': 'Escríbenos',
 	'home.modePlatformSaleName': 'Venta en la plataforma',
 	'home.modePlatformSaleDesc':
 		'La carrera permite la reventa: publica, chatea y paga de forma segura a través de la plataforma.',

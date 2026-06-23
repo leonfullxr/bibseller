@@ -66,6 +66,9 @@ export const en = {
 	'home.j4Title': 'Sorts the transfer',
 	'home.j5Title': 'Hands it over',
 	'home.j6Title': 'Toes the start line',
+	'home.contactTitle': 'Get in touch',
+	'home.contactLead': 'A race to add, a question, or feedback? We would love to hear from you.',
+	'home.contactCta': 'Contact us',
 	'home.modePlatformSaleName': 'Platform sale',
 	'home.modePlatformSaleDesc':
 		'The race allows resale: list, chat, and pay securely through the platform.',

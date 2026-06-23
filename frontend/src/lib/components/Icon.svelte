@@ -36,6 +36,9 @@
 		<circle cx="12" cy="14" r="6" />
 		<path d="M8.5 8L6 3.5M15.5 8L18 3.5" />
 		<path d="M10 14l1.5 1.5 3-3" />
+	{:else if name === 'person'}
+		<circle cx="12" cy="8" r="3.5" />
+		<path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
 	{/if}
 </svg>
 
