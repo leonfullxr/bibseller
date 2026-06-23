@@ -42,6 +42,19 @@ export const es: Record<MessageKey, string> = {
 	'home.apiUnreachable': 'API no disponible - ejecuta',
 	'home.upcoming': 'Próximas carreras',
 	'home.seeAll': 'Ver todas',
+	'home.howTitle': 'Cómo funciona',
+	'home.step1Title': 'Publica tu dorsal',
+	'home.step1Desc':
+		'Publica tu inscripción en minutos. La política de transferencia se ve desde el principio.',
+	'home.step2Title': 'Escribe al vendedor',
+	'home.step2Desc':
+		'Chatea de forma segura en Bibseller para acordar los detalles. Sin comisiones, siempre.',
+	'home.step3Title': 'Organiza la transferencia',
+	'home.step3Desc':
+		'Reinscríbete a través del organizador cuando haga falta, o entrega el dorsal directamente.',
+	'home.step4Title': 'Confirma la entrega',
+	'home.step4Desc': 'Lo confirmáis los dos en el chat. El dorsal es suyo y habéis terminado.',
+	'home.howNote': 'Algunas carreras son solo chat o reventa oficial, según el organizador.',
 	'home.modePlatformSaleName': 'Venta en la plataforma',
 	'home.modePlatformSaleDesc':
 		'La carrera permite la reventa: publica, chatea y paga de forma segura a través de la plataforma.',
