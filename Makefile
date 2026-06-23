@@ -14,7 +14,7 @@ SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
         test test-backend test-frontend lint lint-backend lint-frontend \
         verify smoke prod-up prod-down prod-logs prod-migrate prod-backup \
         staging-up staging-down staging-logs staging-migrate staging-seed \
-        prod-backup-offsite prod-restore-drill
+        prod-backup-offsite prod-restore-drill promote
 
 help: ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -99,6 +99,14 @@ prod-backup-offsite: ## full offsite backup: dump + MinIO mirror to R2 (the cron
 
 prod-restore-drill: ## restore the latest R2 dump into a throwaway DB and verify it
 	./scripts/restore-drill.sh
+
+promote: ## fast-forward production to the tested origin/main and push (run from the prod clone)
+	@test "$$(git branch --show-current)" = production || { echo "ERROR: run from the prod clone, on the production branch"; exit 1; }
+	git fetch origin
+	@git merge-base --is-ancestor HEAD origin/main || { echo "ERROR: production is not behind origin/main - nothing to promote, or it diverged"; exit 1; }
+	git merge --ff-only origin/main
+	git push
+	@echo "Promoted production -> $$(git rev-parse --short HEAD). Deploy with: make prod-migrate && make prod-up"
 
 # --- Staging: ephemeral parallel stack on the same box (docs/DEPLOYMENT.md) --
 # The prod compose file + Caddyfile, isolated by a different compose project name
