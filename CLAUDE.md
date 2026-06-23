@@ -25,6 +25,10 @@ make smoke          # boots the stack, asserts end-to-end policy behavior
 make sqlc           # regenerate after editing db/queries/*.sql - commit the output
 ```
 
+### Branching & deploy
+
+`main` is the trunk and runs staging; a long-lived `production` branch runs the live site. Work on a feature branch, PR into `main`, verify on staging (`make staging-up`), then `make promote` (fast-forwards `production` to the tested `main` and pushes) and deploy with `make prod-migrate && make prod-up`. Staging and prod are the same compose stack on one self-host box, isolated by compose project name; each runs from its own git worktree. Backups: `make prod-backup-offsite` (nightly cron) and `make prod-restore-drill`. Full detail in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and CONTEXT.md (D20, D25, D26).
+
 ### Conventions
 
 - SQL lives in `backend/db/queries/*.sql`; `make sqlc`; commit generated code (CI checks drift).
