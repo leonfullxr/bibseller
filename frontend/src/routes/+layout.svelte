@@ -43,6 +43,9 @@
 	// The suggestion banner reads in the suggested locale (Spanish), so it shows
 	// English now and Spanish once es.ts is filled (M8.2).
 	const suggestT = $derived(createTranslator(data.suggestLocale ?? 'es'));
+	// After a resend, the action redirects here with ?verification=sent; show a
+	// confirmation and hide the button so the user does not re-send repeatedly.
+	const verificationSent = $derived(page.url.searchParams.get('verification') === 'sent');
 </script>
 
 <svelte:head>
@@ -96,10 +99,14 @@
 
 	{#if data.user && !data.user.email_verified}
 		<div class="verify-banner">
-			<span>{t('banner.verifyEmail')}</span>
-			<form method="POST" action={link(resolve('/verify/resend'))}>
-				<button type="submit">{t('banner.resend')}</button>
-			</form>
+			{#if verificationSent}
+				<span>{t('banner.verifySent')}</span>
+			{:else}
+				<span>{t('banner.verifyEmail')}</span>
+				<form method="POST" action={link(resolve('/verify/resend'))}>
+					<button type="submit">{t('banner.resend')}</button>
+				</form>
+			{/if}
 		</div>
 	{/if}
 
