@@ -60,15 +60,18 @@
 
 {#if data.upcoming.length > 0}
 	<section class="upcoming">
-		<div class="upcoming-head">
-			<h2>{t('home.upcoming')}</h2>
-			<a href={link(resolve('/races'))}>{t('home.seeAll')}</a>
+		<h2 class="upcoming-title">{t('home.upcoming')}</h2>
+		<div class="marquee">
+			<div class="marquee-track" style="--marquee-duration: {data.upcoming.length * 6}s">
+				{#each data.upcoming as race (race.id)}
+					<div class="marquee-item"><RaceCard {race} /></div>
+				{/each}
+				{#each data.upcoming as race (race.id + '-dup')}
+					<div class="marquee-item" inert aria-hidden="true"><RaceCard {race} /></div>
+				{/each}
+			</div>
 		</div>
-		<div class="grid">
-			{#each data.upcoming as race (race.id)}
-				<RaceCard {race} />
-			{/each}
-		</div>
+		<a class="browse-btn" href={link(resolve('/races'))}>{t('home.browseAllRaces')}</a>
 	</section>
 {/if}
 
@@ -241,43 +244,89 @@
 
 	.upcoming {
 		padding-block: 2rem;
+		text-align: center;
 	}
 
-	.upcoming-head {
+	.upcoming-title {
+		font-size: 1.5rem;
+		line-height: 2rem;
+		font-weight: 700;
+		letter-spacing: -0.015em;
+	}
+
+	/* Auto-scrolling "roulette" of a few races. The list is rendered twice (the
+	   copy is inert + aria-hidden) so the translateX(-50%) loop is seamless. */
+	.marquee {
+		margin-top: 1.5rem;
+		overflow: hidden;
+		-webkit-mask-image: linear-gradient(
+			to right,
+			transparent,
+			#000 3rem,
+			#000 calc(100% - 3rem),
+			transparent
+		);
+		mask-image: linear-gradient(
+			to right,
+			transparent,
+			#000 3rem,
+			#000 calc(100% - 3rem),
+			transparent
+		);
+	}
+
+	.marquee-track {
 		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
+		align-items: stretch;
+		width: max-content;
+		animation: marquee var(--marquee-duration, 36s) linear infinite;
 	}
 
-	.upcoming-head h2 {
-		font-size: 1.125rem;
-		line-height: 1.75rem;
+	.marquee:hover .marquee-track,
+	.marquee:focus-within .marquee-track {
+		animation-play-state: paused;
+	}
+
+	.marquee-item {
+		flex: 0 0 17rem;
+		max-width: 80vw;
+		margin-right: 1rem;
+		text-align: left;
+	}
+
+	@keyframes marquee {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(-50%);
+		}
+	}
+
+	/* No auto-motion when the user prefers reduced motion; allow manual scroll. */
+	@media (prefers-reduced-motion: reduce) {
+		.marquee {
+			overflow-x: auto;
+		}
+
+		.marquee-track {
+			animation: none;
+		}
+	}
+
+	.browse-btn {
+		margin-top: 1.5rem;
+		display: inline-block;
+		border-radius: 0.5rem;
+		background: var(--emerald-600);
+		padding: 0.6rem 1.4rem;
+		font-size: 0.9rem;
 		font-weight: 600;
+		color: white;
 	}
 
-	.upcoming-head a {
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		color: var(--emerald-700);
-		text-decoration: underline;
-	}
-
-	.grid {
-		margin-top: 1rem;
-		display: grid;
-		gap: 1rem;
-	}
-
-	@media (min-width: 640px) {
-		.grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-	}
-
-	@media (min-width: 1024px) {
-		.grid {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
+	.browse-btn:hover {
+		background: var(--emerald-700);
 	}
 
 	/* How it works: icon cards joined by arrows that scale with the viewport. */

@@ -45,7 +45,7 @@ export const en = {
 	'home.browseAll': 'or browse all races',
 	'home.apiUnreachable': 'API unreachable - run',
 	'home.upcoming': 'Upcoming races',
-	'home.seeAll': 'See all',
+	'home.browseAllRaces': 'Browse all races',
 	'home.howTitle': 'How it works',
 	'home.step1Title': 'List your bib',
 	'home.step1Desc': 'Post your race entry in minutes. The transfer policy shows up front.',
