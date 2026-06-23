@@ -123,6 +123,9 @@ export const en = {
 	'races.empty': 'No races match those filters.',
 	'races.clearFilters': 'Clear filters',
 	'races.nextPage': 'Next page ->',
+	'races.mapHeading': 'Races across Europe',
+	'races.mapHint': 'Highlighted countries have races - tap one to filter.',
+	'races.mapCountry': '{country}: {n} races',
 
 	// Race + listing cards. CLDR plural forms via Intl.PluralRules (no ICU lib, D14);
 	// en/es use one|other - add .few/.many keys if a locale needs them.

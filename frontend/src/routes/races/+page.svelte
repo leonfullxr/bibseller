@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import RaceCard from '$lib/components/RaceCard.svelte';
+	import RaceMap from '$lib/components/RaceMap.svelte';
 	import { getI18n } from '$lib/i18n';
 	import { transferPolicies } from '$lib/policy';
 	import type { PageProps } from './$types';
@@ -30,6 +31,10 @@
 </svelte:head>
 
 <h1>{t('races.heading')}</h1>
+
+{#if Object.keys(data.countryCounts).length > 0}
+	<RaceMap counts={data.countryCounts} />
+{/if}
 
 <form method="GET" action={link(resolve('/races'))} class="filters">
 	<label>

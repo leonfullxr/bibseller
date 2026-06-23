@@ -121,6 +121,9 @@ export const es: Record<MessageKey, string> = {
 	'races.empty': 'Ninguna carrera coincide con esos filtros.',
 	'races.clearFilters': 'Borrar filtros',
 	'races.nextPage': 'Página siguiente ->',
+	'races.mapHeading': 'Carreras por Europa',
+	'races.mapHint': 'Los países resaltados tienen carreras: toca uno para filtrar.',
+	'races.mapCountry': '{country}: {n} carreras',
 
 	'raceCard.bibs.one': '{n} dorsal publicado',
 	'raceCard.bibs.other': '{n} dorsales publicados',
