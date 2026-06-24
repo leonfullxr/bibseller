@@ -90,6 +90,22 @@
 
 	const RADIUS = 4.6; // rem: radius of the race ring around the hovered city
 	let hovered = $state<Marker | null>(null);
+
+	// Only the dot and the actual race cards are hover targets - no big invisible
+	// box. A short delay bridges the gap between the dot and the cards so the
+	// popover stays open while the cursor crosses it.
+	let closeTimer: ReturnType<typeof setTimeout> | undefined;
+	function show(m: Marker) {
+		clearTimeout(closeTimer);
+		hovered = m;
+	}
+	function keepOpen() {
+		clearTimeout(closeTimer);
+	}
+	function scheduleHide() {
+		clearTimeout(closeTimer);
+		closeTimer = setTimeout(() => (hovered = null), 160);
+	}
 </script>
 
 <section class="race-map" aria-label={t('races.mapHeading')}>
@@ -102,9 +118,10 @@
 					<a
 						href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
 						aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
-						onmouseenter={() => (hovered = m)}
-						onfocus={() => (hovered = m)}
-						onblur={() => (hovered = null)}
+						onmouseenter={() => show(m)}
+						onmouseleave={scheduleHide}
+						onfocus={() => show(m)}
+						onblur={scheduleHide}
 					>
 						<circle cx={m.x} cy={m.y} r={unit * 1.4} />
 						<text x={m.x + unit * 2.4} y={m.y} font-size={unit * 2.8}>{m.city}</text>
@@ -115,18 +132,14 @@
 						cy={m.y}
 						r={unit * 1.2}
 						role="presentation"
-						onmouseenter={() => (hovered = m)}
+						onmouseenter={() => show(m)}
+						onmouseleave={scheduleHide}
 					/>
 				{/if}
 			{/each}
 		</svg>
 		{#if hovered}
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="popover"
-				style="left:{hovered.left}%; top:{hovered.top}%"
-				onmouseleave={() => (hovered = null)}
-			>
+			<div class="popover" style="left:{hovered.left}%; top:{hovered.top}%">
 				<span class="popover-city">{hovered.city}</span>
 				{#each hovered.races as r, i (r.slug)}
 					{@const angle = (i / hovered.races.length) * Math.PI * 2 - Math.PI / 2}
@@ -139,7 +152,11 @@
 						<a
 							class="race-box"
 							href={link(resolve('/races/[slug]', { slug: r.slug }))}
-							style="animation-delay: {i * 45}ms">{r.name}</a
+							style="animation-delay: {i * 45}ms"
+							onmouseenter={keepOpen}
+							onmouseleave={scheduleHide}
+							onfocus={keepOpen}
+							onblur={scheduleHide}>{r.name}</a
 						>
 					</span>
 				{/each}
@@ -248,15 +265,13 @@
 	}
 
 	/* Hover popover: the city sits at the centre with its races on a ring around
-	   it. The container spans the ring so the popover stays open while the cursor
-	   travels from the dot out to the cards. */
+	   it. The container is a zero-size anchor that passes pointer events through -
+	   only the cards (and the dot) are hover targets, so empty ring slots are not
+	   a sticky invisible hover area. */
 	.popover {
 		position: absolute;
 		z-index: 2;
-		width: 15rem;
-		height: 15rem;
-		transform: translate(-50%, -50%);
-		pointer-events: auto;
+		pointer-events: none;
 	}
 
 	.popover-city {
@@ -293,6 +308,7 @@
 		text-wrap: balance;
 		text-decoration: none;
 		cursor: pointer;
+		pointer-events: auto;
 		border-radius: 0.5rem;
 		border: 1px solid var(--slate-300);
 		background: white;
