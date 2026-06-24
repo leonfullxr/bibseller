@@ -88,6 +88,7 @@
 			})
 	);
 
+	const RADIUS = 4.6; // rem: radius of the race ring around the hovered city
 	let hovered = $state<Marker | null>(null);
 </script>
 
@@ -102,7 +103,6 @@
 						href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
 						aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
 						onmouseenter={() => (hovered = m)}
-						onmouseleave={() => (hovered = null)}
 						onfocus={() => (hovered = m)}
 						onblur={() => (hovered = null)}
 					>
@@ -116,16 +116,28 @@
 						r={unit * 1.2}
 						role="presentation"
 						onmouseenter={() => (hovered = m)}
-						onmouseleave={() => (hovered = null)}
 					/>
 				{/if}
 			{/each}
 		</svg>
 		{#if hovered}
-			<div class="popover" style="left:{hovered.left}%; top:{hovered.top}%">
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="popover"
+				style="left:{hovered.left}%; top:{hovered.top}%"
+				onmouseleave={() => (hovered = null)}
+			>
 				<span class="popover-city">{hovered.city}</span>
-				{#each hovered.races as r (r)}
-					<span class="race-box">{r}</span>
+				{#each hovered.races as r, i (r)}
+					{@const angle = (i / hovered.races.length) * Math.PI * 2 - Math.PI / 2}
+					<span
+						class="race-pos"
+						style="transform: translate(-50%, -50%) translate({(Math.cos(angle) * RADIUS).toFixed(
+							2
+						)}rem, {(Math.sin(angle) * RADIUS).toFixed(2)}rem)"
+					>
+						<span class="race-box" style="animation-delay: {i * 45}ms">{r}</span>
+					</span>
 				{/each}
 			</div>
 		{/if}
@@ -231,34 +243,89 @@
 		font-weight: 600;
 	}
 
-	/* Hover popover: one box per race, anchored above the city dot. */
+	/* Hover popover: the city sits at the centre with its races on a ring around
+	   it. The container spans the ring so the popover stays open while the cursor
+	   travels from the dot out to the cards. */
 	.popover {
 		position: absolute;
 		z-index: 2;
-		transform: translate(-50%, calc(-100% - 0.5rem));
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		pointer-events: none;
+		width: 15rem;
+		height: 15rem;
+		transform: translate(-50%, -50%);
+		pointer-events: auto;
 	}
 
 	.popover-city {
-		text-align: center;
-		font-size: 0.75rem;
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 999px;
+		background: var(--emerald-600);
+		padding: 0.25rem 0.7rem;
+		font-size: 0.7rem;
 		font-weight: 700;
-		color: var(--slate-900);
+		white-space: nowrap;
+		color: white;
+		box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
 	}
 
+	.race-pos {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+	}
+
+	/* Each race is a narrow, tall card; the name wraps into a few lines. */
 	.race-box {
-		white-space: nowrap;
-		border-radius: 0.375rem;
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 5rem;
+		min-height: 3.4rem;
+		padding: 0.4rem;
+		text-align: center;
+		text-wrap: balance;
+		border-radius: 0.5rem;
 		border: 1px solid var(--slate-300);
 		background: white;
-		padding: 0.2rem 0.5rem;
-		font-size: 0.75rem;
-		line-height: 1rem;
+		font-size: 0.7rem;
+		line-height: 1.05rem;
+		font-weight: 600;
 		color: var(--slate-700);
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+		box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
+		animation: race-pop 0.22s ease both;
+		transition:
+			transform 0.15s ease,
+			box-shadow 0.15s ease,
+			border-color 0.15s ease,
+			color 0.15s ease;
+	}
+
+	.race-box:hover {
+		transform: scale(1.22);
+		z-index: 3;
+		border-color: var(--emerald-600);
+		color: var(--slate-900);
+		box-shadow: 0 10px 22px rgb(0 0 0 / 0.22);
+	}
+
+	@keyframes race-pop {
+		from {
+			opacity: 0;
+			transform: scale(0.7);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.race-box {
+			animation: none;
+		}
 	}
 
 	.map-hint {
