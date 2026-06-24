@@ -23,7 +23,7 @@
 		country
 	}: {
 		counts: Record<string, number>;
-		cities: { city: string; country: string; races: string[] }[];
+		cities: { city: string; country: string; races: { name: string; slug: string }[] }[];
 		country: string;
 	} = $props();
 	const { t, link } = getI18n();
@@ -63,7 +63,7 @@
 	type Marker = {
 		city: string;
 		country: string;
-		races: string[];
+		races: { name: string; slug: string }[];
 		x: number;
 		y: number;
 		left: number;
@@ -128,7 +128,7 @@
 				onmouseleave={() => (hovered = null)}
 			>
 				<span class="popover-city">{hovered.city}</span>
-				{#each hovered.races as r, i (r)}
+				{#each hovered.races as r, i (r.slug)}
 					{@const angle = (i / hovered.races.length) * Math.PI * 2 - Math.PI / 2}
 					<span
 						class="race-pos"
@@ -136,7 +136,11 @@
 							2
 						)}rem, {(Math.sin(angle) * RADIUS).toFixed(2)}rem)"
 					>
-						<span class="race-box" style="animation-delay: {i * 45}ms">{r}</span>
+						<a
+							class="race-box"
+							href={link(resolve('/races/[slug]', { slug: r.slug }))}
+							style="animation-delay: {i * 45}ms">{r.name}</a
+						>
 					</span>
 				{/each}
 			</div>
@@ -287,6 +291,8 @@
 		padding: 0.4rem;
 		text-align: center;
 		text-wrap: balance;
+		text-decoration: none;
+		cursor: pointer;
 		border-radius: 0.5rem;
 		border: 1px solid var(--slate-300);
 		background: white;
