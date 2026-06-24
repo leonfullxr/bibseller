@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { cityCoords, CITY_COORDS, COUNTRY_VIEWBOX, project } from './cities';
+import {
+	cityCoords,
+	CITY_COORDS,
+	COUNTRY_VIEWBOX,
+	EUROPE_VIEWBOX,
+	fitViewBox,
+	project
+} from './cities';
 
 // races.city -> the country whose viewBox the marker must land inside. Guards
 // both the projection constants and the per-city coordinates: a wrong dot lands
@@ -36,6 +43,21 @@ describe('city projection', () => {
 			expect(x, `${city} x`).toBeLessThanOrEqual(x0 + w);
 			expect(y, `${city} y`).toBeGreaterThanOrEqual(y0);
 			expect(y, `${city} y`).toBeLessThanOrEqual(y0 + h);
+		}
+	});
+
+	it('pads every country frame to a constant aspect ratio, centered', () => {
+		// Keeps the map a constant on-page size; the original frame stays enclosed.
+		const [, , ew, eh] = EUROPE_VIEWBOX.split(' ').map(Number);
+		const target = ew / eh;
+		for (const vb of [EUROPE_VIEWBOX, ...Object.values(COUNTRY_VIEWBOX)]) {
+			const [x, y, w, h] = fitViewBox(vb);
+			expect(w / h).toBeCloseTo(target, 5);
+			const [ox, oy, ow, oh] = vb.split(' ').map(Number);
+			expect(x).toBeLessThanOrEqual(ox + 1e-6);
+			expect(y).toBeLessThanOrEqual(oy + 1e-6);
+			expect(x + w).toBeGreaterThanOrEqual(ox + ow - 1e-6);
+			expect(y + h).toBeGreaterThanOrEqual(oy + oh - 1e-6);
 		}
 	});
 

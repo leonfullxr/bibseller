@@ -18,6 +18,27 @@ export function project(lat: number, lng: number): [number, number] {
 // render - no SVG surgery needed.
 export const EUROPE_VIEWBOX = '370 358 105 87';
 
+// The map renders in a fixed aspect-ratio box (so picking a country never changes
+// the page height). fitViewBox pads a "x y w h" frame to that ratio, centered, so
+// it fills the box without letterboxing instead of stretching the page.
+const BOX_ASPECT = (() => {
+	const [, , w, h] = EUROPE_VIEWBOX.split(' ').map(Number);
+	return w / h;
+})();
+export function fitViewBox(vb: string): [number, number, number, number] {
+	let [x, y, w, h] = vb.split(' ').map(Number);
+	if (w / h < BOX_ASPECT) {
+		const nw = h * BOX_ASPECT;
+		x -= (nw - w) / 2;
+		w = nw;
+	} else {
+		const nh = w / BOX_ASPECT;
+		y -= (nh - h) / 2;
+		h = nh;
+	}
+	return [x, y, w, h];
+}
+
 // Click-to-zoom: padded bounding box of each filterable country's mainland.
 export const COUNTRY_VIEWBOX: Record<string, string> = {
 	AT: '427.4 398.3 18.6 9.6',

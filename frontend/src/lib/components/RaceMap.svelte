@@ -8,7 +8,13 @@
 	// when that country filter is active (the URL filter is the zoom state).
 	import { resolve } from '$app/paths';
 	import { getI18n } from '$lib/i18n';
-	import { cityCoords, COUNTRY_VIEWBOX, EUROPE_VIEWBOX, project } from '$lib/geo/cities';
+	import {
+		cityCoords,
+		COUNTRY_VIEWBOX,
+		EUROPE_VIEWBOX,
+		fitViewBox,
+		project
+	} from '$lib/geo/cities';
 	import europeMap from '$lib/assets/europe-map.svg?raw';
 
 	let {
@@ -24,10 +30,13 @@
 	const racesHref = $derived(link(resolve('/races')));
 
 	const zoomed = $derived(Boolean(country && COUNTRY_VIEWBOX[country]));
-	const viewBox = $derived(zoomed ? COUNTRY_VIEWBOX[country] : EUROPE_VIEWBOX);
-	// Marker sizes scale with the viewBox so dots/labels stay a constant on-screen
-	// size whether we show all of Europe or a single zoomed-in country.
-	const unit = $derived(Number(viewBox.split(' ')[2]) / 100);
+
+	// The box keeps a constant aspect ratio (a constant on-page size): fitViewBox
+	// pads a country's frame to that ratio so zooming never changes the page
+	// height, and dot positions map linearly onto the box.
+	const box = $derived(fitViewBox(zoomed ? COUNTRY_VIEWBOX[country] : EUROPE_VIEWBOX));
+	const viewBox = $derived(box.join(' '));
+	const unit = $derived(box[2] / 100); // marker sizes scale with the frame
 
 	// Wrap the <path> (single landmass) or <g> (with islands) for this country in
 	// a link to its filtered list. CSS colours `.has-races path`.
@@ -51,17 +60,35 @@
 		).replace(/viewBox="[^"]*"/, `viewBox="${viewBox}"`)
 	);
 
+	type Marker = {
+		city: string;
+		country: string;
+		races: string[];
+		x: number;
+		y: number;
+		left: number;
+		top: number;
+	};
+
 	// City dots: only those we have coordinates for; when zoomed, only the focused
-	// country's cities (the list below is already filtered to that country). The
-	// hover title lists the city's races (CONTEXT: a city can hold several).
-	const markers = $derived(
+	// country's cities (the list below is already filtered to that country). left/top
+	// are the dot's position as a percent of the box, for the hover popover.
+	const markers = $derived<Marker[]>(
 		cities
 			.filter((c) => cityCoords(c.city) && (!zoomed || c.country === country))
 			.map((c) => {
 				const [x, y] = project(...cityCoords(c.city)!);
-				return { ...c, x, y, title: [c.city, ...c.races].join('\n') };
+				return {
+					...c,
+					x,
+					y,
+					left: ((x - box[0]) / box[2]) * 100,
+					top: ((y - box[1]) / box[3]) * 100
+				};
 			})
 	);
+
+	let hovered = $state<Marker | null>(null);
 </script>
 
 <section class="race-map" aria-label={t('races.mapHeading')}>
@@ -74,18 +101,34 @@
 					<a
 						href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
 						aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
+						onmouseenter={() => (hovered = m)}
+						onmouseleave={() => (hovered = null)}
+						onfocus={() => (hovered = m)}
+						onblur={() => (hovered = null)}
 					>
-						<title>{m.title}</title>
 						<circle cx={m.x} cy={m.y} r={unit * 1.4} />
 						<text x={m.x + unit * 2.4} y={m.y} font-size={unit * 2.8}>{m.city}</text>
 					</a>
 				{:else}
-					<circle cx={m.x} cy={m.y} r={unit * 1.2}>
-						<title>{m.title}</title>
-					</circle>
+					<circle
+						cx={m.x}
+						cy={m.y}
+						r={unit * 1.2}
+						role="presentation"
+						onmouseenter={() => (hovered = m)}
+						onmouseleave={() => (hovered = null)}
+					/>
 				{/if}
 			{/each}
 		</svg>
+		{#if hovered}
+			<div class="popover" style="left:{hovered.left}%; top:{hovered.top}%">
+				<span class="popover-city">{hovered.city}</span>
+				{#each hovered.races as r (r)}
+					<span class="race-box">{r}</span>
+				{/each}
+			</div>
+		{/if}
 	</div>
 	{#if zoomed}
 		<p class="map-hint">
@@ -101,23 +144,33 @@
 		margin-top: 1.25rem;
 	}
 
+	/* Fixed aspect-ratio box: the map is always the same on-page size, so picking a
+	   country never grows the page or forces scrolling. */
 	.map-wrap {
 		position: relative;
 		max-width: 46rem;
 		margin-inline: auto;
+		aspect-ratio: 105 / 87;
 	}
 
+	/* Base map and marker overlay both fill the box and share the same viewBox. */
 	.map-wrap :global(svg) {
+		position: absolute;
+		inset: 0;
 		width: 100%;
-		height: auto;
+		height: 100%;
 		display: block;
 	}
 
-	/* Marker overlay sits exactly on top of the base map (same viewBox). */
+	/* Overlay passes clicks through to the country links beneath; only the dots
+	   themselves stay interactive (so countries are selectable from the map). */
 	.markers {
-		position: absolute;
-		inset: 0;
-		height: 100%;
+		pointer-events: none;
+	}
+
+	.markers a,
+	.markers circle {
+		pointer-events: auto;
 	}
 
 	/* Base countries (no races). */
@@ -131,12 +184,14 @@
 	.map-wrap.zoomed :global(path) {
 		fill: transparent;
 		stroke: none;
+		pointer-events: none;
 	}
 
 	.map-wrap.zoomed :global(.has-races path) {
 		fill: var(--emerald-600);
 		stroke: white;
 		stroke-width: 0.4;
+		pointer-events: auto;
 	}
 
 	/* Race-countries: fill the linked country (and its island paths). */
@@ -159,9 +214,6 @@
 		fill: var(--emerald-700);
 		stroke: white;
 		stroke-width: 0.4;
-	}
-
-	.markers a {
 		cursor: pointer;
 	}
 
@@ -177,6 +229,36 @@
 		paint-order: stroke;
 		dominant-baseline: middle;
 		font-weight: 600;
+	}
+
+	/* Hover popover: one box per race, anchored above the city dot. */
+	.popover {
+		position: absolute;
+		z-index: 2;
+		transform: translate(-50%, calc(-100% - 0.5rem));
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		pointer-events: none;
+	}
+
+	.popover-city {
+		text-align: center;
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: var(--slate-900);
+	}
+
+	.race-box {
+		white-space: nowrap;
+		border-radius: 0.375rem;
+		border: 1px solid var(--slate-300);
+		background: white;
+		padding: 0.2rem 0.5rem;
+		font-size: 0.75rem;
+		line-height: 1rem;
+		color: var(--slate-700);
+		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 	}
 
 	.map-hint {
