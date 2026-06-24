@@ -22,7 +22,14 @@ export const load: PageServerLoad = async ({ url, fetch, setHeaders, locals }) =
 		apiGet<Page<RaceSummary>>(`/api/v1/races?date_from=${todayISO()}&limit=100`, fetch)
 	]);
 	const countryCounts: Record<string, number> = {};
-	for (const r of all.items) countryCounts[r.country] = (countryCounts[r.country] ?? 0) + 1;
+	const cityCounts = new Map<string, { city: string; country: string; count: number }>();
+	for (const r of all.items) {
+		countryCounts[r.country] = (countryCounts[r.country] ?? 0) + 1;
+		const key = `${r.country}:${r.city}`;
+		const c = cityCounts.get(key) ?? { city: r.city, country: r.country, count: 0 };
+		c.count += 1;
+		cityCounts.set(key, c);
+	}
 
 	// Gate the cache header on auth: the page HTML embeds the layout nav (the
 	// signed-in user's name, inbox, log out), so a signed-in response must never
@@ -33,6 +40,7 @@ export const load: PageServerLoad = async ({ url, fetch, setHeaders, locals }) =
 		races: data.items,
 		nextCursor: data.next_cursor,
 		countryCounts,
+		cities: [...cityCounts.values()],
 		filters: {
 			country: url.searchParams.get('country') ?? '',
 			sport: url.searchParams.get('sport') ?? '',

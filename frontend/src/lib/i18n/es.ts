@@ -124,6 +124,8 @@ export const es: Record<MessageKey, string> = {
 	'races.mapHeading': 'Carreras por Europa',
 	'races.mapHint': 'Los países resaltados tienen carreras: toca uno para filtrar.',
 	'races.mapCountry': '{country}: {n} carreras',
+	'races.mapCity': '{city}: {n} carreras',
+	'races.mapBack': '<- Toda Europa',
 
 	'raceCard.bibs.one': '{n} dorsal publicado',
 	'raceCard.bibs.other': '{n} dorsales publicados',
