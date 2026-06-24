@@ -12,5 +12,6 @@ VALUES
   (gen_random_uuid(), 'preview-paris-marathon-2027',  'Paris Marathon 2027',       'running',   'marathon', DATE '2027-04-11', 'Paris',    'FR', 'unknown', 'published', 'Preview entry - transfer policy not yet verified.'),
   (gen_random_uuid(), 'preview-berlin-marathon-2026', 'Berlin Marathon 2026',      'running',   'marathon', DATE '2026-09-27', 'Berlin',   'DE', 'unknown', 'published', 'Preview entry - transfer policy not yet verified.'),
   (gen_random_uuid(), 'preview-garda-trail-42k-2026', 'Garda Trail 42K 2026',      'trail',     '42k',      DATE '2026-09-19', 'Riva del Garda', 'IT', 'unknown', 'published', 'Preview entry - transfer policy not yet verified.'),
-  (gen_random_uuid(), 'preview-mallorca-70-3-2027',   'Mallorca 70.3 Triathlon 2027','triathlon','70.3',    DATE '2027-05-08', 'Alcudia',  'ES', 'unknown', 'published', 'Preview entry - transfer policy not yet verified.')
+  (gen_random_uuid(), 'preview-mallorca-70-3-2027',   'Mallorca 70.3 Triathlon 2027','triathlon','70.3',    DATE '2027-05-08', 'Alcudia',  'ES', 'unknown', 'published', 'Preview entry - transfer policy not yet verified.'),
+  (gen_random_uuid(), 'preview-valencia-half-2026',   'Valencia Half Marathon 2026','running',   'half',     DATE '2026-10-25', 'Valencia', 'ES', 'unknown', 'published', 'Preview entry - transfer policy not yet verified.')
 ON CONFLICT (slug) DO NOTHING;
