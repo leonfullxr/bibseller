@@ -41,7 +41,7 @@ export const es: Record<MessageKey, string> = {
 	'home.browseAll': 'o explora todas las carreras',
 	'home.apiUnreachable': 'API no disponible - ejecuta',
 	'home.upcoming': 'Próximas carreras',
-	'home.seeAll': 'Ver todas',
+	'home.browseAllRaces': 'Explorar todas las carreras',
 	'home.howTitle': 'Cómo funciona',
 	'home.step1Title': 'Publica tu dorsal',
 	'home.step1Desc':
