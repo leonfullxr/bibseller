@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CITY_COORDS, COUNTRY_VIEWBOX, project } from './cities';
+import { cityCoords, CITY_COORDS, COUNTRY_VIEWBOX, project } from './cities';
 
 // races.city -> the country whose viewBox the marker must land inside. Guards
 // both the projection constants and the per-city coordinates: a wrong dot lands
@@ -37,5 +37,12 @@ describe('city projection', () => {
 			expect(y, `${city} y`).toBeGreaterThanOrEqual(y0);
 			expect(y, `${city} y`).toBeLessThanOrEqual(y0 + h);
 		}
+	});
+
+	it('resolves coordinates ignoring accents and case', () => {
+		// Seed files spell cities inconsistently (e.g. "Alcudia" vs "Alcúdia").
+		expect(cityCoords('Alcudia')).toEqual(CITY_COORDS['Alcúdia']);
+		expect(cityCoords('krakow')).toEqual(CITY_COORDS['Kraków']);
+		expect(cityCoords('Nowhere')).toBeUndefined();
 	});
 });

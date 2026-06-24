@@ -54,3 +54,14 @@ export const CITY_COORDS: Record<string, [number, number]> = {
 	Bilbao: [43.26, -2.93],
 	Madrid: [40.42, -3.7]
 };
+
+// Accent- and case-insensitive lookup: seed files spell cities inconsistently
+// (e.g. "Alcudia" vs "Alcúdia", "Krakow" vs "Kraków").
+const strip = (s: string) =>
+	s
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '')
+		.toLowerCase();
+const NORM_COORDS = new Map(Object.entries(CITY_COORDS).map(([k, v]) => [strip(k), v]));
+export const cityCoords = (city: string): [number, number] | undefined =>
+	NORM_COORDS.get(strip(city));

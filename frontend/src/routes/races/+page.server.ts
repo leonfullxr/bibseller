@@ -22,12 +22,12 @@ export const load: PageServerLoad = async ({ url, fetch, setHeaders, locals }) =
 		apiGet<Page<RaceSummary>>(`/api/v1/races?date_from=${todayISO()}&limit=100`, fetch)
 	]);
 	const countryCounts: Record<string, number> = {};
-	const cityCounts = new Map<string, { city: string; country: string; count: number }>();
+	const cityCounts = new Map<string, { city: string; country: string; races: string[] }>();
 	for (const r of all.items) {
 		countryCounts[r.country] = (countryCounts[r.country] ?? 0) + 1;
 		const key = `${r.country}:${r.city}`;
-		const c = cityCounts.get(key) ?? { city: r.city, country: r.country, count: 0 };
-		c.count += 1;
+		const c = cityCounts.get(key) ?? { city: r.city, country: r.country, races: [] };
+		c.races.push(r.name);
 		cityCounts.set(key, c);
 	}
 

@@ -8,7 +8,7 @@
 	// when that country filter is active (the URL filter is the zoom state).
 	import { resolve } from '$app/paths';
 	import { getI18n } from '$lib/i18n';
-	import { CITY_COORDS, COUNTRY_VIEWBOX, EUROPE_VIEWBOX, project } from '$lib/geo/cities';
+	import { cityCoords, COUNTRY_VIEWBOX, EUROPE_VIEWBOX, project } from '$lib/geo/cities';
 	import europeMap from '$lib/assets/europe-map.svg?raw';
 
 	let {
@@ -17,7 +17,7 @@
 		country
 	}: {
 		counts: Record<string, number>;
-		cities: { city: string; country: string; count: number }[];
+		cities: { city: string; country: string; races: string[] }[];
 		country: string;
 	} = $props();
 	const { t, link } = getI18n();
@@ -42,41 +42,46 @@
 		return svg;
 	}
 
+	// When zoomed, highlight only the focused country; CSS (.zoomed) hides the
+	// rest so the map shows that country alone.
 	const baseHtml = $derived(
-		Object.entries(counts)
-			.reduce((svg, [cc, n]) => linkify(svg, cc, n, racesHref), europeMap)
-			.replace(/viewBox="[^"]*"/, `viewBox="${viewBox}"`)
+		(zoomed
+			? linkify(europeMap, country, counts[country] ?? 0, racesHref)
+			: Object.entries(counts).reduce((svg, [cc, n]) => linkify(svg, cc, n, racesHref), europeMap)
+		).replace(/viewBox="[^"]*"/, `viewBox="${viewBox}"`)
 	);
 
 	// City dots: only those we have coordinates for; when zoomed, only the focused
-	// country's cities (the list below is already filtered to that country).
+	// country's cities (the list below is already filtered to that country). The
+	// hover title lists the city's races (CONTEXT: a city can hold several).
 	const markers = $derived(
 		cities
-			.filter((c) => CITY_COORDS[c.city] && (!zoomed || c.country === country))
+			.filter((c) => cityCoords(c.city) && (!zoomed || c.country === country))
 			.map((c) => {
-				const [x, y] = project(...CITY_COORDS[c.city]);
-				return { ...c, x, y };
+				const [x, y] = project(...cityCoords(c.city)!);
+				return { ...c, x, y, title: [c.city, ...c.races].join('\n') };
 			})
 	);
 </script>
 
 <section class="race-map" aria-label={t('races.mapHeading')}>
-	<div class="map-wrap">
+	<div class="map-wrap" class:zoomed>
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 		{@html baseHtml}
 		<svg class="markers" {viewBox} role="presentation" aria-hidden="true">
-			{#each markers as m (m.city)}
+			{#each markers as m (m.country + m.city)}
 				{#if zoomed}
 					<a
 						href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
-						aria-label={t('races.mapCity', { city: m.city, n: String(m.count) })}
+						aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
 					>
+						<title>{m.title}</title>
 						<circle cx={m.x} cy={m.y} r={unit * 1.4} />
 						<text x={m.x + unit * 2.4} y={m.y} font-size={unit * 2.8}>{m.city}</text>
 					</a>
 				{:else}
 					<circle cx={m.x} cy={m.y} r={unit * 1.2}>
-						<title>{t('races.mapCity', { city: m.city, n: String(m.count) })}</title>
+						<title>{m.title}</title>
 					</circle>
 				{/if}
 			{/each}
@@ -118,6 +123,18 @@
 	/* Base countries (no races). */
 	.map-wrap :global(path) {
 		fill: var(--slate-200);
+		stroke: white;
+		stroke-width: 0.4;
+	}
+
+	/* Zoomed into one country: hide every other country so it shows alone. */
+	.map-wrap.zoomed :global(path) {
+		fill: transparent;
+		stroke: none;
+	}
+
+	.map-wrap.zoomed :global(.has-races path) {
+		fill: var(--emerald-600);
 		stroke: white;
 		stroke-width: 0.4;
 	}
