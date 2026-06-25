@@ -114,28 +114,20 @@
 		{@html baseHtml}
 		<svg class="markers" {viewBox} role="presentation" aria-hidden="true">
 			{#each markers as m (m.country + m.city)}
-				{#if zoomed}
-					<a
-						href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
-						aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
-						onmouseenter={() => show(m)}
-						onmouseleave={scheduleHide}
-						onfocus={() => show(m)}
-						onblur={scheduleHide}
-					>
-						<circle cx={m.x} cy={m.y} r={unit * 1.4} />
+				<!-- Clicking a dot filters to that city (and zooms to its country). -->
+				<a
+					href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
+					aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
+					onmouseenter={() => show(m)}
+					onmouseleave={scheduleHide}
+					onfocus={() => show(m)}
+					onblur={scheduleHide}
+				>
+					<circle cx={m.x} cy={m.y} r={unit * (zoomed ? 1.4 : 1.2)} />
+					{#if zoomed}
 						<text x={m.x + unit * 2.4} y={m.y} font-size={unit * 2.8}>{m.city}</text>
-					</a>
-				{:else}
-					<circle
-						cx={m.x}
-						cy={m.y}
-						r={unit * 1.2}
-						role="presentation"
-						onmouseenter={() => show(m)}
-						onmouseleave={scheduleHide}
-					/>
-				{/if}
+					{/if}
+				</a>
 			{/each}
 		</svg>
 		{#if hovered}
@@ -248,6 +240,11 @@
 		stroke: white;
 		stroke-width: 0.4;
 		cursor: pointer;
+	}
+
+	/* No focus box around the dot+label; the dot darkening below is the affordance. */
+	.markers a {
+		outline: none;
 	}
 
 	.markers a:hover circle,
