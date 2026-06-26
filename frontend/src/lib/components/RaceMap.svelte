@@ -15,21 +15,28 @@
 		fitViewBox,
 		project
 	} from '$lib/geo/cities';
+	import { mapQuery, mapCityVisible } from './raceMapLinks';
 	import europeMap from '$lib/assets/europe-map.svg?raw';
 
 	let {
 		counts,
 		cities,
-		country
+		country,
+		filters
 	}: {
 		counts: Record<string, number>;
 		cities: { city: string; country: string; races: { name: string; slug: string }[] }[];
 		country: string;
+		filters: { sport: string; policy: string; q: string };
 	} = $props();
 	const { t, link, plural } = getI18n();
 	const racesHref = $derived(link(resolve('/races')));
 
-	const zoomed = $derived(Boolean(country && COUNTRY_VIEWBOX[country]));
+	// "A country filter is active" vs. "we have a viewBox to zoom into it" differ
+	// for an off-map ISO code (e.g. GB): the list is filtered but the map can't
+	// zoom, so it must still behave as filtered - one country's dots, not Europe's.
+	const filtered = $derived(Boolean(country));
+	const zoomed = $derived(filtered && Boolean(COUNTRY_VIEWBOX[country]));
 
 	// The box keeps a constant aspect ratio (a constant on-page size): fitViewBox
 	// pads a country's frame to that ratio so zooming never changes the page
@@ -39,11 +46,14 @@
 	const unit = $derived(box[2] / 100); // marker sizes scale with the frame
 
 	// Wrap the <path> (single landmass) or <g> (with islands) for this country in
-	// a link to its filtered list. CSS colours `.has-races path`.
-	function linkify(svg: string, cc: string, n: number, href: string): string {
+	// a link to its filtered list, preserving the active sport/policy/q filters.
+	// CSS colours `.has-races path`.
+	function linkify(svg: string, cc: string, n: number): string {
 		const id = cc.toLowerCase();
 		const label = plural('races.mapCountry', n, { country: cc });
-		const open = `<a class="has-races" href="${href}?country=${cc}" aria-label="${label}">`;
+		// & must be &amp; here: this href is injected as raw HTML (the SVG @html).
+		const href = (racesHref + mapQuery(filters, { country: cc })).replace(/&/g, '&amp;');
+		const open = `<a class="has-races" href="${href}" aria-label="${label}">`;
 		const pathRe = new RegExp(`<path\\b[^>]*\\bid="${id}"[^>]*/>`);
 		const gRe = new RegExp(`<g\\b[^>]*\\bid="${id}"[^>]*>[\\s\\S]*?</g>`);
 		if (pathRe.test(svg)) return svg.replace(pathRe, (m) => open + m + '</a>');
@@ -51,12 +61,13 @@
 		return svg;
 	}
 
-	// When zoomed, highlight only the focused country; CSS (.zoomed) hides the
-	// rest so the map shows that country alone.
+	// When a country filter is active, highlight only that country (CSS .zoomed
+	// hides the rest when we can also zoom); otherwise highlight every
+	// race-country.
 	const baseHtml = $derived(
-		(zoomed
-			? linkify(europeMap, country, counts[country] ?? 0, racesHref)
-			: Object.entries(counts).reduce((svg, [cc, n]) => linkify(svg, cc, n, racesHref), europeMap)
+		(filtered
+			? linkify(europeMap, country, counts[country] ?? 0)
+			: Object.entries(counts).reduce((svg, [cc, n]) => linkify(svg, cc, n), europeMap)
 		).replace(/viewBox="[^"]*"/, `viewBox="${viewBox}"`)
 	);
 
@@ -70,12 +81,12 @@
 		top: number;
 	};
 
-	// City dots: only those we have coordinates for; when zoomed, only the focused
-	// country's cities (the list below is already filtered to that country). left/top
-	// are the dot's position as a percent of the box, for the hover popover.
+	// City dots: only those we have coordinates for; when a country filter is
+	// active, only that country's cities (the list below is already filtered to it).
+	// left/top are the dot's position as a percent of the box, for the hover popover.
 	const markers = $derived<Marker[]>(
 		cities
-			.filter((c) => cityCoords(c.city) && (!zoomed || c.country === country))
+			.filter((c) => cityCoords(c.city) && mapCityVisible(c.country, country))
 			.map((c) => {
 				const [x, y] = project(...cityCoords(c.city)!);
 				return {
@@ -116,7 +127,7 @@
 			{#each markers as m (m.country + m.city)}
 				<!-- Clicking a dot filters to that city (and zooms to its country). -->
 				<a
-					href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
+					href="{racesHref}{mapQuery(filters, { country: m.country, q: m.city })}"
 					aria-label={plural('races.mapCity', m.races.length, { city: m.city })}
 					onmouseenter={() => show(m)}
 					onmouseleave={scheduleHide}
@@ -155,9 +166,9 @@
 			</div>
 		{/if}
 	</div>
-	{#if zoomed}
+	{#if filtered}
 		<p class="map-hint">
-			<a href={racesHref}>{t('races.mapBack')}</a>
+			<a href="{racesHref}{mapQuery(filters, { country: '' })}">{t('races.mapBack')}</a>
 		</p>
 	{:else}
 		<p class="map-hint">{t('races.mapHint')}</p>

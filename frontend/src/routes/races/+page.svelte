@@ -33,7 +33,12 @@
 <h1>{t('races.heading')}</h1>
 
 {#if Object.keys(data.countryCounts).length > 0}
-	<RaceMap counts={data.countryCounts} cities={data.cities} country={data.filters.country} />
+	<RaceMap
+		counts={data.countryCounts}
+		cities={data.cities}
+		country={data.filters.country}
+		filters={data.filters}
+	/>
 {/if}
 
 <form method="GET" action={link(resolve('/races'))} class="filters">

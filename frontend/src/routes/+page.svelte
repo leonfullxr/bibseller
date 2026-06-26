@@ -67,7 +67,7 @@
 					<div class="marquee-item"><RaceCard {race} /></div>
 				{/each}
 				{#each data.upcoming as race (race.id + '-dup')}
-					<div class="marquee-item" inert aria-hidden="true"><RaceCard {race} /></div>
+					<div class="marquee-item dup" inert aria-hidden="true"><RaceCard {race} /></div>
 				{/each}
 			</div>
 		</div>
@@ -311,6 +311,13 @@
 
 		.marquee-track {
 			animation: none;
+		}
+
+		/* The duplicate half exists only to loop the animation seamlessly. With the
+		   animation stopped it would just be inert, unclickable copies that a manual
+		   scroll could reach (reads as broken links), so drop it from layout (#92). */
+		.marquee-item.dup {
+			display: none;
 		}
 	}
 
