@@ -40,7 +40,7 @@ three, which is exactly what staging is for.
 
 ### One box, two stacks
 
-Both stacks run on the self-host machine. Two things keep them apart:
+Both stacks run on the self-host machine. Three things keep them apart:
 
 - Project name: `make staging-*` passes `-p bibseller-staging`, so Docker
   namespaces its containers, network, and volumes. Prod's data lives on separate
@@ -48,6 +48,16 @@ Both stacks run on the self-host machine. Two things keep them apart:
 - Postgres host port: prod publishes `127.0.0.1:5432`, staging sets
   `DB_HOST_PORT=5433`. Nothing else publishes a host port (web, api, minio, and
   caddy are reached only through the tunnel), so that is the only possible clash.
+- Resource limits: every service in `compose.prod.yml` sets
+  `deploy.resources.limits` (memory + CPU), so a staging migration, seed, or
+  runaway query physically cannot starve prod - without this a staging OOM could
+  make the kernel OOM-killer take down prod's Postgres. Memory is the hard
+  boundary. Budget for a ~16G box: per-stack steady state is ~4.9G (db 2G,
+  minio 1G, api + web 768M each, caddy/mail/cloudflared 128M each), so two stacks
+  are ~10G, leaving ~6G for the OS, page cache, and the transient migrate (1G) /
+  minio-init one-shots. Postgres is tuned (`shared_buffers`, `work_mem`,
+  `max_connections=50`) to stay inside its 2G limit. Adjust the numbers in
+  `compose.prod.yml` to your box's RAM and core count.
 
 Each stack gets its own Cloudflare Tunnel and token: create a second tunnel,
 route `<staging-host>` to `http://caddy:80`, and put that token in
