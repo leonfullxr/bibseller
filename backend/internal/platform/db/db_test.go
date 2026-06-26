@@ -20,3 +20,25 @@ func TestNewPoolDoesNotLeakConnStringOnBadURL(t *testing.T) {
 		t.Fatalf("error leaks the connection string: %v", err)
 	}
 }
+
+// The pool must carry an explicit MaxConns, not pgx's silent max(4, NumCPU)
+// default, and it must stay under Postgres' max_connections across all
+// instances or the DB refuses connections. Asserting both ties the two numbers
+// so they can't drift apart unnoticed (#93). Lazy pool: no DB needed - we only
+// read the parsed config.
+func TestNewPoolSetsExplicitMaxConns(t *testing.T) {
+	pool, err := NewPool(context.Background(), "postgres://u:p@127.0.0.1:9/db")
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
+	if got := pool.Config().MaxConns; got != maxConns {
+		t.Fatalf("MaxConns = %d, want the explicit cap %d (not pgx's silent default)", got, maxConns)
+	}
+	const instances = 1 // v1 single instance; bump with #100 when scaling out
+	if maxConns*instances >= postgresMaxConnections {
+		t.Fatalf("maxConns(%d) x instances(%d) must stay under Postgres max_connections(%d)",
+			maxConns, instances, postgresMaxConnections)
+	}
+}
