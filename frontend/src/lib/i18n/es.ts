@@ -123,8 +123,10 @@ export const es: Record<MessageKey, string> = {
 	'races.nextPage': 'Página siguiente ->',
 	'races.mapHeading': 'Carreras por Europa',
 	'races.mapHint': 'Los países resaltados tienen carreras: toca uno para filtrar.',
-	'races.mapCountry': '{country}: {n} carreras',
-	'races.mapCity': '{city}: {n} carreras',
+	'races.mapCountry.one': '{country}: {n} carrera',
+	'races.mapCountry.other': '{country}: {n} carreras',
+	'races.mapCity.one': '{city}: {n} carrera',
+	'races.mapCity.other': '{city}: {n} carreras',
 	'races.mapBack': '<- Toda Europa',
 
 	'raceCard.bibs.one': '{n} dorsal publicado',
