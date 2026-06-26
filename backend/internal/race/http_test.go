@@ -164,3 +164,87 @@ func TestListRacesRejectsBadParams(t *testing.T) {
 		}
 	}
 }
+
+// seedMapRace seeds a published/draft race with a chosen city and event date, so
+// the map-counts test can exercise grouping, the upcoming-date filter, and the
+// per-city cap. Self-cleaning, unique slug - safe against any DB state.
+func seedMapRace(t *testing.T, pool *pgxpool.Pool, country, city, date, status string) {
+	t.Helper()
+	ctx := context.Background()
+	id := ids.New()
+	src := "https://example.org/source"
+	_, err := sqlcgen.New(pool).CreateRace(ctx, sqlcgen.CreateRaceParams{
+		ID: id, Slug: "t-" + id.String(), Name: "Map Race " + id.String()[:8],
+		Sport: "running", EventDate: mustDate(date), City: city,
+		Country: country, TransferPolicy: "platform_sale", PolicySourceUrl: &src,
+		OfficialTransferUrl: &src, Status: status,
+	})
+	if err != nil {
+		t.Fatalf("seed map race: %v", err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM races WHERE id = $1`, id) })
+}
+
+func TestMapCounts(t *testing.T) {
+	pool := testdb.Pool(t)
+	// Unique country codes keep assertions robust against seeded/other rows.
+	const cc, other = "ZY", "ZX"
+	// 9 upcoming races in one city: true count 9, popover list capped at 8.
+	for range 9 {
+		seedMapRace(t, pool, cc, "Alpha", "2027-06-01", "published")
+	}
+	seedMapRace(t, pool, cc, "Beta", "2027-07-01", "published") // second city in ZY
+	seedMapRace(t, pool, other, "Gamma", "2027-08-01", "published")
+	seedMapRace(t, pool, cc, "Alpha", "2020-01-01", "published") // past -> excluded
+	seedMapRace(t, pool, cc, "Alpha", "2027-06-01", "draft")     // draft -> excluded
+
+	rec := get(t, handler(pool), "/api/v1/races/map-counts")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var body struct {
+		Countries map[string]int64 `json:"countries"`
+		Cities    []struct {
+			City    string `json:"city"`
+			Country string `json:"country"`
+			Count   int64  `json:"count"`
+			Races   []struct {
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"races"`
+		} `json:"cities"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+
+	// Country totals: past + draft excluded; ZY = 9 (Alpha) + 1 (Beta), ZX = 1.
+	if body.Countries[cc] != 10 {
+		t.Errorf("countries[%s] = %d, want 10", cc, body.Countries[cc])
+	}
+	if body.Countries[other] != 1 {
+		t.Errorf("countries[%s] = %d, want 1", other, body.Countries[other])
+	}
+
+	var alphaCount int64
+	var alphaRaces int
+	found := false
+	for _, c := range body.Cities {
+		if c.Country == cc && c.City == "Alpha" {
+			alphaCount, alphaRaces, found = c.Count, len(c.Races), true
+		}
+	}
+	if !found {
+		t.Fatal("city Alpha missing from map-counts response")
+	}
+	if alphaCount != 9 {
+		t.Errorf("Alpha count = %d, want 9 (true total)", alphaCount)
+	}
+	if alphaRaces != 8 { // == race.mapCityRaceCap
+		t.Errorf("Alpha popover races = %d, want 8 (capped)", alphaRaces)
+	}
+
+	if cacheControl := rec.Header().Get("Cache-Control"); cacheControl == "" {
+		t.Error("missing Cache-Control on anonymous map-counts response")
+	}
+}

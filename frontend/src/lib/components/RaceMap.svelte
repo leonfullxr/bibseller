@@ -25,7 +25,12 @@
 		filters
 	}: {
 		counts: Record<string, number>;
-		cities: { city: string; country: string; races: { name: string; slug: string }[] }[];
+		cities: {
+			city: string;
+			country: string;
+			count: number;
+			races: { name: string; slug: string }[];
+		}[];
 		country: string;
 		filters: { sport: string; policy: string; q: string };
 	} = $props();
@@ -74,6 +79,7 @@
 	type Marker = {
 		city: string;
 		country: string;
+		count: number;
 		races: { name: string; slug: string }[];
 		x: number;
 		y: number;
@@ -128,7 +134,7 @@
 				<!-- Clicking a dot filters to that city (and zooms to its country). -->
 				<a
 					href="{racesHref}{mapQuery(filters, { country: m.country, q: m.city })}"
-					aria-label={plural('races.mapCity', m.races.length, { city: m.city })}
+					aria-label={plural('races.mapCity', m.count, { city: m.city })}
 					onmouseenter={() => show(m)}
 					onmouseleave={scheduleHide}
 					onfocus={() => show(m)}

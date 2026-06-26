@@ -1,8 +1,8 @@
-// The /races map is decorative: it is built from a second, unfiltered count
-// fetch that exists only to colour the choropleth. That fetch must never be able
-// to fail the whole browse page - if it errors, the grid still renders and the
-// map is simply omitted (the +page.svelte gates the map on a non-empty
-// countryCounts). apiGet is mocked so we can fail the count call in isolation.
+// The /races map is built from a second, decorative fetch to the server-side
+// aggregate endpoint (/races/map-counts). It must never fail the browse page: if
+// it errors, the grid still renders and the map is simply omitted (+page.svelte
+// gates the map on a non-empty countryCounts). apiGet is mocked so we can drive
+// each call independently.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiGet } from '$lib/api/server';
 import { load } from './+page.server';
@@ -25,44 +25,33 @@ function event() {
 	} as any;
 }
 
-const race = (over: Record<string, unknown> = {}) => ({
-	id: '1',
-	name: 'Paris Marathon',
-	slug: 'paris-marathon',
-	country: 'FR',
-	city: 'Paris',
-	...over
-});
-
 describe('races load', () => {
 	beforeEach(() => mockedApiGet.mockReset());
 
-	it('still renders the grid when the map count fetch fails', async () => {
+	it('builds map data from the map-counts endpoint', async () => {
 		mockedApiGet
-			.mockResolvedValueOnce({ items: [race()], next_cursor: null }) // grid
-			.mockRejectedValueOnce(new Error('count endpoint down')); // map counts
+			.mockResolvedValueOnce({ items: [{ id: '1' }], next_cursor: null }) // grid
+			.mockResolvedValueOnce({
+				countries: { FR: 3, DE: 1 },
+				cities: [{ city: 'Paris', country: 'FR', count: 3, races: [{ name: 'X', slug: 'x' }] }]
+			}); // map-counts
+
+		const data = (await load(event())) as LoadData;
+
+		expect(data.countryCounts).toEqual({ FR: 3, DE: 1 });
+		expect(data.cities).toHaveLength(1);
+		expect(data.cities[0].count).toBe(3);
+	});
+
+	it('still renders the grid when the map-counts fetch fails', async () => {
+		mockedApiGet
+			.mockResolvedValueOnce({ items: [{ id: '1' }], next_cursor: null }) // grid
+			.mockRejectedValueOnce(new Error('map-counts down')); // map-counts
 
 		const data = (await load(event())) as LoadData;
 
 		expect(data.races).toHaveLength(1);
 		expect(data.countryCounts).toEqual({});
 		expect(data.cities).toEqual([]);
-	});
-
-	it('builds country and city counts when the map fetch succeeds', async () => {
-		mockedApiGet
-			.mockResolvedValueOnce({ items: [race()], next_cursor: null }) // grid
-			.mockResolvedValueOnce({
-				items: [
-					race(),
-					race({ id: '2', name: 'Berlin', slug: 'berlin', country: 'DE', city: 'Berlin' })
-				],
-				next_cursor: null
-			}); // map counts
-
-		const data = (await load(event())) as LoadData;
-
-		expect(data.countryCounts).toEqual({ FR: 1, DE: 1 });
-		expect(data.cities).toHaveLength(2);
 	});
 });

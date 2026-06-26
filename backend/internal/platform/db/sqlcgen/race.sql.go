@@ -291,3 +291,62 @@ func (q *Queries) ListRaces(ctx context.Context, arg ListRacesParams) ([]ListRac
 	}
 	return items, nil
 }
+
+const mapUpcomingRaces = `-- name: MapUpcomingRaces :many
+SELECT country, city, name, slug, city_total
+FROM (
+    SELECT r.country, r.city, r.name, r.slug,
+        count(*) OVER (PARTITION BY r.country, r.city) AS city_total,
+        row_number() OVER (PARTITION BY r.country, r.city ORDER BY r.event_date, r.id) AS rn
+    FROM races r
+    WHERE r.status = 'published'
+      AND r.event_date >= $1::date
+) ranked
+WHERE rn <= $2::int
+ORDER BY country, city, rn
+`
+
+type MapUpcomingRacesParams struct {
+	DateFrom     time.Time `json:"date_from"`
+	PerCityLimit int32     `json:"per_city_limit"`
+}
+
+type MapUpcomingRacesRow struct {
+	Country   string `json:"country"`
+	City      string `json:"city"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	CityTotal int64  `json:"city_total"`
+}
+
+// Per-city upcoming published races for the /races map. One row per race,
+// capped to the first @per_city_limit per city (enough for the hover popover),
+// each carrying that city's full upcoming-race count (city_total). The handler
+// sums the distinct city totals into per-country totals. This replaces fetching
+// a page of full race rows (and their discarded per-row listing counts) just to
+// colour the map, and is not bounded by page size.
+func (q *Queries) MapUpcomingRaces(ctx context.Context, arg MapUpcomingRacesParams) ([]MapUpcomingRacesRow, error) {
+	rows, err := q.db.Query(ctx, mapUpcomingRaces, arg.DateFrom, arg.PerCityLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MapUpcomingRacesRow
+	for rows.Next() {
+		var i MapUpcomingRacesRow
+		if err := rows.Scan(
+			&i.Country,
+			&i.City,
+			&i.Name,
+			&i.Slug,
+			&i.CityTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
