@@ -100,6 +100,18 @@ describe('createPlural', () => {
 	it('falls back to the number (never blank) for a missing base', () => {
 		expect(createPlural('en')('raceCard.nope', 2)).toBe('2');
 	});
+
+	it('pluralizes the map country/city labels and fills extra params (en + es)', () => {
+		const pen = createPlural('en');
+		expect(pen('races.mapCountry', 1, { country: 'FR' })).toBe('FR: 1 race');
+		expect(pen('races.mapCountry', 3, { country: 'FR' })).toBe('FR: 3 races');
+		expect(pen('races.mapCity', 1, { city: 'Granada' })).toBe('Granada: 1 race');
+		expect(pen('races.mapCity', 4, { city: 'Granada' })).toBe('Granada: 4 races');
+
+		const pes = createPlural('es');
+		expect(pes('races.mapCountry', 1, { country: 'IT' })).toBe('IT: 1 carrera');
+		expect(pes('races.mapCity', 2, { city: 'Madrid' })).toBe('Madrid: 2 carreras');
+	});
 });
 
 describe('es dictionary (M8.2)', () => {

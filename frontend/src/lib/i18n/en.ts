@@ -125,8 +125,10 @@ export const en = {
 	'races.nextPage': 'Next page ->',
 	'races.mapHeading': 'Races across Europe',
 	'races.mapHint': 'Highlighted countries have races - tap one to filter.',
-	'races.mapCountry': '{country}: {n} races',
-	'races.mapCity': '{city}: {n} races',
+	'races.mapCountry.one': '{country}: {n} race',
+	'races.mapCountry.other': '{country}: {n} races',
+	'races.mapCity.one': '{city}: {n} race',
+	'races.mapCity.other': '{city}: {n} races',
 	'races.mapBack': '<- All of Europe',
 
 	// Race + listing cards. CLDR plural forms via Intl.PluralRules (no ICU lib, D14);

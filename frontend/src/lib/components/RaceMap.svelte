@@ -29,7 +29,7 @@
 		country: string;
 		filters: { sport: string; policy: string; q: string };
 	} = $props();
-	const { t, link } = getI18n();
+	const { t, link, plural } = getI18n();
 	const racesHref = $derived(link(resolve('/races')));
 
 	// "A country filter is active" vs. "we have a viewBox to zoom into it" differ
@@ -50,7 +50,7 @@
 	// CSS colours `.has-races path`.
 	function linkify(svg: string, cc: string, n: number): string {
 		const id = cc.toLowerCase();
-		const label = t('races.mapCountry', { country: cc, n: String(n) });
+		const label = plural('races.mapCountry', n, { country: cc });
 		// & must be &amp; here: this href is injected as raw HTML (the SVG @html).
 		const href = (racesHref + mapQuery(filters, { country: cc })).replace(/&/g, '&amp;');
 		const open = `<a class="has-races" href="${href}" aria-label="${label}">`;
@@ -128,7 +128,7 @@
 				<!-- Clicking a dot filters to that city (and zooms to its country). -->
 				<a
 					href="{racesHref}{mapQuery(filters, { country: m.country, q: m.city })}"
-					aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
+					aria-label={plural('races.mapCity', m.races.length, { city: m.city })}
 					onmouseenter={() => show(m)}
 					onmouseleave={scheduleHide}
 					onfocus={() => show(m)}
