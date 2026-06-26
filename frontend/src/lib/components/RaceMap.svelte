@@ -26,7 +26,7 @@
 		cities: { city: string; country: string; races: { name: string; slug: string }[] }[];
 		country: string;
 	} = $props();
-	const { t, link } = getI18n();
+	const { t, link, plural } = getI18n();
 	const racesHref = $derived(link(resolve('/races')));
 
 	const zoomed = $derived(Boolean(country && COUNTRY_VIEWBOX[country]));
@@ -42,7 +42,7 @@
 	// a link to its filtered list. CSS colours `.has-races path`.
 	function linkify(svg: string, cc: string, n: number, href: string): string {
 		const id = cc.toLowerCase();
-		const label = t('races.mapCountry', { country: cc, n: String(n) });
+		const label = plural('races.mapCountry', n, { country: cc });
 		const open = `<a class="has-races" href="${href}?country=${cc}" aria-label="${label}">`;
 		const pathRe = new RegExp(`<path\\b[^>]*\\bid="${id}"[^>]*/>`);
 		const gRe = new RegExp(`<g\\b[^>]*\\bid="${id}"[^>]*>[\\s\\S]*?</g>`);
@@ -117,7 +117,7 @@
 				<!-- Clicking a dot filters to that city (and zooms to its country). -->
 				<a
 					href="{racesHref}?country={m.country}&q={encodeURIComponent(m.city)}"
-					aria-label={t('races.mapCity', { city: m.city, n: String(m.races.length) })}
+					aria-label={plural('races.mapCity', m.races.length, { city: m.city })}
 					onmouseenter={() => show(m)}
 					onmouseleave={scheduleHide}
 					onfocus={() => show(m)}
