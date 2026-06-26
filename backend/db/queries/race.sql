@@ -36,3 +36,22 @@ WHERE r.status = 'published'
        OR (r.event_date, r.id) > (sqlc.narg('cursor_date'), sqlc.narg('cursor_id')::uuid))
 ORDER BY r.event_date, r.id
 LIMIT sqlc.arg('page_size');
+
+-- name: MapUpcomingRaces :many
+-- Per-city upcoming published races for the /races map. One row per race,
+-- capped to the first @per_city_limit per city (enough for the hover popover),
+-- each carrying that city's full upcoming-race count (city_total). The handler
+-- sums the distinct city totals into per-country totals. This replaces fetching
+-- a page of full race rows (and their discarded per-row listing counts) just to
+-- colour the map, and is not bounded by page size.
+SELECT country, city, name, slug, city_total
+FROM (
+    SELECT r.country, r.city, r.name, r.slug,
+        count(*) OVER (PARTITION BY r.country, r.city) AS city_total,
+        row_number() OVER (PARTITION BY r.country, r.city ORDER BY r.event_date, r.id) AS rn
+    FROM races r
+    WHERE r.status = 'published'
+      AND r.event_date >= sqlc.arg('date_from')::date
+) ranked
+WHERE rn <= sqlc.arg('per_city_limit')::int
+ORDER BY country, city, rn;

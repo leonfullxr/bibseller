@@ -42,6 +42,7 @@ func Routes(q *sqlcgen.Queries) func(*http.ServeMux) {
 	h := &Handler{q: q}
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("GET /races", h.list)
+		mux.HandleFunc("GET /races/map-counts", h.mapCounts)
 		mux.HandleFunc("GET /races/{slug}", h.get)
 	}
 }
@@ -159,6 +160,62 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		last := rows[len(rows)-1]
 		c := formatCursor(last.EventDate, last.ID)
 		resp.NextCursor = &c
+	}
+
+	w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
+	httpx.JSON(w, http.StatusOK, resp)
+}
+
+const mapCityRaceCap = 8
+
+type mapRaceRef struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+type mapCity struct {
+	City    string       `json:"city"`
+	Country string       `json:"country"`
+	Count   int64        `json:"count"`
+	Races   []mapRaceRef `json:"races"`
+}
+
+type mapCountsResponse struct {
+	Countries map[string]int64 `json:"countries"`
+	Cities    []mapCity        `json:"cities"`
+}
+
+// mapCounts powers the decorative /races Europe map: per-country totals (the
+// choropleth fill) and per-city race lists (the dots + hover popover) for all
+// upcoming published races, aggregated server-side so it is not bounded by a
+// page of races. Identical for every anonymous visitor, so it is publicly
+// cacheable. Each city's race list is capped (mapCityRaceCap) for the popover,
+// while Count carries the city's true upcoming-race total.
+func (h *Handler) mapCounts(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.q.MapUpcomingRaces(r.Context(), sqlcgen.MapUpcomingRacesParams{
+		DateFrom:     time.Now().UTC(),
+		PerCityLimit: mapCityRaceCap,
+	})
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load map counts")
+		return
+	}
+
+	// Rows arrive grouped and ordered by (country, city); fold consecutive rows
+	// of one city into a single entry and add that city's total to its country.
+	resp := mapCountsResponse{Countries: map[string]int64{}, Cities: []mapCity{}}
+	var curKey string
+	for _, row := range rows {
+		key := row.Country + "\x00" + row.City
+		if len(resp.Cities) == 0 || key != curKey {
+			resp.Cities = append(resp.Cities, mapCity{
+				City: row.City, Country: row.Country, Count: row.CityTotal, Races: []mapRaceRef{},
+			})
+			resp.Countries[row.Country] += row.CityTotal
+			curKey = key
+		}
+		c := &resp.Cities[len(resp.Cities)-1]
+		c.Races = append(c.Races, mapRaceRef{Name: row.Name, Slug: row.Slug})
 	}
 
 	w.Header().Set("Cache-Control", httpx.CatalogCacheControl)
