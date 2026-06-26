@@ -18,15 +18,19 @@ export const load: PageServerLoad = async ({ url, fetch, setHeaders, locals }) =
 	const [data, all] = await Promise.all([
 		apiGet<Page<RaceSummary>>(`/api/v1/races?${params}`, fetch),
 		// Unfiltered upcoming races, just for the map's per-country counts. Small
-		// catalog today; swap for a dedicated count endpoint when it grows.
-		apiGet<Page<RaceSummary>>(`/api/v1/races?date_from=${todayISO()}&limit=100`, fetch)
+		// catalog today; swap for a dedicated count endpoint when it grows. The map
+		// is decorative: never let its fetch fail the page - degrade to no map (the
+		// +page.svelte only renders the map when countryCounts is non-empty).
+		apiGet<Page<RaceSummary>>(`/api/v1/races?date_from=${todayISO()}&limit=100`, fetch).catch(
+			() => null
+		)
 	]);
 	const countryCounts: Record<string, number> = {};
 	const cityCounts = new Map<
 		string,
 		{ city: string; country: string; races: { name: string; slug: string }[] }
 	>();
-	for (const r of all.items) {
+	for (const r of all?.items ?? []) {
 		countryCounts[r.country] = (countryCounts[r.country] ?? 0) + 1;
 		const key = `${r.country}:${r.city}`;
 		const c = cityCounts.get(key) ?? { city: r.city, country: r.country, races: [] };
