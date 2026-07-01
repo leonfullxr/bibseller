@@ -48,7 +48,12 @@ func seedBulkRaces(t *testing.T, pool *pgxpool.Pool) {
 		t.Fatalf("analyze races: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM races WHERE slug LIKE 'bulk-%'`)
+		ctx := context.Background()
+		_, _ = pool.Exec(ctx, `DELETE FROM races WHERE slug LIKE 'bulk-%'`)
+		// testdb.Pool points at a shared dev/CI database; re-analyze (best
+		// effort) so the 5k-row bulk insert doesn't leave inflated planner
+		// stats behind for whatever test runs next.
+		_, _ = pool.Exec(ctx, `ANALYZE races`)
 	})
 }
 
@@ -68,6 +73,9 @@ func explainPlan(t *testing.T, pool *pgxpool.Pool, query string, args ...any) st
 		}
 		b.WriteString(line)
 		b.WriteString("\n")
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("explain: %v", err)
 	}
 	return b.String()
 }
