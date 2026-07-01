@@ -716,6 +716,11 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 	// as the ETag with no extra hashing. Checked before ever touching storage:
 	// a cache hit then costs nothing beyond the DB authz lookup already done
 	// above, not a MinIO round trip just to throw the bytes away on a 304.
+	// ponytail: this trusts the DB row without confirming the object still
+	// exists in storage, so an out-of-band delete (bypassing this app - the
+	// app's own paths always remove the row and object together) would 304
+	// forever instead of surfacing as a 404. Nothing in this codebase creates
+	// that state; add a Stat() check here if that ever becomes untrue.
 	etag := `"` + *row.ImageKey + `"`
 	cacheControl := fmt.Sprintf("private, max-age=%d", imageCacheMaxAge)
 	if r.Header.Get("If-None-Match") == etag {
@@ -736,9 +741,17 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = obj.Close() }()
-	data, err := io.ReadAll(obj)
+	// postImageMessage enforces maxImageBytes at upload, but this read path
+	// shouldn't trust that unconditionally - cap it here too, so a corrupted
+	// or out-of-band-written oversized object can't blow up memory.
+	data, err := io.ReadAll(io.LimitReader(obj, maxImageBytes+1))
 	if err != nil {
 		slog.Error("chat: image read failed", "err", err, "message_id", msgID)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+	if len(data) > maxImageBytes {
+		slog.Error("chat: stored image exceeds maxImageBytes", "message_id", msgID, "key", *row.ImageKey)
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
 		return
 	}
