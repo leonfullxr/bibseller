@@ -2,6 +2,7 @@ package listing
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -47,6 +48,12 @@ func StartExpiryJob(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger
 // reports the total expired and whether this instance held the lock for at
 // least the first batch (false = another instance is running it this tick).
 func expirePastRaceListings(ctx context.Context, pool *pgxpool.Pool, now time.Time, batchSize int32) (count int64, ran bool, err error) {
+	if batchSize <= 0 {
+		// A batch that expires 0 rows never satisfies the loop's "fewer than a
+		// full batch" exit, so this would otherwise spin forever re-acquiring
+		// the lock every iteration.
+		return 0, false, fmt.Errorf("expirePastRaceListings: batchSize must be positive, got %d", batchSize)
+	}
 	// Start of today UTC: a race whose day is before today is over.
 	cutoff := now.Truncate(24 * time.Hour)
 	for {

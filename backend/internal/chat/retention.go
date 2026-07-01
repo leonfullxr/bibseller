@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -51,6 +52,12 @@ func StartRetentionJob(ctx context.Context, pool *pgxpool.Pool, store Storage, l
 // from storage before moving to the next. Reports the total deleted and
 // whether this instance held the lock for at least the first batch.
 func purgeExpiredMessages(ctx context.Context, pool *pgxpool.Pool, store Storage, logger *slog.Logger, now time.Time, batchSize int32) (count int64, ran bool, err error) {
+	if batchSize <= 0 {
+		// A batch that deletes 0 rows never satisfies the loop's "fewer than a
+		// full batch" exit, so this would otherwise spin forever re-acquiring
+		// the lock every iteration.
+		return 0, false, fmt.Errorf("purgeExpiredMessages: batchSize must be positive, got %d", batchSize)
+	}
 	cutoff := now.AddDate(0, -retentionMonths, 0).Truncate(24 * time.Hour)
 	for {
 		n, keys, batchRan, err := purgeMessageBatch(ctx, pool, cutoff, batchSize)

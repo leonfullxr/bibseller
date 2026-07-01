@@ -136,12 +136,29 @@ func TestExpirePastRaceListingsBatches(t *testing.T) {
 	if !ran {
 		t.Fatal("expiry did not run (lock not held)")
 	}
-	if n != int64(len(ids)) {
-		t.Fatalf("expired count = %d, want %d (batchSize=1 forces multiple batches)", n, len(ids))
+	// >= not == : testdb.Pool runs against a database shared with other
+	// packages' tests (CI runs them concurrently), so an unrelated past-dated
+	// active listing can legitimately also get swept up here. What proves
+	// multi-batch draining is that batchSize=1 still reaches every one of
+	// *this test's* ids (checked below) in a single call.
+	if n < int64(len(ids)) {
+		t.Fatalf("expired count = %d, want >= %d (batchSize=1 forces multiple batches)", n, len(ids))
 	}
 	for _, id := range ids {
 		if s := statusOf(t, pool, id); s != "expired" {
 			t.Errorf("listing %s = %q, want expired", id, s)
+		}
+	}
+}
+
+// TestExpirePastRaceListingsRejectsNonPositiveBatchSize proves the guard that
+// stops a batchSize <= 0 from spinning the loop forever (0 rows expired never
+// satisfies the "fewer than a full batch" exit).
+func TestExpirePastRaceListingsRejectsNonPositiveBatchSize(t *testing.T) {
+	pool := testdb.Pool(t)
+	for _, bad := range []int32{0, -1} {
+		if _, ran, err := expirePastRaceListings(context.Background(), pool, time.Now().UTC(), bad); err == nil || ran {
+			t.Errorf("batchSize=%d: err = %v, ran = %v, want an error and ran=false", bad, err, ran)
 		}
 	}
 }

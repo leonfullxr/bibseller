@@ -168,8 +168,12 @@ func TestPurgeExpiredMessagesBatches(t *testing.T) {
 	if !ran {
 		t.Fatal("purge did not run (lock not held)")
 	}
-	if n != int64(len(msgs)) {
-		t.Fatalf("purged count = %d, want %d (batchSize=1 forces multiple batches)", n, len(msgs))
+	// >= not == : testdb.Pool is shared with other packages' concurrently-run
+	// tests, so an unrelated expired message can legitimately also get swept
+	// up here. What proves multi-batch draining is that every one of *this
+	// test's* messages (checked below) is gone after a single batchSize=1 call.
+	if n < int64(len(msgs)) {
+		t.Fatalf("purged count = %d, want >= %d (batchSize=1 forces multiple batches)", n, len(msgs))
 	}
 	for _, m := range msgs {
 		if messageExists(t, pool, m.id) {
@@ -177,6 +181,19 @@ func TestPurgeExpiredMessagesBatches(t *testing.T) {
 		}
 		if _, err := store.Get(context.Background(), m.key); !store.IsNotFound(err) {
 			t.Errorf("image object %s still present: err = %v", m.key, err)
+		}
+	}
+}
+
+// TestPurgeExpiredMessagesRejectsNonPositiveBatchSize proves the guard that
+// stops a batchSize <= 0 from spinning the loop forever (0 rows deleted never
+// satisfies the "fewer than a full batch" exit).
+func TestPurgeExpiredMessagesRejectsNonPositiveBatchSize(t *testing.T) {
+	pool := testdb.Pool(t)
+	store := retentionStorage(t)
+	for _, bad := range []int32{0, -1} {
+		if _, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), time.Now().UTC(), bad); err == nil || ran {
+			t.Errorf("batchSize=%d: err = %v, ran = %v, want an error and ran=false", bad, err, ran)
 		}
 	}
 }
