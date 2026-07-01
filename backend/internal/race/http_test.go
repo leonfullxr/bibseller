@@ -189,8 +189,8 @@ func TestMapCounts(t *testing.T) {
 	pool := testdb.Pool(t)
 	// cc and other must be country codes exclusive to this test: it asserts
 	// absolute aggregate counts, and testdb is shared with other packages'
-	// concurrently-running tests. ZY and QZ are user-assigned ISO codes seeded
-	// nowhere else. "ZX" specifically is NOT safe here - it's the throwaway-race
+	// concurrently-running tests. ZY and QZ are seeded nowhere else in the
+	// suite. "ZX" specifically is NOT safe here - it's the throwaway-race
 	// country the chat and listing packages seed, so a concurrent run would
 	// inflate its count and flake the assertions (#110).
 	const cc, other = "ZY", "QZ"
