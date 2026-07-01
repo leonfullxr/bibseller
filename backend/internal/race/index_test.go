@@ -29,14 +29,16 @@ func seedBulkRaces(t *testing.T, pool *pgxpool.Pool) {
 	sports := []string{"running", "trail", "triathlon", "cycling"}
 	src := "https://example.org/source"
 
+	ids_ := make([]uuid.UUID, bulkRaceCount)
 	batch := &pgx.Batch{}
 	for i := range bulkRaceCount {
 		id := ids.New()
+		ids_[i] = id
 		batch.Queue(
 			`INSERT INTO races (id, slug, name, sport, event_date, city, country, transfer_policy, policy_source_url, official_transfer_url, status)
-			 VALUES ($1, $2, $3, $4, '2027-01-01'::date + ($5 || ' days')::interval, $6, $7, 'platform_sale', $8, $8, 'published')`,
+			 VALUES ($1, $2, $3, $4, '2027-01-01'::date + $5::int, $6, $7, 'platform_sale', $8, $8, 'published')`,
 			id, "bulk-"+id.String(), "Bulk Race "+strconv.Itoa(i),
-			sports[i%len(sports)], strconv.Itoa(i%730), "City"+strconv.Itoa(i%50), countries[i%len(countries)], src,
+			sports[i%len(sports)], i%730, "City"+strconv.Itoa(i%50), countries[i%len(countries)], src,
 		)
 	}
 	if err := pool.SendBatch(ctx, batch).Close(); err != nil {
@@ -49,10 +51,11 @@ func seedBulkRaces(t *testing.T, pool *pgxpool.Pool) {
 	}
 	t.Cleanup(func() {
 		ctx := context.Background()
-		_, _ = pool.Exec(ctx, `DELETE FROM races WHERE slug LIKE 'bulk-%'`)
-		// testdb.Pool points at a shared dev/CI database; re-analyze (best
-		// effort) so the 5k-row bulk insert doesn't leave inflated planner
-		// stats behind for whatever test runs next.
+		// By id, not a slug LIKE pattern - precise regardless of what else
+		// shares this shared dev/CI database.
+		_, _ = pool.Exec(ctx, `DELETE FROM races WHERE id = ANY($1::uuid[])`, ids_)
+		// Re-analyze (best effort) so the 5k-row bulk insert doesn't leave
+		// inflated planner stats behind for whatever test runs next.
 		_, _ = pool.Exec(ctx, `ANALYZE races`)
 	})
 }
@@ -106,11 +109,17 @@ func TestListRacesUsesIndexNotFullSort(t *testing.T) {
 	pool := testdb.Pool(t)
 	seedBulkRaces(t, pool)
 
+	// The target index by name, not a generic "Index" substring - the plan
+	// also has an unrelated index scan for the active_listings subquery, which
+	// would satisfy a bare "Index" check regardless of whether #95's index is
+	// used at all.
+	const targetIndex = "races_event_date_id_idx"
+
 	// Default, unfiltered browse (#95 acceptance criterion 1).
 	plan := explainPlan(t, pool, listRacesSQL,
 		nil, nil, nil, nil, nil, nil, nil, uuid.Nil, 24)
-	if !strings.Contains(plan, "Index") {
-		t.Errorf("default browse: expected an index scan, got:\n%s", plan)
+	if !strings.Contains(plan, targetIndex) {
+		t.Errorf("default browse: expected %s in the plan, got:\n%s", targetIndex, plan)
 	}
 	if strings.Contains(plan, "Sort") {
 		t.Errorf("default browse: expected no full-table sort, got:\n%s", plan)
@@ -120,8 +129,8 @@ func TestListRacesUsesIndexNotFullSort(t *testing.T) {
 	sport := "trail"
 	plan = explainPlan(t, pool, listRacesSQL,
 		nil, &sport, nil, nil, nil, nil, nil, uuid.Nil, 24)
-	if !strings.Contains(plan, "Index") {
-		t.Errorf("sport-filtered browse: expected an index scan, got:\n%s", plan)
+	if !strings.Contains(plan, targetIndex) {
+		t.Errorf("sport-filtered browse: expected %s in the plan, got:\n%s", targetIndex, plan)
 	}
 	if strings.Contains(plan, "Sort") {
 		t.Errorf("sport-filtered browse: expected no full-table sort, got:\n%s", plan)
