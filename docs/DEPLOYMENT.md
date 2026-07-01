@@ -410,3 +410,39 @@ gunzip -c backups/db-<ts>.sql.gz \
 
 Media is restored by mirroring R2 back the other way (`mc mirror r2/<bucket>/media
 src/<bucket>`).
+
+## Monitoring & uptime
+
+### Container logs
+
+Every long-running service caps its logs via the `x-logging` anchor in
+`compose.prod.yml` (`json-file`, `max-size: 10m`, `max-file: 3` -> 30 MiB max
+each). Docker's default driver is unbounded, so this stops a crash-loop or a
+verbose spew from filling the box's disk. `make prod-down` removes the containers
+(and their logs), so the cap only has to bound a single up-session. Tail live
+logs with `make prod-logs`.
+
+### Uptime monitoring  [enable when always-on]
+
+An external uptime monitor pings the site on a schedule and alerts when it is
+unreachable. It is **deliberately not enabled in the self-host beta (Model A)**:
+prod runs manually and is stopped daily to free RAM (it shares the box), so a
+24/7 monitor would fire constant false "down" alerts. Turn it on once prod is
+always-on (Model B / the VPS migration, #75). When you do:
+
+- **Target the health endpoint, not the homepage**: `GET <PUBLIC_ORIGIN>/api/healthz`
+  (liveness; Caddy routes `/api/*` to the api service). `/api/readyz` also checks
+  the DB - use it for a deeper probe.
+- **Provider**: any external SaaS - UptimeRobot (free tier, 5-min checks),
+  BetterStack, or Cloudflare Health Checks (you are already behind Cloudflare;
+  it is a paid add-on). It is dashboard config; no repo change needed.
+- **Alert** to somewhere you actually watch (email or a chat webhook), with a
+  check interval >= 1 min and >= 2 consecutive failures before alerting, so a
+  deploy restart does not page you.
+
+Until then, the signals that fit the manual model already exist: the offsite
+backup job emails `BACKUP_ALERT_EMAIL` on failure (independent of the stack), the
+API logs structured JSON (`make prod-logs`), and `/api/healthz` + `/api/readyz`
+are there for a manual curl. Error aggregation (Sentry) is the other M9-full
+observability item; it is deferred alongside this one, as it needs its own
+account/DSN.
