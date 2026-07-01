@@ -34,10 +34,11 @@ import (
 )
 
 const (
-	maxMessageLen   = 4000       // matches the messages_content_check body bound
-	messagePageSize = 100        // schema note: a poll fetches up to 100 messages
-	maxImageBytes   = 5 << 20    // 5 MiB cap on an uploaded image
-	maxImagePixels  = 40_000_000 // decode-bomb guard: ~40 MP (high-res phone photos still fit)
+	maxMessageLen    = 4000       // matches the messages_content_check body bound
+	messagePageSize  = 100        // schema note: a poll fetches up to 100 messages
+	maxImageBytes    = 5 << 20    // 5 MiB cap on an uploaded image
+	maxImagePixels   = 40_000_000 // decode-bomb guard: ~40 MP (high-res phone photos still fit)
+	imageCacheMaxAge = 300        // seconds a browser may reuse an image without revalidating (#98)
 )
 
 // Mailer sends the new-message notification. Declared here (the consumer) so
@@ -710,6 +711,25 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The object key is a per-message, never-reused random string (upload
+	// path), so it already uniquely identifies this exact image - it doubles
+	// as the ETag with no extra hashing. Checked before ever touching storage:
+	// a cache hit then costs nothing beyond the DB authz lookup already done
+	// above, not a MinIO round trip just to throw the bytes away on a 304.
+	// ponytail: this trusts the DB row without confirming the object still
+	// exists in storage, so an out-of-band delete (bypassing this app - the
+	// app's own paths always remove the row and object together) would 304
+	// forever instead of surfacing as a 404. Nothing in this codebase creates
+	// that state; add a Stat() check here if that ever becomes untrue.
+	etag := `"` + *row.ImageKey + `"`
+	cacheControl := fmt.Sprintf("private, max-age=%d", imageCacheMaxAge)
+	if r.Header.Get("If-None-Match") == etag {
+		w.Header().Set("ETag", etag)
+		w.Header().Set("Cache-Control", cacheControl)
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	obj, err := h.storage.Get(r.Context(), *row.ImageKey)
 	if err != nil {
 		if h.storage.IsNotFound(err) {
@@ -721,9 +741,29 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = obj.Close() }()
+	// postImageMessage enforces maxImageBytes at upload, but this read path
+	// shouldn't trust that unconditionally - cap it here too, so a corrupted
+	// or out-of-band-written oversized object can't blow up memory.
+	data, err := io.ReadAll(io.LimitReader(obj, maxImageBytes+1))
+	if err != nil {
+		slog.Error("chat: image read failed", "err", err, "message_id", msgID)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+	if len(data) > maxImageBytes {
+		slog.Error("chat: stored image exceeds maxImageBytes", "message_id", msgID, "key", *row.ImageKey)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+
+	// A client with a different (or no) cached ETag falls through to here;
+	// ServeContent still handles If-None-Match/Range/Content-Length correctly
+	// for anything the fast-path above didn't already catch (e.g. a
+	// comma-separated If-None-Match list or a weak validator).
 	w.Header().Set("Content-Type", contentTypeForKey(*row.ImageKey))
-	w.Header().Set("Cache-Control", "private, no-store")
-	_, _ = io.Copy(w, obj) // a mid-stream client disconnect is not actionable here
+	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("ETag", etag)
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 }
 
 func contentTypeForKey(key string) string {
