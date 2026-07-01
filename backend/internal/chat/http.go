@@ -82,6 +82,7 @@ func Routes(pool *pgxpool.Pool, mailer Mailer, store Storage, appURL string) fun
 		mux.HandleFunc("POST /threads/{id}/messages", h.postMessage)
 		mux.HandleFunc("GET /threads/{id}/messages", h.listMessages)
 		mux.HandleFunc("GET /threads/{id}/messages/{mid}/image", h.getMessageImage)
+		mux.HandleFunc("GET /threads/{id}", h.getThreadHeader)
 		mux.HandleFunc("GET /threads", h.listThreads)
 	}
 }
@@ -405,11 +406,14 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 type threadListResponse struct {
-	Items []threadSummary `json:"items"`
+	Items      []threadSummary `json:"items"`
+	NextCursor *string         `json:"next_cursor"`
 }
 
 // listThreads is the caller's inbox: their threads as buyer or seller, newest
 // activity first, each with the other party and the caller's unread count.
+// Keyset-paginated on (last_message_at, id) - #97 - so a power-seller's inbox
+// runs a bounded number of per-thread unread subqueries per call.
 func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 	caller, ok := auth.UserFromContext(r.Context())
 	if !ok {
@@ -420,7 +424,22 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
 		return
 	}
-	rows, err := h.q.ListThreadsForUser(r.Context(), caller.ID)
+	limit, err := httpx.ParseLimit(r.URL.Query())
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
+		return
+	}
+	params := sqlcgen.ListThreadsForUserParams{Caller: caller.ID, PageSize: limit}
+	if v := r.URL.Query().Get("cursor"); v != "" {
+		at, id, err := parseThreadCursor(v)
+		if err != nil {
+			httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "malformed cursor")
+			return
+		}
+		params.CursorLastMessageAt = &at
+		params.CursorID = &id
+	}
+	rows, err := h.q.ListThreadsForUser(r.Context(), params)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load inbox")
 		return
@@ -438,8 +457,84 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 			LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
 		}
 	}
+	resp := threadListResponse{Items: items}
+	if len(rows) == int(params.PageSize) {
+		last := rows[len(rows)-1]
+		if last.LastMessageAt != nil {
+			c := formatThreadCursor(*last.LastMessageAt, last.ID)
+			resp.NextCursor = &c
+		}
+	}
 	w.Header().Set("Cache-Control", "no-store")
-	httpx.JSON(w, http.StatusOK, threadListResponse{Items: items})
+	httpx.JSON(w, http.StatusOK, resp)
+}
+
+// getThreadHeader returns one thread's header (listing/race context, the
+// other participant, unread count) so the single-thread page can render
+// without fetching the whole inbox (#97).
+func (h *Handler) getThreadHeader(w http.ResponseWriter, r *http.Request) {
+	caller, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
+		return
+	}
+	if caller.EmailVerifiedAt == nil {
+		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
+		return
+	}
+	threadID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "not_found", "thread not found")
+		return
+	}
+	row, err := h.q.GetThreadHeader(r.Context(), sqlcgen.GetThreadHeaderParams{ID: threadID, Caller: caller.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.Error(w, http.StatusNotFound, "not_found", "thread not found")
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load thread")
+		return
+	}
+	if !isParticipant(caller.ID, row.BuyerID, row.SellerID) {
+		httpx.Error(w, http.StatusForbidden, "forbidden", "you are not a participant in this thread")
+		return
+	}
+	role, other, otherID := "seller", row.BuyerName, row.BuyerID
+	if row.BuyerID == caller.ID {
+		role, other, otherID = "buyer", row.SellerName, row.SellerID
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.JSON(w, http.StatusOK, threadSummary{
+		ID: row.ID, ListingID: row.ListingID,
+		RaceName: row.RaceName, RaceSlug: row.RaceSlug,
+		Role: role, OtherParty: other, OtherPartyID: otherID,
+		LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
+	})
+}
+
+// Cursor format: "<RFC3339Nano>~<uuid>" - keyset position on
+// (last_message_at, id) DESC, mirroring race.formatCursor's convention. UTC,
+// per this repo's timestamptz convention - it also keeps the cursor free of a
+// "+" offset, which a caller that doesn't URL-encode its query would corrupt.
+func formatThreadCursor(at time.Time, id uuid.UUID) string {
+	return at.UTC().Format(time.RFC3339Nano) + "~" + id.String()
+}
+
+func parseThreadCursor(s string) (time.Time, uuid.UUID, error) {
+	atPart, idPart, ok := strings.Cut(s, "~")
+	if !ok {
+		return time.Time{}, uuid.Nil, errors.New("missing separator")
+	}
+	at, err := time.Parse(time.RFC3339Nano, atPart)
+	if err != nil {
+		return time.Time{}, uuid.Nil, err
+	}
+	id, err := uuid.Parse(idPart)
+	if err != nil {
+		return time.Time{}, uuid.Nil, err
+	}
+	return at, id, nil
 }
 
 // decodeBody parses and validates the message body and applies the per-account
