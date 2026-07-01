@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
@@ -133,6 +134,51 @@ func TestInboxDefaultLimitIsGenerous(t *testing.T) {
 	}
 	if len(resp.Items) != threadCount {
 		t.Fatalf("no-limit fetch: items = %d, want %d (all of them, untruncated)", len(resp.Items), threadCount)
+	}
+}
+
+// TestInboxExcludesThreadWithNoMessage proves the last_message_at IS NOT NULL
+// guard (Copilot review on #111): a thread inserted directly, bypassing
+// CreateThread/TouchThreadOnMessage (as at least one existing test fixture
+// already does - internal/chat/retention_test.go's seedThreadMessage), has a
+// NULL last_message_at. Without the guard this would sort first under
+// ORDER BY ... DESC and never satisfy the keyset cursor comparison, breaking
+// pagination for whoever else is in the caller's inbox. The fetch must
+// succeed and simply omit it - there's no message to show for it anyway.
+func TestInboxExcludesThreadWithNoMessage(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	buyerTok, buyerID := registerUser(t, h, pool, "Buyer", true)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	race := seedInboxTestRace(t, pool)
+	listingID := createListing(t, h, race.ID, sellerTok)
+	realThreadID := startThread(t, h, listingID, buyerTok, "hi")
+
+	listing2ID := createListing(t, h, race.ID, sellerTok)
+	listing2, err := uuid.Parse(listing2ID)
+	if err != nil {
+		t.Fatalf("parse listing id: %v", err)
+	}
+	noMsgThreadID := ids.New()
+	if _, err := pool.Exec(context.Background(),
+		`INSERT INTO chat_threads (id, listing_id, buyer_id) VALUES ($1, $2, $3)`,
+		noMsgThreadID, listing2, buyerID); err != nil {
+		t.Fatalf("seed thread with no message: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM chat_threads WHERE id = $1`, noMsgThreadID)
+	})
+
+	items := inbox(t, h, buyerTok)
+	found := map[string]bool{}
+	for _, it := range items {
+		found[it.ID] = true
+	}
+	if !found[realThreadID] {
+		t.Errorf("real thread missing from inbox: %+v", items)
+	}
+	if found[noMsgThreadID.String()] {
+		t.Errorf("no-message thread should be excluded, got it in: %+v", items)
 	}
 }
 

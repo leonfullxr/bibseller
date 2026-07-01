@@ -378,6 +378,7 @@ JOIN races r ON r.id = l.race_id
 JOIN users bu ON bu.id = t.buyer_id
 JOIN users su ON su.id = l.seller_id
 WHERE (t.buyer_id = $1 OR l.seller_id = $1)
+  AND t.last_message_at IS NOT NULL
   AND (
     $2::timestamptz IS NULL
     OR (t.last_message_at, t.id) < ($2, $3::uuid)
@@ -410,9 +411,13 @@ type ListThreadsForUserRow struct {
 // with race context, both party names (the handler picks the "other" one), and
 // the caller's unread count. Newest activity first, keyset-paginated on
 // (last_message_at, id) so the number of per-thread unread subqueries per call
-// is bounded by page_size, not the user's total thread count (#97). A
-// committed thread always has last_message_at set (TouchThreadOnMessage runs
-// in the same transaction as its first message), so NULLS need no handling here.
+// is bounded by page_size, not the user's total thread count (#97).
+// last_message_at is nullable and the app's own write path always sets it
+// before a thread is ever committed (TouchThreadOnMessage runs in the same
+// transaction as the first message) - but that's an app-level guarantee, not
+// a schema one, and a thread with no message is nothing to show in an inbox
+// anyway, so this excludes NULLs outright rather than relying on callers
+// never bypassing the app (as at least one test fixture already does).
 func (q *Queries) ListThreadsForUser(ctx context.Context, arg ListThreadsForUserParams) ([]ListThreadsForUserRow, error) {
 	rows, err := q.db.Query(ctx, listThreadsForUser,
 		arg.Caller,
