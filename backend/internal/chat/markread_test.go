@@ -35,6 +35,7 @@ func seedRaceOwnCountry(t *testing.T, pool *pgxpool.Pool) sqlcgen.Race {
 		_, _ = pool.Exec(ctx, `DELETE FROM messages WHERE thread_id IN
 			(SELECT t.id FROM chat_threads t JOIN listings l ON l.id = t.listing_id WHERE l.race_id = $1)`, race.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM chat_threads WHERE listing_id IN (SELECT id FROM listings WHERE race_id = $1)`, race.ID)
+		_, _ = pool.Exec(ctx, `DELETE FROM policy_acks WHERE race_id = $1`, race.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM listings WHERE race_id = $1`, race.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM races WHERE id = $1`, race.ID)
 	})
