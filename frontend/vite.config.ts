@@ -34,8 +34,11 @@ export default defineConfig({
 			// 'self'. style-src-attr allows the inline style="" attributes the app
 			// genuinely uses (app.html's body wrapper, the marquee's
 			// --marquee-duration, RaceMap popover/dot positioning) - those can't be
-			// nonced. No inline event handlers exist, so script-src stays nonce-only
-			// (no 'unsafe-inline'). frame-ancestors backs up Caddy's X-Frame-Options.
+			// nonced. No inline event handlers exist, so script-src carries no
+			// 'unsafe-inline' - just 'self' (SvelteKit's JS bundles) plus the
+			// per-request nonce SvelteKit adds for the inline hydration script.
+			// frame-ancestors backs up Caddy's X-Frame-Options; base-uri is 'none'
+			// (the app renders no <base> tag) to block base-tag injection.
 			csp: {
 				mode: 'auto',
 				directives: {
@@ -47,7 +50,7 @@ export default defineConfig({
 					'font-src': ['self'],
 					'connect-src': ['self'],
 					'object-src': ['none'],
-					'base-uri': ['self'],
+					'base-uri': ['none'],
 					'form-action': ['self'],
 					'frame-ancestors': ['none']
 				}
