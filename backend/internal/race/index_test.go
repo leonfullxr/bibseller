@@ -21,7 +21,7 @@ const bulkRaceCount = 5000
 
 // seedBulkRaces inserts bulkRaceCount published races spread across countries,
 // sports and two years of event dates, batched in one round trip. Self-cleaning
-// via its distinct slug prefix, safe against any other DB state.
+// by the captured row ids, safe against any other DB state.
 func seedBulkRaces(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
