@@ -118,7 +118,7 @@ func TestPurgeExpiredMessages(t *testing.T) {
 	expired, expiredKey := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -13, 0)) // past horizon
 	recent, _ := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -1, 0))            // within horizon
 
-	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), now)
+	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), now, retentionBatchSize)
 	if err != nil {
 		t.Fatalf("purge: %v", err)
 	}
@@ -137,5 +137,46 @@ func TestPurgeExpiredMessages(t *testing.T) {
 	}
 	if _, err := store.Get(context.Background(), expiredKey); !store.IsNotFound(err) {
 		t.Errorf("expired image object still present: err = %v", err)
+	}
+}
+
+// TestPurgeExpiredMessagesBatches proves #99: a backlog bigger than one batch
+// is fully drained (rows and their objects) within a single call - a
+// batchSize of 1 against 3 expired messages can only reach n == 3 by running
+// three internal batches, each removing its own object before the next runs.
+func TestPurgeExpiredMessagesBatches(t *testing.T) {
+	pool := testdb.Pool(t)
+	store := retentionStorage(t)
+	seller := seedUser(t, pool)
+	buyer := seedUser(t, pool)
+
+	now := time.Now().UTC()
+	type expired struct {
+		id  uuid.UUID
+		key string
+	}
+	var msgs []expired
+	for range 3 {
+		id, key := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -13, 0))
+		msgs = append(msgs, expired{id, key})
+	}
+
+	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), now, 1)
+	if err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	if !ran {
+		t.Fatal("purge did not run (lock not held)")
+	}
+	if n != int64(len(msgs)) {
+		t.Fatalf("purged count = %d, want %d (batchSize=1 forces multiple batches)", n, len(msgs))
+	}
+	for _, m := range msgs {
+		if messageExists(t, pool, m.id) {
+			t.Errorf("message %s still present after purge", m.id)
+		}
+		if _, err := store.Get(context.Background(), m.key); !store.IsNotFound(err) {
+			t.Errorf("image object %s still present: err = %v", m.key, err)
+		}
 	}
 }

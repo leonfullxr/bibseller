@@ -70,25 +70,27 @@ WHERE thread_id = $1
 ORDER BY id
 LIMIT sqlc.arg('page_size');
 
--- name: ListExpiredMessageImageKeys :many
--- Image keys of messages whose race finished before the cutoff, so the objects
--- can be removed from storage before DeleteExpiredMessages drops the rows.
-SELECT m.image_key
+-- name: ListExpiredMessageBatch :many
+-- One batch (up to batch_size, oldest id first) of messages whose race
+-- finished before the cutoff (12 months after race event_date) - id and
+-- image_key, so DeleteExpiredMessagesByID can delete exactly this same set
+-- and the retention job can remove exactly these objects from storage. Two
+-- independent LIMITed queries could each pick a different batch and leave a
+-- harvested key's message un-deleted (or vice versa); going by id fixes that
+-- (#99).
+SELECT m.id, m.image_key
 FROM messages m
 JOIN chat_threads t ON t.id = m.thread_id
 JOIN listings l ON l.id = t.listing_id
 JOIN races r ON r.id = l.race_id
-WHERE r.event_date < sqlc.arg('cutoff') AND m.image_key IS NOT NULL;
+WHERE r.event_date < sqlc.arg('cutoff')
+ORDER BY m.id
+LIMIT sqlc.arg('batch_size');
 
--- name: DeleteExpiredMessages :execrows
--- Retention: delete messages whose race finished before the cutoff (12 months
--- after race event_date). Returns the number deleted.
-DELETE FROM messages m
-USING chat_threads t, listings l, races r
-WHERE m.thread_id = t.id
-  AND t.listing_id = l.id
-  AND l.race_id = r.id
-  AND r.event_date < sqlc.arg('cutoff');
+-- name: DeleteExpiredMessagesByID :execrows
+-- Deletes exactly the batch ListExpiredMessageBatch returned - see its
+-- comment. Returns the number deleted.
+DELETE FROM messages WHERE id = ANY(sqlc.arg('ids')::uuid[]);
 
 -- name: GetPolicyAck :one
 SELECT * FROM policy_acks WHERE user_id = $1 AND race_id = $2;

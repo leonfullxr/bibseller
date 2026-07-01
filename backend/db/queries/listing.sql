@@ -8,14 +8,19 @@ INSERT INTO listings (
 RETURNING *;
 
 -- name: ExpirePastRaceListings :execrows
--- Flips active listings to 'expired' once their race is over (event_date is
--- before the cutoff, i.e. start of today UTC). Returns the number expired.
+-- Flips up to batch_size active listings to 'expired' once their race is over
+-- (event_date is before the cutoff, i.e. start of today UTC). The job calls
+-- this in a loop, each call its own transaction, so a large backlog doesn't
+-- pay for one unbounded UPDATE holding every matching row lock at once (#99).
+-- Returns the number expired in this batch.
 UPDATE listings l
 SET status = 'expired', updated_at = now()
-FROM races r
-WHERE l.race_id = r.id
-  AND l.status = 'active'
-  AND r.event_date < sqlc.arg('cutoff');
+WHERE l.id IN (
+    SELECT l2.id FROM listings l2
+    JOIN races r ON r.id = l2.race_id
+    WHERE l2.status = 'active' AND r.event_date < sqlc.arg('cutoff')
+    LIMIT sqlc.arg('batch_size')
+);
 
 -- name: UpdateListing :one
 -- Guarded so the edit is atomic with the owner/active checks the handler made:

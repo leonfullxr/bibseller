@@ -83,7 +83,7 @@ func TestExpirePastRaceListings(t *testing.T) {
 	futureActive := seedRaceListing(t, pool, seller, time.Now().UTC().AddDate(0, 1, 0), false)
 	pastCancelled := seedRaceListing(t, pool, seller, time.Now().UTC().AddDate(0, 0, -3), true)
 
-	n, ran, err := expirePastRaceListings(context.Background(), pool, time.Now().UTC())
+	n, ran, err := expirePastRaceListings(context.Background(), pool, time.Now().UTC(), expiryBatchSize)
 	if err != nil {
 		t.Fatalf("expire: %v", err)
 	}
@@ -106,11 +106,43 @@ func TestExpirePastRaceListings(t *testing.T) {
 
 	// A race happening today is not past: re-running expires nothing new from
 	// the today boundary. (Sanity: the function is idempotent for this set.)
-	if _, _, err := expirePastRaceListings(context.Background(), pool, time.Now().UTC()); err != nil {
+	if _, _, err := expirePastRaceListings(context.Background(), pool, time.Now().UTC(), expiryBatchSize); err != nil {
 		t.Fatalf("second run: %v", err)
 	}
 	if s := statusOf(t, pool, futureActive); s != "active" {
 		t.Errorf("future listing changed on second run: %q", s)
+	}
+}
+
+// TestExpirePastRaceListingsBatches proves #99: a backlog bigger than one
+// batch is fully drained within a single call, one batch at a time - a
+// batchSize of 1 against 3 due listings can only reach n == 3 by running
+// three internal batches.
+func TestExpirePastRaceListingsBatches(t *testing.T) {
+	pool := testdb.Pool(t)
+	seller := seedSeller(t, pool)
+
+	past := time.Now().UTC().AddDate(0, 0, -3)
+	ids := []uuid.UUID{
+		seedRaceListing(t, pool, seller, past, false),
+		seedRaceListing(t, pool, seller, past, false),
+		seedRaceListing(t, pool, seller, past, false),
+	}
+
+	n, ran, err := expirePastRaceListings(context.Background(), pool, time.Now().UTC(), 1)
+	if err != nil {
+		t.Fatalf("expire: %v", err)
+	}
+	if !ran {
+		t.Fatal("expiry did not run (lock not held)")
+	}
+	if n != int64(len(ids)) {
+		t.Fatalf("expired count = %d, want %d (batchSize=1 forces multiple batches)", n, len(ids))
+	}
+	for _, id := range ids {
+		if s := statusOf(t, pool, id); s != "expired" {
+			t.Errorf("listing %s = %q, want expired", id, s)
+		}
 	}
 }
 
@@ -133,7 +165,7 @@ func TestExpiryAdvisoryLockSerializes(t *testing.T) {
 	}
 
 	// The job must see the lock as taken and skip, not block or run.
-	n, ran, err := expirePastRaceListings(ctx, pool, time.Now().UTC())
+	n, ran, err := expirePastRaceListings(ctx, pool, time.Now().UTC(), expiryBatchSize)
 	if err != nil {
 		t.Fatalf("expire while locked: %v", err)
 	}
