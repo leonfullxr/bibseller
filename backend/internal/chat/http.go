@@ -711,6 +711,20 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The object key is a per-message, never-reused random string (upload
+	// path), so it already uniquely identifies this exact image - it doubles
+	// as the ETag with no extra hashing. Checked before ever touching storage:
+	// a cache hit then costs nothing beyond the DB authz lookup already done
+	// above, not a MinIO round trip just to throw the bytes away on a 304.
+	etag := `"` + *row.ImageKey + `"`
+	cacheControl := fmt.Sprintf("private, max-age=%d", imageCacheMaxAge)
+	if r.Header.Get("If-None-Match") == etag {
+		w.Header().Set("ETag", etag)
+		w.Header().Set("Cache-Control", cacheControl)
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	obj, err := h.storage.Get(r.Context(), *row.ImageKey)
 	if err != nil {
 		if h.storage.IsNotFound(err) {
@@ -729,13 +743,13 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The object key is a per-message, never-reused random string (upload
-	// path), so it already uniquely identifies this exact image - it doubles
-	// as the ETag with no extra hashing. ServeContent handles If-None-Match
-	// (304) and Range against it once the header is set, plus Content-Length.
+	// A client with a different (or no) cached ETag falls through to here;
+	// ServeContent still handles If-None-Match/Range/Content-Length correctly
+	// for anything the fast-path above didn't already catch (e.g. a
+	// comma-separated If-None-Match list or a weak validator).
 	w.Header().Set("Content-Type", contentTypeForKey(*row.ImageKey))
-	w.Header().Set("Cache-Control", fmt.Sprintf("private, max-age=%d", imageCacheMaxAge))
-	w.Header().Set("ETag", `"`+*row.ImageKey+`"`)
+	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("ETag", etag)
 	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 }
 

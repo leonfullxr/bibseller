@@ -1,10 +1,13 @@
 package chat_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/leonfullxr/bibseller/backend/internal/auth"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/testdb"
@@ -75,5 +78,42 @@ func TestImageMessageETagAndRange(t *testing.T) {
 
 	if rec := imageRequestWithHeaders(t, h, threadID, msgID, strangerTok, map[string]string{"If-None-Match": etag}); rec.Code != http.StatusForbidden {
 		t.Errorf("stranger with If-None-Match: status = %d, want 403", rec.Code)
+	}
+}
+
+// TestImageMessage304SkipsStorage proves the conditional-GET fast path never
+// reaches storage (Copilot review on #112): with the object deleted directly
+// (bypassing the app), a request carrying the previously-issued ETag must
+// still get 304 - a 404 here would mean the fast path fell through to
+// storage.Get before checking If-None-Match.
+func TestImageMessage304SkipsStorage(t *testing.T) {
+	pool := testdb.Pool(t)
+	requireStorage(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "hello")
+	msgID := uploadImage(t, h, threadID, buyerTok, "", tinyJPEG(t))
+
+	first := imageRequestWithHeaders(t, h, threadID, msgID, buyerTok, nil)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first fetch: status = %d", first.Code)
+	}
+	etag := first.Header().Get("ETag")
+
+	var key string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT image_key FROM messages WHERE id = $1`, uuid.MustParse(msgID)).Scan(&key); err != nil {
+		t.Fatalf("read image_key: %v", err)
+	}
+	if err := newStorage().Delete(context.Background(), key); err != nil {
+		t.Fatalf("delete object: %v", err)
+	}
+
+	rec := imageRequestWithHeaders(t, h, threadID, msgID, buyerTok, map[string]string{"If-None-Match": etag})
+	if rec.Code != http.StatusNotModified {
+		t.Fatalf("conditional fetch after object deleted: status = %d, want 304 (fast path must not touch storage)", rec.Code)
 	}
 }
