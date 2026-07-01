@@ -34,10 +34,11 @@ import (
 )
 
 const (
-	maxMessageLen   = 4000       // matches the messages_content_check body bound
-	messagePageSize = 100        // schema note: a poll fetches up to 100 messages
-	maxImageBytes   = 5 << 20    // 5 MiB cap on an uploaded image
-	maxImagePixels  = 40_000_000 // decode-bomb guard: ~40 MP (high-res phone photos still fit)
+	maxMessageLen    = 4000       // matches the messages_content_check body bound
+	messagePageSize  = 100        // schema note: a poll fetches up to 100 messages
+	maxImageBytes    = 5 << 20    // 5 MiB cap on an uploaded image
+	maxImagePixels   = 40_000_000 // decode-bomb guard: ~40 MP (high-res phone photos still fit)
+	imageCacheMaxAge = 300        // seconds a browser may reuse an image without revalidating (#98)
 )
 
 // Mailer sends the new-message notification. Declared here (the consumer) so
@@ -721,9 +722,21 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = obj.Close() }()
+	data, err := io.ReadAll(obj)
+	if err != nil {
+		slog.Error("chat: image read failed", "err", err, "message_id", msgID)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+
+	// The object key is a per-message, never-reused random string (upload
+	// path), so it already uniquely identifies this exact image - it doubles
+	// as the ETag with no extra hashing. ServeContent handles If-None-Match
+	// (304) and Range against it once the header is set, plus Content-Length.
 	w.Header().Set("Content-Type", contentTypeForKey(*row.ImageKey))
-	w.Header().Set("Cache-Control", "private, no-store")
-	_, _ = io.Copy(w, obj) // a mid-stream client disconnect is not actionable here
+	w.Header().Set("Cache-Control", fmt.Sprintf("private, max-age=%d", imageCacheMaxAge))
+	w.Header().Set("ETag", `"`+*row.ImageKey+`"`)
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 }
 
 func contentTypeForKey(key string) string {
