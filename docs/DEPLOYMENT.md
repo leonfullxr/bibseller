@@ -416,7 +416,7 @@ src/<bucket>`).
 ### Container logs
 
 Every long-running service caps its logs via the `x-logging` anchor in
-`compose.prod.yml` (`json-file`, `max-size: 10m`, `max-file: 3` -> 30 MiB max
+`deploy/compose.prod.yml` (`json-file`, `max-size: 10m`, `max-file: 3` -> 30 MiB max
 each). Docker's default driver is unbounded, so this stops a crash-loop or a
 verbose spew from filling the box's disk. `make prod-down` removes the containers
 (and their logs), so the cap only has to bound a single up-session. Tail live
