@@ -454,11 +454,15 @@ func (q *Queries) ListThreadsForUser(ctx context.Context, arg ListThreadsForUser
 	return items, nil
 }
 
-const markThreadRead = `-- name: MarkThreadRead :exec
+const markThreadRead = `-- name: MarkThreadRead :execrows
 UPDATE chat_threads
 SET buyer_last_read_at  = CASE WHEN buyer_id  = $1 THEN $2 ELSE buyer_last_read_at  END,
     seller_last_read_at = CASE WHEN buyer_id <> $1 THEN $2 ELSE seller_last_read_at END
 WHERE id = $3
+  AND (
+    (buyer_id = $1 AND (buyer_last_read_at IS NULL OR buyer_last_read_at < $2))
+    OR (buyer_id <> $1 AND (seller_last_read_at IS NULL OR seller_last_read_at < $2))
+  )
 `
 
 type MarkThreadReadParams struct {
@@ -467,11 +471,16 @@ type MarkThreadReadParams struct {
 	ID     uuid.UUID  `json:"id"`
 }
 
-// Advances the reader's last_read to the newest message they fetched. The
-// handler guarantees the reader is a participant.
-func (q *Queries) MarkThreadRead(ctx context.Context, arg MarkThreadReadParams) error {
-	_, err := q.db.Exec(ctx, markThreadRead, arg.Reader, arg.ReadAt, arg.ID)
-	return err
+// Advances the reader's last_read to the newest message they fetched, but only
+// when that actually moves it forward - skips the write (row lock, WAL,
+// autovacuum churn on this hot table) on a poll that re-reports the same or an
+// older cursor. The handler guarantees the reader is a participant.
+func (q *Queries) MarkThreadRead(ctx context.Context, arg MarkThreadReadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markThreadRead, arg.Reader, arg.ReadAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const touchThreadOnMessage = `-- name: TouchThreadOnMessage :exec
