@@ -2,6 +2,7 @@
 	import { onMount, tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { formatDateTime } from '$lib/format';
+	import { pollInterval } from '$lib/chatPoll';
 	import { getI18n } from '$lib/i18n';
 	import type { ChatMessage } from '$lib/api/types';
 	import type { PageProps } from './$types';
@@ -64,8 +65,17 @@
 	}
 
 	onMount(() => {
-		const id = setInterval(poll, 4000); // D13: 3-5s polling
-		return () => clearInterval(id);
+		let id: ReturnType<typeof setInterval>;
+		function schedule() {
+			clearInterval(id);
+			id = setInterval(poll, pollInterval(document.visibilityState === 'hidden'));
+		}
+		schedule();
+		document.addEventListener('visibilitychange', schedule);
+		return () => {
+			clearInterval(id);
+			document.removeEventListener('visibilitychange', schedule);
+		};
 	});
 
 	async function send(e: SubmitEvent) {

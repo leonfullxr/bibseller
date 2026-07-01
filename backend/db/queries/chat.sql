@@ -53,13 +53,19 @@ SET last_message_at = now(),
     seller_last_read_at = CASE WHEN buyer_id <> $2 THEN now() ELSE seller_last_read_at END
 WHERE id = $1;
 
--- name: MarkThreadRead :exec
--- Advances the reader's last_read to the newest message they fetched. The
--- handler guarantees the reader is a participant.
+-- name: MarkThreadRead :execrows
+-- Advances the reader's last_read to the newest message they fetched, but only
+-- when that actually moves it forward - skips the write (row lock, WAL,
+-- autovacuum churn on this hot table) on a poll that re-reports the same or an
+-- older cursor. The handler guarantees the reader is a participant.
 UPDATE chat_threads
 SET buyer_last_read_at  = CASE WHEN buyer_id  = sqlc.arg('reader') THEN sqlc.arg('read_at') ELSE buyer_last_read_at  END,
     seller_last_read_at = CASE WHEN buyer_id <> sqlc.arg('reader') THEN sqlc.arg('read_at') ELSE seller_last_read_at END
-WHERE id = sqlc.arg('id');
+WHERE id = sqlc.arg('id')
+  AND (
+    (buyer_id = sqlc.arg('reader') AND (buyer_last_read_at IS NULL OR buyer_last_read_at < sqlc.arg('read_at')))
+    OR (buyer_id <> sqlc.arg('reader') AND (seller_last_read_at IS NULL OR seller_last_read_at < sqlc.arg('read_at')))
+  );
 
 -- name: ListMessages :many
 -- Cursor-poll: ascending by id (UUIDv7, time-ordered), only newer than the

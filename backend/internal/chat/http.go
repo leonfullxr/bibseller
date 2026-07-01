@@ -388,7 +388,7 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 	// the inbox unread count reflects what they have actually seen.
 	if len(rows) > 0 {
 		newest := rows[len(rows)-1].CreatedAt
-		if err := h.q.MarkThreadRead(r.Context(), sqlcgen.MarkThreadReadParams{
+		if _, err := h.q.MarkThreadRead(r.Context(), sqlcgen.MarkThreadReadParams{
 			Reader: caller.ID, ReadAt: &newest, ID: threadID,
 		}); err != nil {
 			slog.Error("chat: mark-read failed", "err", err, "thread_id", threadID)
