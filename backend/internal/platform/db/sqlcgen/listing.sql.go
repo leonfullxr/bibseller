@@ -67,7 +67,8 @@ func (q *Queries) CreateListing(ctx context.Context, arg CreateListingParams) (L
 const expirePastRaceListings = `-- name: ExpirePastRaceListings :execrows
 UPDATE listings l
 SET status = 'expired', updated_at = now()
-WHERE l.id IN (
+WHERE l.status = 'active'
+  AND l.id IN (
     SELECT l2.id FROM listings l2
     JOIN races r ON r.id = l2.race_id
     WHERE l2.status = 'active' AND r.event_date < $1
@@ -85,6 +86,14 @@ type ExpirePastRaceListingsParams struct {
 // this in a loop, each call its own transaction, so a large backlog doesn't
 // pay for one unbounded UPDATE holding every matching row lock at once (#99).
 // Returns the number expired in this batch.
+//
+// l.status = 'active' is repeated in the outer WHERE, not just the subquery
+// that picks the batch: Postgres re-evaluates the outer WHERE against the
+// latest row version when a row was concurrently updated (EvalPlanQual), but
+// only for conditions actually in that outer clause. Without it here, a
+// listing that changes away from 'active' between the subquery running and
+// this statement locking its row (e.g. the buyer/seller acting on it mid-tick)
+// would still match on id alone and get force-flipped to 'expired'.
 func (q *Queries) ExpirePastRaceListings(ctx context.Context, arg ExpirePastRaceListingsParams) (int64, error) {
 	result, err := q.db.Exec(ctx, expirePastRaceListings, arg.Cutoff, arg.BatchSize)
 	if err != nil {

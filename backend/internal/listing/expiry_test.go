@@ -163,6 +163,86 @@ func TestExpirePastRaceListingsRejectsNonPositiveBatchSize(t *testing.T) {
 	}
 }
 
+// waitForRowLockContention polls pg_stat_activity until another backend is
+// actually blocked waiting on a row lock, so a test that depends on lock
+// contention isn't just hoping a goroutine got scheduled in time. A session
+// waiting on a row another transaction holds shows up as wait_event_type
+// 'Lock' / wait_event 'transactionid' (Postgres implements row-lock waits as
+// waiting on the blocking transaction's xid, not a tuple-level pg_locks row).
+func waitForRowLockContention(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var waiting bool
+		if err := pool.QueryRow(context.Background(), `
+			SELECT EXISTS (
+				SELECT 1 FROM pg_stat_activity
+				WHERE wait_event_type = 'Lock' AND wait_event = 'transactionid'
+			)`).Scan(&waiting); err == nil && waiting {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for a blocked lock on listings")
+}
+
+// TestExpireListingRechecksStatusOnConcurrentChange proves the outer WHERE's
+// l.status = 'active' recheck (#99 round 2, Copilot review): batching by id
+// alone isn't safe under concurrent writes. If a listing changes away from
+// 'active' after the batch's candidate-id subquery already ran but before its
+// row lock is free, Postgres only re-evaluates conditions that are literally
+// in the outer UPDATE's WHERE clause (EvalPlanQual) - id membership alone
+// would still match and force the row to 'expired', silently overwriting
+// whatever the concurrent change was.
+func TestExpireListingRechecksStatusOnConcurrentChange(t *testing.T) {
+	pool := testdb.Pool(t)
+	seller := seedSeller(t, pool)
+	listingID := seedRaceListing(t, pool, seller, time.Now().UTC().AddDate(0, 0, -3), false)
+
+	ctx := context.Background()
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	defer conn.Release()
+	lockTx, err := conn.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin lock tx: %v", err)
+	}
+	defer func() { _ = lockTx.Rollback(ctx) }()
+	if _, err := lockTx.Exec(ctx, `SELECT * FROM listings WHERE id = $1 FOR UPDATE`, listingID); err != nil {
+		t.Fatalf("lock row: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _, _ = expireListingBatch(context.Background(), pool, time.Now().UTC().Truncate(24*time.Hour), 500)
+	}()
+
+	// The batch's UPDATE is now genuinely blocked on this row's lock - only
+	// once we're sure of that do we change status and release it, so this
+	// test can't pass for the wrong reason (the subquery alone excluding an
+	// already-cancelled row, without ever exercising the outer recheck).
+	waitForRowLockContention(t, pool)
+	if _, err := lockTx.Exec(ctx, `UPDATE listings SET status = 'cancelled' WHERE id = $1`, listingID); err != nil {
+		t.Fatalf("concurrent status change: %v", err)
+	}
+	if err := lockTx.Commit(ctx); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("expiry batch never returned after the lock was released")
+	}
+
+	if s := statusOf(t, pool, listingID); s != "cancelled" {
+		t.Errorf("listing = %q, want cancelled (the concurrent change must win, not get overwritten to expired)", s)
+	}
+}
+
 func TestExpiryAdvisoryLockSerializes(t *testing.T) {
 	pool := testdb.Pool(t)
 	ctx := context.Background()
