@@ -187,16 +187,26 @@ func seedMapRace(t *testing.T, pool *pgxpool.Pool, country, city, date, status s
 
 func TestMapCounts(t *testing.T) {
 	pool := testdb.Pool(t)
-	// Unique country codes keep assertions robust against seeded/other rows.
-	const cc, other = "ZY", "ZX"
+	// cc and other must be country codes exclusive to this test: it asserts
+	// absolute aggregate counts, and testdb is shared with other packages'
+	// concurrently-running tests. ZY and QZ are user-assigned ISO codes seeded
+	// nowhere else. "ZX" specifically is NOT safe here - it's the throwaway-race
+	// country the chat and listing packages seed, so a concurrent run would
+	// inflate its count and flake the assertions (#110).
+	const cc, other = "ZY", "QZ"
 	// 9 upcoming races in one city: true count 9, popover list capped at 8.
 	for range 9 {
 		seedMapRace(t, pool, cc, "Alpha", "2027-06-01", "published")
 	}
-	seedMapRace(t, pool, cc, "Beta", "2027-07-01", "published") // second city in ZY
+	seedMapRace(t, pool, cc, "Beta", "2027-07-01", "published") // second city in cc
 	seedMapRace(t, pool, other, "Gamma", "2027-08-01", "published")
 	seedMapRace(t, pool, cc, "Alpha", "2020-01-01", "published") // past -> excluded
 	seedMapRace(t, pool, cc, "Alpha", "2027-06-01", "draft")     // draft -> excluded
+	// Regression guard for #110: a stray published+upcoming "ZX" race - exactly
+	// what a chat/listing test seeds concurrently - must not perturb this test.
+	// Back when `other` was "ZX" this row flipped countries["ZX"] from 1 to 2
+	// and the count assertion below failed intermittently.
+	seedMapRace(t, pool, "ZX", "Noise", "2027-09-01", "published")
 
 	rec := get(t, handler(pool), "/api/v1/races/map-counts")
 	if rec.Code != http.StatusOK {
@@ -218,7 +228,8 @@ func TestMapCounts(t *testing.T) {
 		t.Fatalf("bad JSON: %v", err)
 	}
 
-	// Country totals: past + draft excluded; ZY = 9 (Alpha) + 1 (Beta), ZX = 1.
+	// Country totals: past + draft excluded; cc = 9 (Alpha) + 1 (Beta), other = 1
+	// (Gamma). The stray "ZX" row is intentionally not asserted on - it's noise.
 	if body.Countries[cc] != 10 {
 		t.Errorf("countries[%s] = %d, want 10", cc, body.Countries[cc])
 	}
