@@ -169,6 +169,13 @@ func TestExpirePastRaceListingsRejectsNonPositiveBatchSize(t *testing.T) {
 // waiting on a row another transaction holds shows up as wait_event_type
 // 'Lock' / wait_event 'transactionid' (Postgres implements row-lock waits as
 // waiting on the blocking transaction's xid, not a tuple-level pg_locks row).
+// The predicate is scoped to this test's own query in the current database:
+// testdb runs against a DB shared with other packages' concurrent tests, and
+// matching *any* transactionid wait would let an unrelated blocked backend
+// satisfy the poll and let this test proceed (and then pass) for the wrong
+// reason, before its own UPDATE is actually blocked. pg_stat_activity.query
+// keeps sqlc's leading "-- name: ExpirePastRaceListings" marker, which pins
+// the match to exactly the expiry UPDATE and nothing else.
 func waitForRowLockContention(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -177,7 +184,9 @@ func waitForRowLockContention(t *testing.T, pool *pgxpool.Pool) {
 		if err := pool.QueryRow(context.Background(), `
 			SELECT EXISTS (
 				SELECT 1 FROM pg_stat_activity
-				WHERE wait_event_type = 'Lock' AND wait_event = 'transactionid'
+				WHERE datname = current_database()
+				  AND wait_event_type = 'Lock' AND wait_event = 'transactionid'
+				  AND query LIKE '%ExpirePastRaceListings%'
 			)`).Scan(&waiting); err == nil && waiting {
 			return
 		}

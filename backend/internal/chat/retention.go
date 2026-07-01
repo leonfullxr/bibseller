@@ -73,7 +73,10 @@ func purgeExpiredMessages(ctx context.Context, pool *pgxpool.Pool, store Storage
 		if len(keys) > 0 {
 			dctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			if derr := store.DeleteMany(dctx, keys); derr != nil {
-				logger.Error("retention: batched image object delete failed", "err", derr, "count", len(keys))
+				// keys is non-empty here; a sample key anchors the failing
+				// batch to a bucket/object when debugging the object store
+				// (the batched call collapses to one error, no per-key detail).
+				logger.Error("retention: batched image object delete failed", "err", derr, "count", len(keys), "sample_key", keys[0])
 			}
 			cancel()
 		}
