@@ -52,6 +52,10 @@ The five canonical triage roles map to their default label names (reusing the ex
 
 Single-context: `CONTEXT.md` lives at `docs/CONTEXT.md`, ADRs at `docs/adr/`. See `docs/agents/domain.md`.
 
+### Available skills
+
+Catalog of installed Claude Code skills and when to use each on this project, including the ponytail simplicity suite. See `docs/agents/skills.md`.
+
 ## 1. Think Before Coding
 
 Don't assume. Don't hide confusion. Surface tradeoffs.
