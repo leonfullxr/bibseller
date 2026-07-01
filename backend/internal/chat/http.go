@@ -34,10 +34,11 @@ import (
 )
 
 const (
-	maxMessageLen   = 4000       // matches the messages_content_check body bound
-	messagePageSize = 100        // schema note: a poll fetches up to 100 messages
-	maxImageBytes   = 5 << 20    // 5 MiB cap on an uploaded image
-	maxImagePixels  = 40_000_000 // decode-bomb guard: ~40 MP (high-res phone photos still fit)
+	maxMessageLen    = 4000       // matches the messages_content_check body bound
+	messagePageSize  = 100        // schema note: a poll fetches up to 100 messages
+	maxImageBytes    = 5 << 20    // 5 MiB cap on an uploaded image
+	maxImagePixels   = 40_000_000 // decode-bomb guard: ~40 MP (high-res phone photos still fit)
+	imageCacheMaxAge = 300        // seconds a browser may reuse an image without revalidating (#98)
 )
 
 // Mailer sends the new-message notification. Declared here (the consumer) so
@@ -83,6 +84,7 @@ func Routes(pool *pgxpool.Pool, mailer Mailer, store Storage, appURL string) fun
 		mux.HandleFunc("POST /threads/{id}/messages", h.postMessage)
 		mux.HandleFunc("GET /threads/{id}/messages", h.listMessages)
 		mux.HandleFunc("GET /threads/{id}/messages/{mid}/image", h.getMessageImage)
+		mux.HandleFunc("GET /threads/{id}", h.getThreadHeader)
 		mux.HandleFunc("GET /threads", h.listThreads)
 	}
 }
@@ -389,7 +391,7 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 	// the inbox unread count reflects what they have actually seen.
 	if len(rows) > 0 {
 		newest := rows[len(rows)-1].CreatedAt
-		if err := h.q.MarkThreadRead(r.Context(), sqlcgen.MarkThreadReadParams{
+		if _, err := h.q.MarkThreadRead(r.Context(), sqlcgen.MarkThreadReadParams{
 			Reader: caller.ID, ReadAt: &newest, ID: threadID,
 		}); err != nil {
 			slog.Error("chat: mark-read failed", "err", err, "thread_id", threadID)
@@ -406,11 +408,14 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 type threadListResponse struct {
-	Items []threadSummary `json:"items"`
+	Items      []threadSummary `json:"items"`
+	NextCursor *string         `json:"next_cursor"`
 }
 
 // listThreads is the caller's inbox: their threads as buyer or seller, newest
 // activity first, each with the other party and the caller's unread count.
+// Keyset-paginated on (last_message_at, id) - #97 - so a power-seller's inbox
+// runs a bounded number of per-thread unread subqueries per call.
 func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 	caller, ok := auth.UserFromContext(r.Context())
 	if !ok {
@@ -421,7 +426,30 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
 		return
 	}
-	rows, err := h.q.ListThreadsForUser(r.Context(), caller.ID)
+	qp := r.URL.Query()
+	limit, err := httpx.ParseLimit(qp)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
+		return
+	}
+	if qp.Get("limit") == "" {
+		// The frontend inbox list has no paging UI yet - default to the max
+		// rather than the catalog's DefaultPageSize (24), so this stays a
+		// no-op in practice for any beta-scale inbox while the bound still
+		// exists for whoever eventually has hundreds of threads (#97).
+		limit = httpx.MaxPageSize
+	}
+	params := sqlcgen.ListThreadsForUserParams{Caller: caller.ID, PageSize: limit}
+	if v := qp.Get("cursor"); v != "" {
+		at, id, err := parseThreadCursor(v)
+		if err != nil {
+			httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "malformed cursor")
+			return
+		}
+		params.CursorLastMessageAt = &at
+		params.CursorID = &id
+	}
+	rows, err := h.q.ListThreadsForUser(r.Context(), params)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load inbox")
 		return
@@ -439,8 +467,84 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 			LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
 		}
 	}
+	resp := threadListResponse{Items: items}
+	if len(rows) == int(params.PageSize) {
+		last := rows[len(rows)-1]
+		if last.LastMessageAt != nil {
+			c := formatThreadCursor(*last.LastMessageAt, last.ID)
+			resp.NextCursor = &c
+		}
+	}
 	w.Header().Set("Cache-Control", "no-store")
-	httpx.JSON(w, http.StatusOK, threadListResponse{Items: items})
+	httpx.JSON(w, http.StatusOK, resp)
+}
+
+// getThreadHeader returns one thread's header (listing/race context, the
+// other participant, unread count) so the single-thread page can render
+// without fetching the whole inbox (#97).
+func (h *Handler) getThreadHeader(w http.ResponseWriter, r *http.Request) {
+	caller, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
+		return
+	}
+	if caller.EmailVerifiedAt == nil {
+		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
+		return
+	}
+	threadID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "not_found", "thread not found")
+		return
+	}
+	row, err := h.q.GetThreadHeader(r.Context(), sqlcgen.GetThreadHeaderParams{ID: threadID, Caller: caller.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.Error(w, http.StatusNotFound, "not_found", "thread not found")
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load thread")
+		return
+	}
+	if !isParticipant(caller.ID, row.BuyerID, row.SellerID) {
+		httpx.Error(w, http.StatusForbidden, "forbidden", "you are not a participant in this thread")
+		return
+	}
+	role, other, otherID := "seller", row.BuyerName, row.BuyerID
+	if row.BuyerID == caller.ID {
+		role, other, otherID = "buyer", row.SellerName, row.SellerID
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.JSON(w, http.StatusOK, threadSummary{
+		ID: row.ID, ListingID: row.ListingID,
+		RaceName: row.RaceName, RaceSlug: row.RaceSlug,
+		Role: role, OtherParty: other, OtherPartyID: otherID,
+		LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
+	})
+}
+
+// Cursor format: "<RFC3339Nano>~<uuid>" - keyset position on
+// (last_message_at, id) DESC, mirroring race.formatCursor's convention. UTC,
+// per this repo's timestamptz convention - it also keeps the cursor free of a
+// "+" offset, which a caller that doesn't URL-encode its query would corrupt.
+func formatThreadCursor(at time.Time, id uuid.UUID) string {
+	return at.UTC().Format(time.RFC3339Nano) + "~" + id.String()
+}
+
+func parseThreadCursor(s string) (time.Time, uuid.UUID, error) {
+	atPart, idPart, ok := strings.Cut(s, "~")
+	if !ok {
+		return time.Time{}, uuid.Nil, errors.New("missing separator")
+	}
+	at, err := time.Parse(time.RFC3339Nano, atPart)
+	if err != nil {
+		return time.Time{}, uuid.Nil, err
+	}
+	id, err := uuid.Parse(idPart)
+	if err != nil {
+		return time.Time{}, uuid.Nil, err
+	}
+	return at, id, nil
 }
 
 // decodeBody parses and validates the message body and applies the per-account
@@ -711,6 +815,25 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The object key is a per-message, never-reused random string (upload
+	// path), so it already uniquely identifies this exact image - it doubles
+	// as the ETag with no extra hashing. Checked before ever touching storage:
+	// a cache hit then costs nothing beyond the DB authz lookup already done
+	// above, not a MinIO round trip just to throw the bytes away on a 304.
+	// ponytail: this trusts the DB row without confirming the object still
+	// exists in storage, so an out-of-band delete (bypassing this app - the
+	// app's own paths always remove the row and object together) would 304
+	// forever instead of surfacing as a 404. Nothing in this codebase creates
+	// that state; add a Stat() check here if that ever becomes untrue.
+	etag := `"` + *row.ImageKey + `"`
+	cacheControl := fmt.Sprintf("private, max-age=%d", imageCacheMaxAge)
+	if r.Header.Get("If-None-Match") == etag {
+		w.Header().Set("ETag", etag)
+		w.Header().Set("Cache-Control", cacheControl)
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	obj, err := h.storage.Get(r.Context(), *row.ImageKey)
 	if err != nil {
 		if h.storage.IsNotFound(err) {
@@ -722,9 +845,29 @@ func (h *Handler) getMessageImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = obj.Close() }()
+	// postImageMessage enforces maxImageBytes at upload, but this read path
+	// shouldn't trust that unconditionally - cap it here too, so a corrupted
+	// or out-of-band-written oversized object can't blow up memory.
+	data, err := io.ReadAll(io.LimitReader(obj, maxImageBytes+1))
+	if err != nil {
+		slog.Error("chat: image read failed", "err", err, "message_id", msgID)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+	if len(data) > maxImageBytes {
+		slog.Error("chat: stored image exceeds maxImageBytes", "message_id", msgID, "key", *row.ImageKey)
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the image")
+		return
+	}
+
+	// A client with a different (or no) cached ETag falls through to here;
+	// ServeContent still handles If-None-Match/Range/Content-Length correctly
+	// for anything the fast-path above didn't already catch (e.g. a
+	// comma-separated If-None-Match list or a weak validator).
 	w.Header().Set("Content-Type", contentTypeForKey(*row.ImageKey))
-	w.Header().Set("Cache-Control", "private, no-store")
-	_, _ = io.Copy(w, obj) // a mid-stream client disconnect is not actionable here
+	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("ETag", etag)
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 }
 
 func contentTypeForKey(key string) string {

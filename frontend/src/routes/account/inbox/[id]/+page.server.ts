@@ -8,19 +8,21 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 	if (!locals.user) redirect(303, '/login');
 	if (!locals.user.email_verified) redirect(303, '/settings');
 
-	// The inbox carries this thread's header context (other party, race). Reuse
-	// it rather than add a single-thread endpoint - a user's inbox is small.
-	let threadsRes: Response;
+	// Dedicated header endpoint (#97) - avoids fetching the whole inbox just to
+	// render one thread's header.
+	let threadRes: Response;
 	try {
-		threadsRes = await apiFetch('/api/v1/threads', { headers: sessionHeader(cookies) });
+		threadRes = await apiFetch(`/api/v1/threads/${params.id}`, { headers: sessionHeader(cookies) });
 	} catch {
 		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}
-	if (!threadsRes.ok)
+	// 403 (exists, not yours) folds into the same "not found" as a missing
+	// thread - this visitor gets no more signal than "not found" either way.
+	if (threadRes.status === 404 || threadRes.status === 403)
+		error(404, { message: 'Conversation not found', key: 'apiError.not_found' });
+	if (!threadRes.ok)
 		error(502, { message: 'Could not load the conversation.', key: 'apiError.loadFailed' });
-	const inbox = (await threadsRes.json()) as { items: ChatThreadSummary[] };
-	const thread = inbox.items.find((t) => t.id === params.id);
-	if (!thread) error(404, { message: 'Conversation not found', key: 'apiError.not_found' });
+	const thread = (await threadRes.json()) as ChatThreadSummary;
 
 	let msgsRes: Response;
 	try {

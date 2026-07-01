@@ -156,6 +156,67 @@ func (q *Queries) GetPolicyAck(ctx context.Context, arg GetPolicyAckParams) (Pol
 	return i, err
 }
 
+const getThreadHeader = `-- name: GetThreadHeader :one
+SELECT t.id, t.listing_id, t.buyer_id, t.last_message_at,
+    l.seller_id,
+    r.name AS race_name, r.slug AS race_slug,
+    bu.display_name AS buyer_name,
+    su.display_name AS seller_name,
+    (SELECT count(*) FROM messages m
+       WHERE m.thread_id = t.id
+         AND m.sender_id <> $1
+         AND (
+           CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END IS NULL
+           OR m.created_at > CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END
+         )) AS unread_count
+FROM chat_threads t
+JOIN listings l ON l.id = t.listing_id
+JOIN races r ON r.id = l.race_id
+JOIN users bu ON bu.id = t.buyer_id
+JOIN users su ON su.id = l.seller_id
+WHERE t.id = $2
+`
+
+type GetThreadHeaderParams struct {
+	Caller uuid.UUID `json:"caller"`
+	ID     uuid.UUID `json:"id"`
+}
+
+type GetThreadHeaderRow struct {
+	ID            uuid.UUID  `json:"id"`
+	ListingID     uuid.UUID  `json:"listing_id"`
+	BuyerID       uuid.UUID  `json:"buyer_id"`
+	LastMessageAt *time.Time `json:"last_message_at"`
+	SellerID      uuid.UUID  `json:"seller_id"`
+	RaceName      string     `json:"race_name"`
+	RaceSlug      string     `json:"race_slug"`
+	BuyerName     string     `json:"buyer_name"`
+	SellerName    string     `json:"seller_name"`
+	UnreadCount   int64      `json:"unread_count"`
+}
+
+// Header fields for exactly one thread - listing/race context, both party
+// names, and the caller's unread count for it - so the single-thread page
+// stops fetching the whole inbox just to render its header (#97). Authz (the
+// participant check) happens in the handler, same as the message routes.
+func (q *Queries) GetThreadHeader(ctx context.Context, arg GetThreadHeaderParams) (GetThreadHeaderRow, error) {
+	row := q.db.QueryRow(ctx, getThreadHeader, arg.Caller, arg.ID)
+	var i GetThreadHeaderRow
+	err := row.Scan(
+		&i.ID,
+		&i.ListingID,
+		&i.BuyerID,
+		&i.LastMessageAt,
+		&i.SellerID,
+		&i.RaceName,
+		&i.RaceSlug,
+		&i.BuyerName,
+		&i.SellerName,
+		&i.UnreadCount,
+	)
+	return i, err
+}
+
 const getThreadParticipants = `-- name: GetThreadParticipants :one
 SELECT t.id, t.buyer_id, t.last_message_at, l.seller_id
 FROM chat_threads t
@@ -328,9 +389,22 @@ JOIN listings l ON l.id = t.listing_id
 JOIN races r ON r.id = l.race_id
 JOIN users bu ON bu.id = t.buyer_id
 JOIN users su ON su.id = l.seller_id
-WHERE t.buyer_id = $1 OR l.seller_id = $1
-ORDER BY t.last_message_at DESC NULLS LAST
+WHERE (t.buyer_id = $1 OR l.seller_id = $1)
+  AND t.last_message_at IS NOT NULL
+  AND (
+    $2::timestamptz IS NULL
+    OR (t.last_message_at, t.id) < ($2, $3::uuid)
+  )
+ORDER BY t.last_message_at DESC, t.id DESC
+LIMIT $4
 `
+
+type ListThreadsForUserParams struct {
+	Caller              uuid.UUID  `json:"caller"`
+	CursorLastMessageAt *time.Time `json:"cursor_last_message_at"`
+	CursorID            *uuid.UUID `json:"cursor_id"`
+	PageSize            int32      `json:"page_size"`
+}
 
 type ListThreadsForUserRow struct {
 	ID            uuid.UUID  `json:"id"`
@@ -347,10 +421,22 @@ type ListThreadsForUserRow struct {
 
 // Inbox: every thread where the caller is the buyer or the listing's seller,
 // with race context, both party names (the handler picks the "other" one), and
-// the caller's unread count. The unread subquery is bounded by a user's thread
-// count; revisit with a denormalized counter if an inbox grows large.
-func (q *Queries) ListThreadsForUser(ctx context.Context, senderID uuid.UUID) ([]ListThreadsForUserRow, error) {
-	rows, err := q.db.Query(ctx, listThreadsForUser, senderID)
+// the caller's unread count. Newest activity first, keyset-paginated on
+// (last_message_at, id) so the number of per-thread unread subqueries per call
+// is bounded by page_size, not the user's total thread count (#97).
+// last_message_at is nullable and the app's own write path always sets it
+// before a thread is ever committed (TouchThreadOnMessage runs in the same
+// transaction as the first message) - but that's an app-level guarantee, not
+// a schema one, and a thread with no message is nothing to show in an inbox
+// anyway, so this excludes NULLs outright rather than relying on callers
+// never bypassing the app (as at least one test fixture already does).
+func (q *Queries) ListThreadsForUser(ctx context.Context, arg ListThreadsForUserParams) ([]ListThreadsForUserRow, error) {
+	rows, err := q.db.Query(ctx, listThreadsForUser,
+		arg.Caller,
+		arg.CursorLastMessageAt,
+		arg.CursorID,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -380,11 +466,15 @@ func (q *Queries) ListThreadsForUser(ctx context.Context, senderID uuid.UUID) ([
 	return items, nil
 }
 
-const markThreadRead = `-- name: MarkThreadRead :exec
+const markThreadRead = `-- name: MarkThreadRead :execrows
 UPDATE chat_threads
 SET buyer_last_read_at  = CASE WHEN buyer_id  = $1 THEN $2 ELSE buyer_last_read_at  END,
     seller_last_read_at = CASE WHEN buyer_id <> $1 THEN $2 ELSE seller_last_read_at END
 WHERE id = $3
+  AND (
+    (buyer_id = $1 AND (buyer_last_read_at IS NULL OR buyer_last_read_at < $2))
+    OR (buyer_id <> $1 AND (seller_last_read_at IS NULL OR seller_last_read_at < $2))
+  )
 `
 
 type MarkThreadReadParams struct {
@@ -393,11 +483,16 @@ type MarkThreadReadParams struct {
 	ID     uuid.UUID  `json:"id"`
 }
 
-// Advances the reader's last_read to the newest message they fetched. The
-// handler guarantees the reader is a participant.
-func (q *Queries) MarkThreadRead(ctx context.Context, arg MarkThreadReadParams) error {
-	_, err := q.db.Exec(ctx, markThreadRead, arg.Reader, arg.ReadAt, arg.ID)
-	return err
+// Advances the reader's last_read to the newest message they fetched, but only
+// when that actually moves it forward - skips the write (row lock, WAL,
+// autovacuum churn on this hot table) on a poll that re-reports the same or an
+// older cursor. The handler guarantees the reader is a participant.
+func (q *Queries) MarkThreadRead(ctx context.Context, arg MarkThreadReadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markThreadRead, arg.Reader, arg.ReadAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const touchThreadOnMessage = `-- name: TouchThreadOnMessage :exec

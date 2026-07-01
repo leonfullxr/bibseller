@@ -53,13 +53,19 @@ SET last_message_at = now(),
     seller_last_read_at = CASE WHEN buyer_id <> $2 THEN now() ELSE seller_last_read_at END
 WHERE id = $1;
 
--- name: MarkThreadRead :exec
--- Advances the reader's last_read to the newest message they fetched. The
--- handler guarantees the reader is a participant.
+-- name: MarkThreadRead :execrows
+-- Advances the reader's last_read to the newest message they fetched, but only
+-- when that actually moves it forward - skips the write (row lock, WAL,
+-- autovacuum churn on this hot table) on a poll that re-reports the same or an
+-- older cursor. The handler guarantees the reader is a participant.
 UPDATE chat_threads
 SET buyer_last_read_at  = CASE WHEN buyer_id  = sqlc.arg('reader') THEN sqlc.arg('read_at') ELSE buyer_last_read_at  END,
     seller_last_read_at = CASE WHEN buyer_id <> sqlc.arg('reader') THEN sqlc.arg('read_at') ELSE seller_last_read_at END
-WHERE id = sqlc.arg('id');
+WHERE id = sqlc.arg('id')
+  AND (
+    (buyer_id = sqlc.arg('reader') AND (buyer_last_read_at IS NULL OR buyer_last_read_at < sqlc.arg('read_at')))
+    OR (buyer_id <> sqlc.arg('reader') AND (seller_last_read_at IS NULL OR seller_last_read_at < sqlc.arg('read_at')))
+  );
 
 -- name: ListMessages :many
 -- Cursor-poll: ascending by id (UUIDv7, time-ordered), only newer than the
@@ -104,8 +110,15 @@ ON CONFLICT (user_id, race_id) DO NOTHING;
 -- name: ListThreadsForUser :many
 -- Inbox: every thread where the caller is the buyer or the listing's seller,
 -- with race context, both party names (the handler picks the "other" one), and
--- the caller's unread count. The unread subquery is bounded by a user's thread
--- count; revisit with a denormalized counter if an inbox grows large.
+-- the caller's unread count. Newest activity first, keyset-paginated on
+-- (last_message_at, id) so the number of per-thread unread subqueries per call
+-- is bounded by page_size, not the user's total thread count (#97).
+-- last_message_at is nullable and the app's own write path always sets it
+-- before a thread is ever committed (TouchThreadOnMessage runs in the same
+-- transaction as the first message) - but that's an app-level guarantee, not
+-- a schema one, and a thread with no message is nothing to show in an inbox
+-- anyway, so this excludes NULLs outright rather than relying on callers
+-- never bypassing the app (as at least one test fixture already does).
 SELECT
     t.id, t.listing_id, t.buyer_id, t.last_message_at,
     l.seller_id,
@@ -114,15 +127,45 @@ SELECT
     su.display_name AS seller_name,
     (SELECT count(*) FROM messages m
        WHERE m.thread_id = t.id
-         AND m.sender_id <> $1
+         AND m.sender_id <> sqlc.arg('caller')
          AND (
-           CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END IS NULL
-           OR m.created_at > CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END
+           CASE WHEN t.buyer_id = sqlc.arg('caller') THEN t.buyer_last_read_at ELSE t.seller_last_read_at END IS NULL
+           OR m.created_at > CASE WHEN t.buyer_id = sqlc.arg('caller') THEN t.buyer_last_read_at ELSE t.seller_last_read_at END
          )) AS unread_count
 FROM chat_threads t
 JOIN listings l ON l.id = t.listing_id
 JOIN races r ON r.id = l.race_id
 JOIN users bu ON bu.id = t.buyer_id
 JOIN users su ON su.id = l.seller_id
-WHERE t.buyer_id = $1 OR l.seller_id = $1
-ORDER BY t.last_message_at DESC NULLS LAST;
+WHERE (t.buyer_id = sqlc.arg('caller') OR l.seller_id = sqlc.arg('caller'))
+  AND t.last_message_at IS NOT NULL
+  AND (
+    sqlc.narg('cursor_last_message_at')::timestamptz IS NULL
+    OR (t.last_message_at, t.id) < (sqlc.narg('cursor_last_message_at'), sqlc.narg('cursor_id')::uuid)
+  )
+ORDER BY t.last_message_at DESC, t.id DESC
+LIMIT sqlc.arg('page_size');
+
+-- name: GetThreadHeader :one
+-- Header fields for exactly one thread - listing/race context, both party
+-- names, and the caller's unread count for it - so the single-thread page
+-- stops fetching the whole inbox just to render its header (#97). Authz (the
+-- participant check) happens in the handler, same as the message routes.
+SELECT t.id, t.listing_id, t.buyer_id, t.last_message_at,
+    l.seller_id,
+    r.name AS race_name, r.slug AS race_slug,
+    bu.display_name AS buyer_name,
+    su.display_name AS seller_name,
+    (SELECT count(*) FROM messages m
+       WHERE m.thread_id = t.id
+         AND m.sender_id <> sqlc.arg('caller')
+         AND (
+           CASE WHEN t.buyer_id = sqlc.arg('caller') THEN t.buyer_last_read_at ELSE t.seller_last_read_at END IS NULL
+           OR m.created_at > CASE WHEN t.buyer_id = sqlc.arg('caller') THEN t.buyer_last_read_at ELSE t.seller_last_read_at END
+         )) AS unread_count
+FROM chat_threads t
+JOIN listings l ON l.id = t.listing_id
+JOIN races r ON r.id = l.race_id
+JOIN users bu ON bu.id = t.buyer_id
+JOIN users su ON su.id = l.seller_id
+WHERE t.id = sqlc.arg('id');
