@@ -33,6 +33,7 @@ func seedInboxTestRace(t *testing.T, pool *pgxpool.Pool) sqlcgen.Race {
 		_, _ = pool.Exec(ctx, `DELETE FROM messages WHERE thread_id IN
 			(SELECT t.id FROM chat_threads t JOIN listings l ON l.id = t.listing_id WHERE l.race_id = $1)`, race.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM chat_threads WHERE listing_id IN (SELECT id FROM listings WHERE race_id = $1)`, race.ID)
+		_, _ = pool.Exec(ctx, `DELETE FROM policy_acks WHERE race_id = $1`, race.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM listings WHERE race_id = $1`, race.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM races WHERE id = $1`, race.ID)
 	})
@@ -99,6 +100,39 @@ func TestInboxPagination(t *testing.T) {
 		if !seen[id] {
 			t.Errorf("thread %s missing from paged results", id)
 		}
+	}
+}
+
+// TestInboxDefaultLimitIsGenerous is a regression check (Copilot review on
+// #111): the frontend inbox list calls /api/v1/threads with no limit/cursor
+// at all, so defaulting this endpoint to the catalog's DefaultPageSize (24)
+// would silently truncate any caller with more threads than that, with no
+// paging UI to reach the rest. It must default to something bigger.
+func TestInboxDefaultLimitIsGenerous(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	race := seedInboxTestRace(t, pool)
+
+	const threadCount = 26 // > httpx.DefaultPageSize (24)
+	for i := 0; i < threadCount; i++ {
+		sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+		listingID := createListing(t, h, race.ID, sellerTok)
+		startThread(t, h, listingID, buyerTok, "hi")
+	}
+
+	rec := doJSON(t, h, http.MethodGet, "/api/v1/threads", "", buyerTok)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var resp struct {
+		Items []inboxThread `json:"items"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if len(resp.Items) != threadCount {
+		t.Fatalf("no-limit fetch: items = %d, want %d (all of them, untruncated)", len(resp.Items), threadCount)
 	}
 }
 

@@ -424,13 +424,21 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
 		return
 	}
-	limit, err := httpx.ParseLimit(r.URL.Query())
+	qp := r.URL.Query()
+	limit, err := httpx.ParseLimit(qp)
 	if err != nil {
 		httpx.Error(w, http.StatusBadRequest, "invalid_parameter", err.Error())
 		return
 	}
+	if qp.Get("limit") == "" {
+		// The frontend inbox list has no paging UI yet - default to the max
+		// rather than the catalog's DefaultPageSize (24), so this stays a
+		// no-op in practice for any beta-scale inbox while the bound still
+		// exists for whoever eventually has hundreds of threads (#97).
+		limit = httpx.MaxPageSize
+	}
 	params := sqlcgen.ListThreadsForUserParams{Caller: caller.ID, PageSize: limit}
-	if v := r.URL.Query().Get("cursor"); v != "" {
+	if v := qp.Get("cursor"); v != "" {
 		at, id, err := parseThreadCursor(v)
 		if err != nil {
 			httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "malformed cursor")
