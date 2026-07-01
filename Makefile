@@ -80,9 +80,9 @@ prod-up: ## build + start the self-host prod stack (needs deploy/.env.prod)
 	$(PROD_COMPOSE) up -d --build
 
 prod-down: ## back up offsite if the stack is up, then stop the prod stack (volumes kept)
-	@if $(PROD_COMPOSE) ps --services --status running 2>/dev/null | grep -qx db; then \
+	@if $(PROD_COMPOSE) ps --services --status running | grep -qx db; then \
 	  echo "prod db is up - taking an offsite backup before stopping (#12)"; \
-	  $(MAKE) prod-backup-offsite || echo "WARNING: pre-stop offsite backup failed; stopping anyway (the kept db volume still holds the data)"; \
+	  $(MAKE) prod-backup-offsite || echo "WARNING: pre-stop offsite backup failed; stopping anyway (the kept db volume still holds the data)" >&2; \
 	else \
 	  echo "prod db not running - nothing to back up; stopping"; \
 	fi
