@@ -91,19 +91,14 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Cre
 	return i, err
 }
 
-const deleteExpiredMessages = `-- name: DeleteExpiredMessages :execrows
-DELETE FROM messages m
-USING chat_threads t, listings l, races r
-WHERE m.thread_id = t.id
-  AND t.listing_id = l.id
-  AND l.race_id = r.id
-  AND r.event_date < $1
+const deleteExpiredMessagesByID = `-- name: DeleteExpiredMessagesByID :execrows
+DELETE FROM messages WHERE id = ANY($1::uuid[])
 `
 
-// Retention: delete messages whose race finished before the cutoff (12 months
-// after race event_date). Returns the number deleted.
-func (q *Queries) DeleteExpiredMessages(ctx context.Context, cutoff time.Time) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteExpiredMessages, cutoff)
+// Deletes exactly the batch ListExpiredMessageBatch returned - see its
+// comment. Returns the number deleted.
+func (q *Queries) DeleteExpiredMessagesByID(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredMessagesByID, ids)
 	if err != nil {
 		return 0, err
 	}
@@ -284,30 +279,47 @@ func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (M
 	return i, err
 }
 
-const listExpiredMessageImageKeys = `-- name: ListExpiredMessageImageKeys :many
-SELECT m.image_key
+const listExpiredMessageBatch = `-- name: ListExpiredMessageBatch :many
+SELECT m.id, m.image_key
 FROM messages m
 JOIN chat_threads t ON t.id = m.thread_id
 JOIN listings l ON l.id = t.listing_id
 JOIN races r ON r.id = l.race_id
-WHERE r.event_date < $1 AND m.image_key IS NOT NULL
+WHERE r.event_date < $1
+ORDER BY m.id
+LIMIT $2
 `
 
-// Image keys of messages whose race finished before the cutoff, so the objects
-// can be removed from storage before DeleteExpiredMessages drops the rows.
-func (q *Queries) ListExpiredMessageImageKeys(ctx context.Context, cutoff time.Time) ([]*string, error) {
-	rows, err := q.db.Query(ctx, listExpiredMessageImageKeys, cutoff)
+type ListExpiredMessageBatchParams struct {
+	Cutoff    time.Time `json:"cutoff"`
+	BatchSize int32     `json:"batch_size"`
+}
+
+type ListExpiredMessageBatchRow struct {
+	ID       uuid.UUID `json:"id"`
+	ImageKey *string   `json:"image_key"`
+}
+
+// One batch (up to batch_size, oldest id first) of messages whose race
+// finished before the cutoff (12 months after race event_date) - id and
+// image_key, so DeleteExpiredMessagesByID can delete exactly this same set
+// and the retention job can remove exactly these objects from storage. Two
+// independent LIMITed queries could each pick a different batch and leave a
+// harvested key's message un-deleted (or vice versa); going by id fixes that
+// (#99).
+func (q *Queries) ListExpiredMessageBatch(ctx context.Context, arg ListExpiredMessageBatchParams) ([]ListExpiredMessageBatchRow, error) {
+	rows, err := q.db.Query(ctx, listExpiredMessageBatch, arg.Cutoff, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*string
+	var items []ListExpiredMessageBatchRow
 	for rows.Next() {
-		var image_key *string
-		if err := rows.Scan(&image_key); err != nil {
+		var i ListExpiredMessageBatchRow
+		if err := rows.Scan(&i.ID, &i.ImageKey); err != nil {
 			return nil, err
 		}
-		items = append(items, image_key)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

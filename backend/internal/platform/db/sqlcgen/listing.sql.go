@@ -67,16 +67,35 @@ func (q *Queries) CreateListing(ctx context.Context, arg CreateListingParams) (L
 const expirePastRaceListings = `-- name: ExpirePastRaceListings :execrows
 UPDATE listings l
 SET status = 'expired', updated_at = now()
-FROM races r
-WHERE l.race_id = r.id
-  AND l.status = 'active'
-  AND r.event_date < $1
+WHERE l.status = 'active'
+  AND l.id IN (
+    SELECT l2.id FROM listings l2
+    JOIN races r ON r.id = l2.race_id
+    WHERE l2.status = 'active' AND r.event_date < $1
+    LIMIT $2
+)
 `
 
-// Flips active listings to 'expired' once their race is over (event_date is
-// before the cutoff, i.e. start of today UTC). Returns the number expired.
-func (q *Queries) ExpirePastRaceListings(ctx context.Context, cutoff time.Time) (int64, error) {
-	result, err := q.db.Exec(ctx, expirePastRaceListings, cutoff)
+type ExpirePastRaceListingsParams struct {
+	Cutoff    time.Time `json:"cutoff"`
+	BatchSize int32     `json:"batch_size"`
+}
+
+// Flips up to batch_size active listings to 'expired' once their race is over
+// (event_date is before the cutoff, i.e. start of today UTC). The job calls
+// this in a loop, each call its own transaction, so a large backlog doesn't
+// pay for one unbounded UPDATE holding every matching row lock at once (#99).
+// Returns the number expired in this batch.
+//
+// l.status = 'active' is repeated in the outer WHERE, not just the subquery
+// that picks the batch: Postgres re-evaluates the outer WHERE against the
+// latest row version when a row was concurrently updated (EvalPlanQual), but
+// only for conditions actually in that outer clause. Without it here, a
+// listing that changes away from 'active' between the subquery running and
+// this statement locking its row (e.g. the buyer/seller acting on it mid-tick)
+// would still match on id alone and get force-flipped to 'expired'.
+func (q *Queries) ExpirePastRaceListings(ctx context.Context, arg ExpirePastRaceListingsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, expirePastRaceListings, arg.Cutoff, arg.BatchSize)
 	if err != nil {
 		return 0, err
 	}

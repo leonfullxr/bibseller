@@ -118,7 +118,7 @@ func TestPurgeExpiredMessages(t *testing.T) {
 	expired, expiredKey := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -13, 0)) // past horizon
 	recent, _ := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -1, 0))            // within horizon
 
-	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), now)
+	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), now, retentionBatchSize)
 	if err != nil {
 		t.Fatalf("purge: %v", err)
 	}
@@ -137,5 +137,63 @@ func TestPurgeExpiredMessages(t *testing.T) {
 	}
 	if _, err := store.Get(context.Background(), expiredKey); !store.IsNotFound(err) {
 		t.Errorf("expired image object still present: err = %v", err)
+	}
+}
+
+// TestPurgeExpiredMessagesBatches proves #99: a backlog bigger than one batch
+// is fully drained (rows and their objects) within a single call - a
+// batchSize of 1 against 3 expired messages can only reach n == 3 by running
+// three internal batches, each removing its own object before the next runs.
+func TestPurgeExpiredMessagesBatches(t *testing.T) {
+	pool := testdb.Pool(t)
+	store := retentionStorage(t)
+	seller := seedUser(t, pool)
+	buyer := seedUser(t, pool)
+
+	now := time.Now().UTC()
+	type expired struct {
+		id  uuid.UUID
+		key string
+	}
+	var msgs []expired
+	for range 3 {
+		id, key := seedThreadMessage(t, pool, store, seller, buyer, now.AddDate(0, -13, 0))
+		msgs = append(msgs, expired{id, key})
+	}
+
+	n, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), now, 1)
+	if err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	if !ran {
+		t.Fatal("purge did not run (lock not held)")
+	}
+	// >= not == : testdb.Pool is shared with other packages' concurrently-run
+	// tests, so an unrelated expired message can legitimately also get swept
+	// up here. What proves multi-batch draining is that every one of *this
+	// test's* messages (checked below) is gone after a single batchSize=1 call.
+	if n < int64(len(msgs)) {
+		t.Fatalf("purged count = %d, want >= %d (batchSize=1 forces multiple batches)", n, len(msgs))
+	}
+	for _, m := range msgs {
+		if messageExists(t, pool, m.id) {
+			t.Errorf("message %s still present after purge", m.id)
+		}
+		if _, err := store.Get(context.Background(), m.key); !store.IsNotFound(err) {
+			t.Errorf("image object %s still present: err = %v", m.key, err)
+		}
+	}
+}
+
+// TestPurgeExpiredMessagesRejectsNonPositiveBatchSize proves the guard that
+// stops a batchSize <= 0 from spinning the loop forever (0 rows deleted never
+// satisfies the "fewer than a full batch" exit).
+func TestPurgeExpiredMessagesRejectsNonPositiveBatchSize(t *testing.T) {
+	pool := testdb.Pool(t)
+	store := retentionStorage(t)
+	for _, bad := range []int32{0, -1} {
+		if _, ran, err := purgeExpiredMessages(context.Background(), pool, store, slog.New(slog.DiscardHandler), time.Now().UTC(), bad); err == nil || ran {
+			t.Errorf("batchSize=%d: err = %v, ran = %v, want an error and ran=false", bad, err, ran)
+		}
 	}
 }

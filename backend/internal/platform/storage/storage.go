@@ -81,6 +81,27 @@ func (c *Client) Delete(ctx context.Context, key string) error {
 	return c.mc.RemoveObject(ctx, c.bucket, key, minio.RemoveObjectOptions{})
 }
 
+// DeleteMany removes multiple objects in one batched call (RemoveObjects)
+// instead of one round trip per key - the retention job's per-batch cleanup
+// (#99). Reports the first per-object error, if any; the rest are attempted
+// regardless (a partial failure here means an orphaned object, not a retry-
+// blocking one - the caller logs it, per purgeExpiredMessages).
+func (c *Client) DeleteMany(ctx context.Context, keys []string) error {
+	objectsCh := make(chan minio.ObjectInfo, len(keys))
+	for _, key := range keys {
+		objectsCh <- minio.ObjectInfo{Key: key}
+	}
+	close(objectsCh)
+
+	var firstErr error
+	for result := range c.mc.RemoveObjects(ctx, c.bucket, objectsCh, minio.RemoveObjectsOptions{}) {
+		if result.Err != nil && firstErr == nil {
+			firstErr = result.Err
+		}
+	}
+	return firstErr
+}
+
 // IsNotFound reports whether err is a missing-object error from this store. The
 // result comes from the error argument, not the receiver; the method form keeps
 // callers decoupled from the minio package.
