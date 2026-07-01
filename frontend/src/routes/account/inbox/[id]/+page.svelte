@@ -65,7 +65,7 @@
 	}
 
 	onMount(() => {
-		let id: ReturnType<typeof setInterval>;
+		let id: ReturnType<typeof setInterval> | undefined;
 		function schedule() {
 			clearInterval(id);
 			id = setInterval(poll, pollInterval(document.visibilityState === 'hidden'));
