@@ -124,10 +124,11 @@ func TestExpirePastRaceListings(t *testing.T) {
 // pick another package's past-active listing that a concurrent test then deletes
 // before the status-rechecking UPDATE (the #99 concurrency guard) locks it - that
 // batch flips 0 rows and ends the loop with this test's listings still active.
-// Prod is single-instance and re-runs expiry each tick, so an early stop is
-// benign there (the rest go next tick); this mirrors that by re-running until
-// this test's own listings drain. Asserting on its own ids (not the global
-// return count) keeps it robust to whatever else shares the DB.
+// The expiry job re-runs on a ticker (serialized across instances by an advisory
+// lock), so an early stop is benign - the rest expire on the next tick; this
+// mirrors that by re-running until this test's own listings drain. Asserting on
+// its own ids (not the global return count) keeps it robust to whatever else
+// shares the DB.
 func TestExpirePastRaceListingsBatches(t *testing.T) {
 	pool := testdb.Pool(t)
 	seller := seedSeller(t, pool)
