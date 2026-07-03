@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t } = getI18n();
+	const profile = pendingForm();
+	const password = pendingForm();
+	const sessions = pendingForm();
 
 	// Mirrors the API allowlist (backend/internal/user); the catalog's country set.
 	const countries = ['AT', 'BE', 'DE', 'ES', 'FR', 'IT', 'NL', 'PL', 'PT'];
@@ -19,7 +23,7 @@
 <section class="panel">
 	<h2>{t('settings.profile')}</h2>
 
-	<form method="POST" action="?/profile" use:enhance>
+	<form method="POST" action="?/profile" use:enhance={profile.submit}>
 		<label for="display_name">{t('register.displayName')}</label>
 		<input
 			id="display_name"
@@ -49,14 +53,14 @@
 			<p class="feedback success" role="status">{t('settings.profileUpdated')}</p>
 		{/if}
 
-		<button type="submit">{t('settings.save')}</button>
+		<button type="submit" disabled={profile.busy.value}>{t('settings.save')}</button>
 	</form>
 </section>
 
 <section class="panel">
 	<h2>{t('settings.password')}</h2>
 
-	<form method="POST" action="?/changePassword" use:enhance>
+	<form method="POST" action="?/changePassword" use:enhance={password.submit}>
 		<label for="current_password">{t('settings.currentPassword')}</label>
 		<input
 			id="current_password"
@@ -92,7 +96,7 @@
 			<p class="feedback success" role="status">{t('settings.passwordChanged')}</p>
 		{/if}
 
-		<button type="submit">{t('settings.changePassword')}</button>
+		<button type="submit" disabled={password.busy.value}>{t('settings.changePassword')}</button>
 	</form>
 </section>
 
@@ -101,8 +105,8 @@
 
 	<p class="note">{t('settings.sessionsNote')}</p>
 
-	<form method="POST" action="?/logoutAll" use:enhance>
-		<button type="submit">{t('settings.logoutAll')}</button>
+	<form method="POST" action="?/logoutAll" use:enhance={sessions.submit}>
+		<button type="submit" disabled={sessions.busy.value}>{t('settings.logoutAll')}</button>
 	</form>
 </section>
 

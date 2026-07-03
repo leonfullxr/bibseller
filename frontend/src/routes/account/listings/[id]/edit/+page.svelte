@@ -3,12 +3,14 @@
 	import { resolve } from '$app/paths';
 	import ListingFields from '$lib/components/ListingFields.svelte';
 	import { formatDate } from '$lib/format';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t, locale, link } = getI18n();
 	const l = $derived(data.listing);
+	const { busy, submit } = pendingForm();
 
 	function centsToInput(c: number | null): string {
 		return c == null ? '' : String(c / 100);
@@ -26,7 +28,7 @@
 	<p class="meta">{l.race.name} - {formatDate(l.race.event_date, locale)}</p>
 </header>
 
-<form method="POST" use:enhance class="panel">
+<form method="POST" use:enhance={submit} class="panel">
 	<ListingFields
 		price={form?.values?.price ?? centsToInput(l.price_cents)}
 		original={form?.values?.original_price ?? centsToInput(l.original_price_cents)}
@@ -37,7 +39,7 @@
 		<p class="feedback error" role="alert">{form.error}</p>
 	{/if}
 
-	<button type="submit">{t('editListing.save')}</button>
+	<button type="submit" disabled={busy.value}>{t('editListing.save')}</button>
 </form>
 
 <style>
@@ -103,7 +105,12 @@
 		color: white;
 	}
 
-	button:hover {
+	button:hover:not(:disabled) {
 		background: var(--slate-700);
+	}
+
+	button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 </style>

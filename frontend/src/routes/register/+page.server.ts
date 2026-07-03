@@ -3,15 +3,16 @@ import { apiFetch } from '$lib/api/server';
 import { apiErrorKey } from '$lib/api/errors';
 import { createTranslator } from '$lib/i18n';
 import type { SessionResponse } from '$lib/api/types';
+import { safeNext } from '$lib/nextParam';
 import { setSessionCookie } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals }) => {
-	if (locals.user) redirect(303, '/');
+export const load: PageServerLoad = ({ locals, url }) => {
+	if (locals.user) redirect(303, safeNext(url.searchParams.get('next')));
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, locals }) => {
+	default: async ({ request, cookies, locals, url }) => {
 		const t = createTranslator(locals.locale);
 		const data = await request.formData();
 		const email = String(data.get('email') ?? '').trim();
@@ -66,7 +67,7 @@ export const actions: Actions = {
 		setSessionCookie(cookies, session.token, session.expires_at);
 
 		// Post/Redirect/Get: the browser lands on a fresh GET, so refreshing
-		// never re-submits the registration.
-		redirect(303, '/');
+		// never re-submits the registration. ?next= validated same as login.
+		redirect(303, safeNext(url.searchParams.get('next')));
 	}
 };

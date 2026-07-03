@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { form }: PageProps = $props();
 	const { t, link } = getI18n();
+	const { busy, submit } = pendingForm();
 </script>
 
 <svelte:head>
@@ -21,7 +23,7 @@
 	{:else}
 		<p class="lede">{t('forgot.lede')}</p>
 
-		<form method="POST" use:enhance>
+		<form method="POST" use:enhance={submit}>
 			<label for="email">{t('auth.email')}</label>
 			<input
 				id="email"
@@ -36,7 +38,7 @@
 				<p class="feedback" role="alert">{form.error}</p>
 			{/if}
 
-			<button type="submit">{t('forgot.submit')}</button>
+			<button type="submit" disabled={busy.value}>{t('forgot.submit')}</button>
 		</form>
 
 		<p class="alt"><a href={link(resolve('/login'))}>{t('forgot.backToLogin')}</a></p>
@@ -119,8 +121,13 @@
 		color: white;
 	}
 
-	button:hover {
+	button:hover:not(:disabled) {
 		background: var(--slate-700);
+	}
+
+	button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 
 	.alt {
