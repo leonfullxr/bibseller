@@ -125,14 +125,14 @@
 		const f = files?.[0];
 		preview = '';
 		if (!f || f.size > 5 << 20) return;
-		let stale = false;
+		let cancelled = false; // local to this effect run; not the poll-death `stale` above
 		const reader = new FileReader();
 		reader.onload = () => {
-			if (!stale) preview = reader.result as string;
+			if (!cancelled) preview = reader.result as string;
 		};
 		reader.readAsDataURL(f);
 		return () => {
-			stale = true;
+			cancelled = true;
 			reader.abort();
 		};
 	});

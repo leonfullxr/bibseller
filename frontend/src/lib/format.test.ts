@@ -30,8 +30,10 @@ describe('formatTime', () => {
 	});
 
 	it("formats in the process's local timezone, not UTC", () => {
-		// 2026-12-06T18:30:00Z is 13:30 in America/New_York (UTC-5 in December)
-		expect(formatTime('2026-12-06T18:30:00Z')).toBe('1:30 PM');
+		// 2026-12-06T18:30:00Z is 13:30 in America/New_York (UTC-5 in December).
+		// Pin the locale and match \s (covers ICU's narrow no-break space before
+		// the meridiem, which varies by ICU version) so this isn't CI-fragile.
+		expect(formatTime('2026-12-06T18:30:00Z', 'en-US')).toMatch(/^1:30\sPM$/);
 	});
 });
 
