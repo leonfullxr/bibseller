@@ -1,16 +1,26 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import type { ResolvedPathname } from '$app/types';
 	import ListingCTA from '$lib/components/ListingCTA.svelte';
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate, formatPrice } from '$lib/format';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import { requiresAck } from '$lib/policy';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t, locale, link } = getI18n();
+	const { busy, submit } = pendingForm();
+	// Send the visitor back here after logging in. The login action validates
+	// ?next= server-side (same-site paths only). Cast: a resolved path plus a
+	// query string is still one, which is what no-navigation-without-resolve checks.
+	const loginHref = $derived(
+		`${link(resolve('/login'))}?next=${encodeURIComponent(page.url.pathname)}` as ResolvedPathname
+	);
 	const listing = $derived(data.listing);
 	const race = $derived(data.listing.race);
 
@@ -121,7 +131,7 @@
 
 		{#if !data.user}
 			<p class="hint">
-				<a href={link(resolve('/login'))}>{t('nav.login')}</a>
+				<a href={loginHref}>{t('nav.login')}</a>
 				{t('listingDetail.toMessageSeller')}
 			</p>
 		{:else if !data.user.email_verified}
@@ -135,7 +145,7 @@
 				<a href={link(resolve('/account/listings'))}>{t('listingDetail.yourListings')}</a>.
 			</p>
 		{:else}
-			<form method="POST" action="?/contact" use:enhance class="composer">
+			<form method="POST" action="?/contact" use:enhance={submit} class="composer">
 				<textarea
 					name="body"
 					rows="4"
@@ -156,7 +166,7 @@
 					<p class="feedback error" role="alert">{form.error}</p>
 				{/if}
 
-				<button type="submit">{t('listingDetail.send')}</button>
+				<button type="submit" disabled={busy.value}>{t('listingDetail.send')}</button>
 			</form>
 		{/if}
 	</section>
@@ -376,8 +386,13 @@
 		color: white;
 	}
 
-	button:hover {
+	button:hover:not(:disabled) {
 		background: var(--emerald-700);
+	}
+
+	button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 
 	.report {

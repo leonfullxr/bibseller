@@ -323,7 +323,7 @@
 		display: block;
 		font-size: 0.6875rem;
 		line-height: 1rem;
-		color: var(--slate-400);
+		color: var(--slate-500);
 	}
 
 	.composer {
@@ -425,7 +425,7 @@
 	.msg-foot button {
 		align-self: auto;
 		background: none;
-		color: var(--slate-400);
+		color: var(--slate-500);
 		padding: 0;
 		font-size: 0.6875rem;
 		font-weight: 400;

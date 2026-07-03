@@ -18,6 +18,7 @@ export const en = {
 	'nav.login': 'Log in',
 	'nav.register': 'Register',
 	'nav.logout': 'Log out',
+	'nav.skipToContent': 'Skip to content',
 	'banner.verifyEmail': 'Verify your email to unlock selling and chat.',
 	'banner.resend': 'Resend email',
 	'banner.verifySent': 'Verification email sent - check your inbox (and spam).',

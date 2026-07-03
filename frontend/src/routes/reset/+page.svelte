@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t, link } = getI18n();
+	const { busy, submit } = pendingForm();
 </script>
 
 <svelte:head>
@@ -22,7 +24,7 @@
 		<p class="feedback" role="alert">{t('reset.missingToken')}</p>
 		<p class="alt"><a href={link(resolve('/forgot'))}>{t('reset.requestLink')}</a></p>
 	{:else}
-		<form method="POST" use:enhance>
+		<form method="POST" use:enhance={submit}>
 			<input type="hidden" name="token" value={data.token} />
 
 			<label for="password">{t('reset.newPassword')}</label>
@@ -49,7 +51,7 @@
 				<p class="feedback" role="alert">{form.error}</p>
 			{/if}
 
-			<button type="submit">{t('reset.submit')}</button>
+			<button type="submit" disabled={busy.value}>{t('reset.submit')}</button>
 		</form>
 	{/if}
 </section>
@@ -125,6 +127,11 @@
 
 	button:hover {
 		background: var(--slate-700);
+	}
+
+	button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 
 	.alt {
