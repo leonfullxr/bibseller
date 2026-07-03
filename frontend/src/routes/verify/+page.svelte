@@ -22,19 +22,19 @@
 	{#if data.status === 'ok'}
 		<h1>{t('verify.okHeading')}</h1>
 		<p>{t('verify.okBody')}</p>
-		<a href={link(resolve('/'))}>{t('verify.continue')}</a>
+		<a class="btn btn-primary" href={link(resolve('/'))}>{t('verify.continue')}</a>
 	{:else if data.status === 'invalid'}
 		<h1>{t('verify.invalidHeading')}</h1>
 		<p>{t('verify.invalidBody')}</p>
-		<a href={link(resolve('/login'))}>{t('verify.signIn')}</a>
+		<a class="btn btn-primary" href={link(resolve('/login'))}>{t('verify.signIn')}</a>
 	{:else if data.status === 'missing'}
 		<h1>{t('verify.missingHeading')}</h1>
 		<p>{t('verify.missingBody')}</p>
-		<a href={link(resolve('/'))}>{t('verify.home')}</a>
+		<a class="btn btn-primary" href={link(resolve('/'))}>{t('verify.home')}</a>
 	{:else}
 		<h1>{t('verify.errorHeading')}</h1>
 		<p>{t('verify.errorBody')}</p>
-		<a href={link(resolve('/'))}>{t('verify.home')}</a>
+		<a class="btn btn-primary" href={link(resolve('/'))}>{t('verify.home')}</a>
 	{/if}
 </section>
 
@@ -57,17 +57,6 @@
 	}
 
 	a {
-		display: inline-block;
 		margin-top: 1.5rem;
-		border-radius: 0.375rem;
-		background: var(--slate-900);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	a:hover {
-		background: var(--slate-700);
 	}
 </style>

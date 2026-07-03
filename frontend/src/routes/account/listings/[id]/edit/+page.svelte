@@ -36,10 +36,12 @@
 	/>
 
 	{#if form?.error}
-		<p class="feedback error" role="alert">{form.error}</p>
+		<p class="alert feedback" role="alert">{form.error}</p>
 	{/if}
 
-	<button type="submit" disabled={busy.value}>{t('editListing.save')}</button>
+	<button type="submit" class="btn btn-primary" disabled={busy.value}
+		>{t('editListing.save')}</button
+	>
 </form>
 
 <style>
@@ -74,43 +76,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
-		border-radius: 0.5rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 1.5rem;
 	}
 
 	.feedback {
 		margin-top: 0.5rem;
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	.error {
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		color: var(--amber-900);
 	}
 
 	button {
 		margin-top: 1rem;
 		align-self: flex-start;
-		border-radius: 0.375rem;
-		background: var(--slate-900);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	button:hover:not(:disabled) {
-		background: var(--slate-700);
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 </style>

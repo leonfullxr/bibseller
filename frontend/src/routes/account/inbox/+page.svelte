@@ -59,12 +59,6 @@
 
 	.empty {
 		margin-top: 1.5rem;
-		color: var(--slate-600);
-	}
-
-	.empty a {
-		color: var(--emerald-700);
-		text-decoration: underline;
 	}
 
 	.threads {

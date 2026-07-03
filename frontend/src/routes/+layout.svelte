@@ -56,7 +56,7 @@
 </svelte:head>
 
 <div class="shell">
-	<a class="skip" href="#main">{t('nav.skipToContent')}</a>
+	<a class="btn btn-primary skip" href="#main">{t('nav.skipToContent')}</a>
 	{#if navigating.to}<div class="nav-progress"></div>{/if}
 	<header>
 		<div class="bar">
@@ -155,12 +155,7 @@
 		left: 0.5rem;
 		z-index: 20;
 		transform: translateY(-200%);
-		border-radius: 0.375rem;
-		background: var(--slate-900);
 		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
 	}
 
 	.skip:focus {

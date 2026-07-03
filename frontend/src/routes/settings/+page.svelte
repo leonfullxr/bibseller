@@ -32,28 +32,31 @@
 			required
 			minlength="2"
 			maxlength="50"
+			class="field"
 			value={form?.value ?? data.user.display_name}
 		/>
 
 		<label for="locale">{t('lang.switch')}</label>
-		<select id="locale" name="locale" value={data.user.locale}>
+		<select id="locale" name="locale" class="field" value={data.user.locale}>
 			<option value="en">{t('lang.en')}</option>
 			<option value="es">{t('lang.es')}</option>
 		</select>
 
 		<label for="country">{t('settings.country')}</label>
-		<select id="country" name="country" value={data.user.country ?? ''}>
+		<select id="country" name="country" class="field" value={data.user.country ?? ''}>
 			<option value="">{t('settings.countryNotSet')}</option>
 			{#each countries as c (c)}<option value={c}>{c}</option>{/each}
 		</select>
 
 		{#if form?.error}
-			<p class="feedback error" role="alert">{form.error}</p>
+			<p class="alert" role="alert">{form.error}</p>
 		{:else if form?.success}
-			<p class="feedback success" role="status">{t('settings.profileUpdated')}</p>
+			<p class="alert ok" role="status">{t('settings.profileUpdated')}</p>
 		{/if}
 
-		<button type="submit" disabled={profile.busy.value}>{t('settings.save')}</button>
+		<button type="submit" class="btn btn-primary" disabled={profile.busy.value}
+			>{t('settings.save')}</button
+		>
 	</form>
 </section>
 
@@ -68,6 +71,7 @@
 			type="password"
 			required
 			autocomplete="current-password"
+			class="field"
 		/>
 
 		<label for="new_password">{t('reset.newPassword')}</label>
@@ -78,6 +82,7 @@
 			required
 			minlength="8"
 			autocomplete="new-password"
+			class="field"
 		/>
 
 		<label for="confirm_password">{t('settings.confirmNewPassword')}</label>
@@ -88,15 +93,18 @@
 			required
 			minlength="8"
 			autocomplete="new-password"
+			class="field"
 		/>
 
 		{#if form?.pwError}
-			<p class="feedback error" role="alert">{form.pwError}</p>
+			<p class="alert" role="alert">{form.pwError}</p>
 		{:else if form?.pwSuccess}
-			<p class="feedback success" role="status">{t('settings.passwordChanged')}</p>
+			<p class="alert ok" role="status">{t('settings.passwordChanged')}</p>
 		{/if}
 
-		<button type="submit" disabled={password.busy.value}>{t('settings.changePassword')}</button>
+		<button type="submit" class="btn btn-primary" disabled={password.busy.value}
+			>{t('settings.changePassword')}</button
+		>
 	</form>
 </section>
 
@@ -106,7 +114,9 @@
 	<p class="note">{t('settings.sessionsNote')}</p>
 
 	<form method="POST" action="?/logoutAll" use:enhance={sessions.submit}>
-		<button type="submit" disabled={sessions.busy.value}>{t('settings.logoutAll')}</button>
+		<button type="submit" class="btn btn-primary" disabled={sessions.busy.value}
+			>{t('settings.logoutAll')}</button
+		>
 	</form>
 </section>
 
@@ -115,7 +125,7 @@
 
 	<p class="note">{t('settings.deleteNote')}</p>
 
-	<button type="button" disabled title={t('settings.deleteTitle')}>
+	<button type="button" class="btn btn-primary" disabled title={t('settings.deleteTitle')}>
 		{t('settings.deleteSoon')}
 	</button>
 </section>
@@ -130,10 +140,6 @@
 	.panel {
 		margin-top: 1.5rem;
 		max-width: 28rem;
-		border-radius: 0.5rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 1.5rem;
 	}
 
 	h2 {
@@ -164,54 +170,17 @@
 		color: var(--slate-600);
 	}
 
-	input,
-	select {
+	.field {
 		width: 100%;
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
 	}
 
-	.feedback {
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		font-weight: 500;
-	}
-
-	.error {
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		color: var(--amber-900);
-	}
-
-	.success {
-		border: 1px solid var(--emerald-200);
+	.alert.ok {
+		border-color: var(--emerald-200);
 		background: var(--emerald-50);
 		color: var(--emerald-900);
 	}
 
 	button {
 		margin-top: 0.25rem;
-		border-radius: 0.375rem;
-		background: var(--slate-900);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	button:hover:not(:disabled) {
-		background: var(--slate-700);
-	}
-
-	button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 </style>

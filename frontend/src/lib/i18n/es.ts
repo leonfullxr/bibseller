@@ -146,7 +146,7 @@ export const es: Record<MessageKey, string> = {
 	'raceDetail.bibsForSale.other': '{n} dorsales a la venta',
 	'raceDetail.sellCta': 'Vende tu dorsal',
 	'raceDetail.empty': 'Aún no hay dorsales publicados para esta carrera.',
-	'raceDetail.emptyHint': '¿Vendes el tuyo? Pronto podrás publicarlo.',
+	'raceDetail.emptyHint': '¿Vendes el tuyo?',
 
 	'listingDetail.title': 'Dorsal para {name} - Bibseller',
 	'listingDetail.back': 'Volver a {name}',

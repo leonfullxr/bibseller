@@ -264,7 +264,7 @@
 		>
 	</p>
 	{#if requiresAck(data.thread.transfer_policy)}
-		<p class="feedback error policy-note" role="note">{t('chat.policyReminder')}</p>
+		<p class="alert policy-note" role="note">{t('chat.policyReminder')}</p>
 	{/if}
 	<details class="safety">
 		<summary>{t('chat.safetySummary')}</summary>
@@ -312,6 +312,7 @@
 
 <form class="composer" onsubmit={send}>
 	<textarea
+		class="field"
 		bind:value={draft}
 		rows="3"
 		maxlength="4000"
@@ -320,7 +321,7 @@
 		onkeydown={onKeydown}
 	></textarea>
 	{#if error}
-		<p class="feedback error" role="alert">{error}</p>
+		<p class="alert" role="alert">{error}</p>
 	{/if}
 	{#if preview}
 		<div class="chip">
@@ -337,7 +338,9 @@
 			bind:files
 			bind:this={fileInput}
 		/>
-		<button type="submit" disabled={sending}>{sending ? t('chat.sending') : t('chat.send')}</button>
+		<button type="submit" class="btn btn-primary" disabled={sending}
+			>{sending ? t('chat.sending') : t('chat.send')}</button
+		>
 	</div>
 </form>
 
@@ -464,45 +467,9 @@
 
 	textarea {
 		width: 100%;
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
-		padding: 0.5rem 0.75rem;
 		font: inherit;
 		font-size: 0.875rem;
 		resize: vertical;
-	}
-
-	.feedback {
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	.error {
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		color: var(--amber-900);
-	}
-
-	button {
-		align-self: flex-start;
-		border-radius: 0.375rem;
-		background: var(--emerald-600);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	button:hover:not(:disabled) {
-		background: var(--emerald-700);
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 
 	.policy-note {
@@ -527,7 +494,7 @@
 	}
 
 	.safety button {
-		align-self: auto;
+		border-radius: 0.375rem;
 		background: none;
 		color: var(--slate-600);
 		border: 1px solid var(--slate-300);
@@ -552,7 +519,6 @@
 	}
 
 	.msg-foot button {
-		align-self: auto;
 		background: none;
 		color: var(--slate-500);
 		padding: 0;
@@ -601,7 +567,7 @@
 	}
 
 	.composer .chip-clear {
-		align-self: auto;
+		border-radius: 0.375rem;
 		background: none;
 		color: var(--slate-600);
 		border: 1px solid var(--slate-300);

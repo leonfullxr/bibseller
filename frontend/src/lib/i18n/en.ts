@@ -152,7 +152,7 @@ export const en = {
 	'raceDetail.bibsForSale.other': '{n} bibs for sale',
 	'raceDetail.sellCta': 'Sell your bib',
 	'raceDetail.empty': 'No bibs listed for this race yet.',
-	'raceDetail.emptyHint': 'Selling yours? Listing opens soon.',
+	'raceDetail.emptyHint': 'Selling yours?',
 
 	// Listing detail.
 	'listingDetail.title': 'Bib for {name} - Bibseller',
