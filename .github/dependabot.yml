@@ -1,0 +1,60 @@
+# Dependency automation (#139). Weekly, with minor+patch grouped per
+# ecosystem to bound PR noise; majors stay individual PRs.
+#
+# Deliberately NOT covered:
+# - sqlc and goose: pinned `go run pkg@version` in the Makefile, outside
+#   go.mod (CONTEXT.md tool-versioning note) - Dependabot cannot see them,
+#   and that is accepted; bump the Makefile pins by hand.
+# - minio/minio and minio/mc: deliberately frozen (CONTEXT.md D21 - the OSS
+#   edition is archived; a bump PR would be wrong), hence the ignore rules.
+# - deploy/compose.prod.yml: the docker-compose ecosystem only scans standard
+#   compose filenames (compose.yaml / docker-compose.yml), not this one. Its
+#   images are either pinned by decision (minio/mc), duplicated from files
+#   that ARE scanned (postgres:16), or floating tags (caddy:2-alpine,
+#   boky/postfix, cloudflared:latest) that a bump PR would not change.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      go-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: minio/minio
+      - dependency-name: minio/mc
