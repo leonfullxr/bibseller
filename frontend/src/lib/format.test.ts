@@ -26,7 +26,10 @@ describe('formatTime', () => {
 		process.env.TZ = 'America/New_York'; // fixed non-UTC zone so this isn't UTC by coincidence
 	});
 	afterEach(() => {
-		process.env.TZ = originalTZ;
+		// TZ='' + reassigning undefined would set the literal string "undefined";
+		// delete it instead when it was unset, so a bad zone can't leak to later tests.
+		if (originalTZ === undefined) delete process.env.TZ;
+		else process.env.TZ = originalTZ;
 	});
 
 	it("formats in the process's local timezone, not UTC", () => {
