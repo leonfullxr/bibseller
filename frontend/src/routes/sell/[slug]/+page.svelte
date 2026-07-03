@@ -5,12 +5,14 @@
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate } from '$lib/format';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t, locale, link } = getI18n();
 	const race = $derived(data.race);
+	const { busy, submit } = pendingForm();
 </script>
 
 <svelte:head>
@@ -43,7 +45,7 @@
 		<a href={link(resolve('/settings'))}>{t('listingDetail.accountSettings')}</a>
 	</p>
 {:else}
-	<form method="POST" use:enhance class="panel">
+	<form method="POST" use:enhance={submit} class="panel">
 		<input type="hidden" name="race_id" value={race.id} />
 
 		<ListingFields
@@ -56,7 +58,7 @@
 			<p class="feedback error" role="alert">{form.error}</p>
 		{/if}
 
-		<button type="submit">{t('sellForm.publish')}</button>
+		<button type="submit" disabled={busy.value}>{t('sellForm.publish')}</button>
 	</form>
 {/if}
 
@@ -148,7 +150,12 @@
 		color: white;
 	}
 
-	button:hover {
+	button:hover:not(:disabled) {
 		background: var(--emerald-700);
+	}
+
+	button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 </style>
