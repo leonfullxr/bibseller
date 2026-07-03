@@ -199,17 +199,23 @@ func TestGetThreadHeader(t *testing.T) {
 		t.Fatalf("seller header: status = %d, body = %s", rec.Code, rec.Body)
 	}
 	var header struct {
-		ID           string `json:"id"`
-		Role         string `json:"role"`
-		OtherParty   string `json:"other_party"`
-		OtherPartyID string `json:"other_party_id"`
-		RaceName     string `json:"race_name"`
+		ID             string `json:"id"`
+		Role           string `json:"role"`
+		OtherParty     string `json:"other_party"`
+		OtherPartyID   string `json:"other_party_id"`
+		RaceName       string `json:"race_name"`
+		TransferPolicy string `json:"transfer_policy"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &header); err != nil {
 		t.Fatalf("seller header: bad JSON: %v", err)
 	}
 	if header.ID != threadID || header.Role != "seller" || header.OtherParty != "Buyer" || header.OtherPartyID != buyerID.String() {
 		t.Fatalf("seller header: %+v", header)
+	}
+	// The race's transfer policy rides along so the thread page can render the
+	// in-chat policy reminder (connect_only/unknown) without a second fetch.
+	if header.TransferPolicy != race.TransferPolicy {
+		t.Fatalf("seller header: transfer_policy = %q, want %q", header.TransferPolicy, race.TransferPolicy)
 	}
 
 	if rec := doJSON(t, h, http.MethodGet, "/api/v1/threads/"+threadID, "", buyerTok); rec.Code != http.StatusOK {
