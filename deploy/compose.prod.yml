@@ -45,6 +45,11 @@ services:
       - work_mem=8MB
       - -c
       - max_connections=50
+      # Query-level observability (#136): collection starts only after a
+      # Postgres restart (make prod-down && make prod-up); the extension
+      # itself is created by migration 0012. Signal queries: docs/SCALING.md.
+      - -c
+      - shared_preload_libraries=pg_stat_statements
     deploy:
       resources:
         limits:
