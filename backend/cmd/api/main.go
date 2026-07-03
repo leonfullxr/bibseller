@@ -24,6 +24,11 @@ import (
 )
 
 func main() {
+	// Container healthcheck mode (distroless image has no shell/curl): probe
+	// the serving process's readiness endpoint and exit 0/1.
+	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
+		os.Exit(healthcheck("http://localhost:" + config.Load().Port))
+	}
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)
 		os.Exit(1)
