@@ -2,7 +2,7 @@
 # Build stage runs the full install + build, then prunes to prod deps; the
 # runtime stage carries only build/ + production node_modules.
 # syntax=docker/dockerfile:1
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -15,7 +15,7 @@ ARG PUBLIC_ORIGIN
 ENV PUBLIC_ORIGIN=$PUBLIC_ORIGIN
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
