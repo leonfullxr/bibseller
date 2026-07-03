@@ -87,3 +87,55 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+
+  # End-to-end policy-matrix assertions (D6): boots the real API + frontend
+  # dev server against migrated+seeded infra and runs scripts/smoke.sh.
+  # A separate job so it does not serialize the fast checks above.
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres: # dev-shaped: smoke runs `make migrate`/`make seed` with the Makefile's default DATABASE_URL
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: bibseller
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: start minio + mailpit (smoke exercises image storage and email flows)
+        # MinIO pinned like docker-compose.yml / compose.prod.yml (D21: the OSS
+        # line is archived, so a floating tag is stale anyway). Mailpit floats,
+        # matching docker-compose.yml.
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          docker run -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && break || sleep 1
+          done
+          curl -sf http://localhost:9000/minio/health/live # fail the step if MinIO never came up
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8025/api/v1/messages >/dev/null && break || sleep 1
+          done
+          curl -sf http://localhost:8025/api/v1/messages >/dev/null # fail the step if Mailpit never came up
+      - run: npm ci
+        working-directory: frontend
+      # config.Load() and the Makefile default to this exact local topology
+      # (Postgres :5432/bibseller, MinIO :9000, Mailpit :1025/:8025), so no
+      # env overrides are needed; the api creates the bucket on boot.
+      - run: make smoke

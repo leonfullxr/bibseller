@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { formatDate } from '$lib/format';
+	import { formatWhen } from '$lib/format';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	const { t: tr, locale, link } = getI18n();
+	const { t: tr, plural, locale, link } = getI18n();
 </script>
 
 <svelte:head>
@@ -36,10 +36,12 @@
 					<span class="race">{t.race_name}</span>
 					<div class="right">
 						{#if t.last_message_at}
-							<span class="when">{formatDate(t.last_message_at.slice(0, 10), locale)}</span>
+							<span class="when">{formatWhen(t.last_message_at, locale)}</span>
 						{/if}
 						{#if t.unread_count > 0}
-							<span class="badge">{t.unread_count}</span>
+							<span class="badge" aria-label={plural('nav.inboxUnread', t.unread_count)}
+								>{t.unread_count}</span
+							>
 						{/if}
 					</div>
 				</a>
@@ -57,12 +59,6 @@
 
 	.empty {
 		margin-top: 1.5rem;
-		color: var(--slate-600);
-	}
-
-	.empty a {
-		color: var(--emerald-700);
-		text-decoration: underline;
 	}
 
 	.threads {
@@ -76,9 +72,10 @@
 
 	.row {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: 0.25rem 1rem;
 		border: 1px solid var(--slate-200);
 		border-radius: 0.5rem;
 		background: white;
@@ -115,6 +112,7 @@
 
 	.race {
 		flex: 1;
+		min-width: 8rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -126,6 +124,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+		margin-left: auto;
 		white-space: nowrap;
 	}
 
