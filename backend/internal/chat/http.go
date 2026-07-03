@@ -86,6 +86,7 @@ func Routes(pool *pgxpool.Pool, mailer Mailer, store Storage, appURL string) fun
 		mux.HandleFunc("GET /threads/{id}/messages/{mid}/image", h.getMessageImage)
 		mux.HandleFunc("GET /threads/{id}", h.getThreadHeader)
 		mux.HandleFunc("GET /threads", h.listThreads)
+		mux.HandleFunc("GET /me/unread-count", h.unreadCount)
 	}
 }
 
@@ -477,6 +478,28 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.JSON(w, http.StatusOK, resp)
+}
+
+// unreadCount returns the caller's total unread messages across all their
+// threads - the header badge. Gated like the inbox (verified participants
+// only); refreshed per navigation by the frontend, no polling (PR3 design).
+func (h *Handler) unreadCount(w http.ResponseWriter, r *http.Request) {
+	caller, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
+		return
+	}
+	if caller.EmailVerifiedAt == nil {
+		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
+		return
+	}
+	n, err := h.q.CountUnreadForUser(r.Context(), caller.ID)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not count unread messages")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.JSON(w, http.StatusOK, map[string]int64{"unread_count": n})
 }
 
 // getThreadHeader returns one thread's header (listing/race context, the
