@@ -2,7 +2,6 @@ package auth
 
 import (
 	"math"
-	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -87,7 +86,7 @@ func RateLimit() func(http.Handler) http.Handler {
 				// /auth/password/reset is included because it runs an argon2 hash
 				// before the token is validated - without a cap, spamming bogus
 				// tokens with valid-looking passwords is an unauthenticated CPU DoS.
-				if ok, retry := rl.allow(clientIP(r), time.Now()); !ok {
+				if ok, retry := rl.allow(httpx.ClientIP(r), time.Now()); !ok {
 					w.Header().Set("Retry-After", strconv.Itoa(retry))
 					httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many requests, slow down")
 					return
@@ -96,11 +95,4 @@ func RateLimit() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func clientIP(r *http.Request) string {
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return host
-	}
-	return r.RemoteAddr
 }

@@ -2,8 +2,6 @@ package chat
 
 import (
 	"math"
-	"net"
-	"net/http"
 	"sync"
 	"time"
 )
@@ -56,14 +54,6 @@ func (rl *rateLimiter) allow(key string, now time.Time) (bool, int) {
 	}
 	w.count++
 	return true, 0
-}
-
-// clientIP is the source address used as the per-IP limiter key.
-func clientIP(r *http.Request) string {
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return host
-	}
-	return r.RemoteAddr
 }
 
 // sweep evicts expired windows so the map cannot grow without bound. Runs for
