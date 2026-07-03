@@ -122,7 +122,7 @@ ON CONFLICT (user_id, race_id) DO NOTHING;
 SELECT
     t.id, t.listing_id, t.buyer_id, t.last_message_at,
     l.seller_id,
-    r.name AS race_name, r.slug AS race_slug,
+    r.name AS race_name, r.slug AS race_slug, r.transfer_policy,
     bu.display_name AS buyer_name,
     su.display_name AS seller_name,
     (SELECT count(*) FROM messages m
@@ -146,6 +146,21 @@ WHERE (t.buyer_id = sqlc.arg('caller') OR l.seller_id = sqlc.arg('caller'))
 ORDER BY t.last_message_at DESC, t.id DESC
 LIMIT sqlc.arg('page_size');
 
+-- name: CountUnreadForUser :one
+-- Total unread messages across every thread where the caller is the buyer or
+-- the listing's seller - the header badge. Mirrors ListThreadsForUser's
+-- per-thread unread subquery, flattened into one aggregate.
+SELECT count(*)
+FROM messages m
+JOIN chat_threads t ON t.id = m.thread_id
+JOIN listings l ON l.id = t.listing_id
+WHERE (t.buyer_id = sqlc.arg('caller') OR l.seller_id = sqlc.arg('caller'))
+  AND m.sender_id <> sqlc.arg('caller')
+  AND (
+    CASE WHEN t.buyer_id = sqlc.arg('caller') THEN t.buyer_last_read_at ELSE t.seller_last_read_at END IS NULL
+    OR m.created_at > CASE WHEN t.buyer_id = sqlc.arg('caller') THEN t.buyer_last_read_at ELSE t.seller_last_read_at END
+  );
+
 -- name: GetThreadHeader :one
 -- Header fields for exactly one thread - listing/race context, both party
 -- names, and the caller's unread count for it - so the single-thread page
@@ -153,7 +168,7 @@ LIMIT sqlc.arg('page_size');
 -- participant check) happens in the handler, same as the message routes.
 SELECT t.id, t.listing_id, t.buyer_id, t.last_message_at,
     l.seller_id,
-    r.name AS race_name, r.slug AS race_slug,
+    r.name AS race_name, r.slug AS race_slug, r.transfer_policy,
     bu.display_name AS buyer_name,
     su.display_name AS seller_name,
     (SELECT count(*) FROM messages m

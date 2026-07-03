@@ -45,6 +45,7 @@ export * from './locale';
 export {
 	createPlural,
 	createTranslator,
+	listingStatusLabel,
 	sportLabel,
 	type Pluralizer,
 	type Translator

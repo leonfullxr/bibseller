@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { ResolvedPathname } from '$app/types';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import {
 		createPlural,
 		createTranslator,
@@ -31,7 +31,7 @@
 		link: (path) => pathForLocale(locale, path) as ResolvedPathname
 	};
 	setI18n(i18n);
-	const { t, link } = i18n;
+	const { t, plural, link } = i18n;
 
 	const switchTo = $derived(data.locale === 'en' ? 'es' : 'en');
 	// hreflang alternates for the current page, from its locale-free path (no query).
@@ -56,6 +56,8 @@
 </svelte:head>
 
 <div class="shell">
+	<a class="btn btn-primary skip" href="#main">{t('nav.skipToContent')}</a>
+	{#if navigating.to}<div class="nav-progress"></div>{/if}
 	<header>
 		<div class="bar">
 			<a href={link(resolve('/'))} class="brand">bib<span>seller</span></a>
@@ -65,7 +67,17 @@
 					<a href={link(resolve('/sell'))}>{t('nav.sell')}</a>
 					<a href={link(resolve('/account/listings'))}>{t('nav.myListings')}</a>
 					{#if data.user.email_verified}
-						<a href={link(resolve('/account/inbox'))}>{t('nav.inbox')}</a>
+						<a
+							href={link(resolve('/account/inbox'))}
+							aria-label={data.unreadCount > 0
+								? `${t('nav.inbox')}, ${plural('nav.inboxUnread', data.unreadCount)}`
+								: undefined}
+						>
+							{t('nav.inbox')}
+							{#if data.unreadCount > 0}
+								<span class="unread-pill" aria-hidden="true">{data.unreadCount}</span>
+							{/if}
+						</a>
 					{/if}
 					<a href={link(resolve('/settings'))}>{data.user.display_name}</a>
 					<form method="POST" action={link(resolve('/logout'))}>
@@ -110,7 +122,7 @@
 		</div>
 	{/if}
 
-	<main>
+	<main id="main">
 		{@render children()}
 	</main>
 
@@ -136,6 +148,46 @@
 		color: var(--slate-900);
 	}
 
+	/* Visually hidden until keyboard-focused, then a small pill over the header. */
+	.skip {
+		position: fixed;
+		top: 0.5rem;
+		left: 0.5rem;
+		z-index: 20;
+		transform: translateY(-200%);
+		padding: 0.5rem 0.75rem;
+	}
+
+	.skip:focus {
+		transform: none;
+	}
+
+	.nav-progress {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 30;
+		height: 2px;
+		width: 100%;
+		background: var(--emerald-600);
+		transform-origin: left;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.nav-progress {
+			animation: nav-progress 1.2s ease-in-out infinite;
+		}
+
+		@keyframes nav-progress {
+			from {
+				transform: scaleX(0);
+			}
+			to {
+				transform: scaleX(1);
+			}
+		}
+	}
+
 	header {
 		border-bottom: 1px solid var(--slate-200);
 		background: white;
@@ -144,6 +196,7 @@
 	.bar {
 		margin-inline: auto;
 		display: flex;
+		flex-wrap: wrap;
 		width: 100%;
 		max-width: 64rem;
 		align-items: center;
@@ -152,7 +205,8 @@
 	}
 
 	header .bar {
-		height: 3.5rem;
+		min-height: 3.5rem;
+		padding-block: 0.5rem;
 	}
 
 	.brand {
@@ -168,8 +222,10 @@
 
 	nav {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 1rem;
+		row-gap: 0.25rem;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
 	}
@@ -195,6 +251,20 @@
 		background: none;
 		padding: 0;
 		font: inherit;
+	}
+
+	.unread-pill {
+		display: inline-flex;
+		min-width: 1.125rem;
+		justify-content: center;
+		vertical-align: text-top;
+		border-radius: 9999px;
+		background: var(--emerald-600);
+		padding: 0.0625rem 0.3125rem;
+		font-size: 0.6875rem;
+		line-height: 1rem;
+		font-weight: 700;
+		color: white;
 	}
 
 	.verify-banner {
