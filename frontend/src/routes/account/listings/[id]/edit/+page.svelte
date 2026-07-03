@@ -3,12 +3,14 @@
 	import { resolve } from '$app/paths';
 	import ListingFields from '$lib/components/ListingFields.svelte';
 	import { formatDate } from '$lib/format';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t, locale, link } = getI18n();
 	const l = $derived(data.listing);
+	const { busy, submit } = pendingForm();
 
 	function centsToInput(c: number | null): string {
 		return c == null ? '' : String(c / 100);
@@ -26,7 +28,7 @@
 	<p class="meta">{l.race.name} - {formatDate(l.race.event_date, locale)}</p>
 </header>
 
-<form method="POST" use:enhance class="panel">
+<form method="POST" use:enhance={submit} class="panel">
 	<ListingFields
 		price={form?.values?.price ?? centsToInput(l.price_cents)}
 		original={form?.values?.original_price ?? centsToInput(l.original_price_cents)}
@@ -34,10 +36,12 @@
 	/>
 
 	{#if form?.error}
-		<p class="feedback error" role="alert">{form.error}</p>
+		<p class="alert feedback" role="alert">{form.error}</p>
 	{/if}
 
-	<button type="submit">{t('editListing.save')}</button>
+	<button type="submit" class="btn btn-primary" disabled={busy.value}
+		>{t('editListing.save')}</button
+	>
 </form>
 
 <style>
@@ -72,38 +76,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
-		border-radius: 0.5rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 1.5rem;
 	}
 
 	.feedback {
 		margin-top: 0.5rem;
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	.error {
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		color: var(--amber-900);
 	}
 
 	button {
 		margin-top: 1rem;
 		align-self: flex-start;
-		border-radius: 0.375rem;
-		background: var(--slate-900);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	button:hover {
-		background: var(--slate-700);
 	}
 </style>

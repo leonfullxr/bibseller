@@ -58,14 +58,17 @@
 <section>
 	<div class="section-head">
 		<h2>{bibsForSale}</h2>
-		<a href={link(resolve('/sell/[slug]', { slug: race.slug }))} class="sell-cta"
+		<a href={link(resolve('/sell/[slug]', { slug: race.slug }))} class="btn btn-primary sell-cta"
 			>{t('raceDetail.sellCta')}</a
 		>
 	</div>
 	{#if data.listings.length === 0}
 		<div class="empty">
 			<p>{t('raceDetail.empty')}</p>
-			<p class="hint">{t('raceDetail.emptyHint')}</p>
+			<p class="hint">
+				{t('raceDetail.emptyHint')}
+				<a href={link(resolve('/sell/[slug]', { slug: race.slug }))}>{t('raceDetail.sellCta')}</a>
+			</p>
 		</div>
 	{:else}
 		<div class="grid">
@@ -85,17 +88,8 @@
 	}
 
 	.sell-cta {
-		border-radius: 0.375rem;
-		background: var(--emerald-600);
 		padding: 0.375rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
 		white-space: nowrap;
-	}
-
-	.sell-cta:hover {
-		background: var(--emerald-700);
 	}
 
 	nav {
@@ -163,15 +157,6 @@
 
 	.empty {
 		margin-top: 1rem;
-		border-radius: 0.5rem;
-		border: 1px dashed var(--slate-300);
-		padding: 2.5rem;
-		text-align: center;
-	}
-
-	.empty p {
-		font-weight: 500;
-		color: var(--slate-600);
 	}
 
 	.empty .hint {

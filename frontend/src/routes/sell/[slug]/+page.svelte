@@ -5,12 +5,14 @@
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate } from '$lib/format';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t, locale, link } = getI18n();
 	const race = $derived(data.race);
+	const { busy, submit } = pendingForm();
 </script>
 
 <svelte:head>
@@ -38,12 +40,12 @@
 </div>
 
 {#if !data.verified}
-	<p class="notice">
+	<p class="alert notice">
 		{t('sellForm.verifyNotice')}
 		<a href={link(resolve('/settings'))}>{t('listingDetail.accountSettings')}</a>
 	</p>
 {:else}
-	<form method="POST" use:enhance class="panel">
+	<form method="POST" use:enhance={submit} class="panel">
 		<input type="hidden" name="race_id" value={race.id} />
 
 		<ListingFields
@@ -53,10 +55,12 @@
 		/>
 
 		{#if form?.error}
-			<p class="feedback error" role="alert">{form.error}</p>
+			<p class="alert feedback" role="alert">{form.error}</p>
 		{/if}
 
-		<button type="submit">{t('sellForm.publish')}</button>
+		<button type="submit" class="btn btn-primary" disabled={busy.value}
+			>{t('sellForm.publish')}</button
+		>
 	</form>
 {/if}
 
@@ -98,12 +102,6 @@
 
 	.notice {
 		margin-top: 1rem;
-		border-radius: 0.375rem;
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		color: var(--amber-900);
 	}
 
 	.notice a {
@@ -117,38 +115,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
-		border-radius: 0.5rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 1.5rem;
 	}
 
 	.feedback {
 		margin-top: 0.5rem;
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	.error {
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		color: var(--amber-900);
 	}
 
 	button {
 		margin-top: 1rem;
 		align-self: flex-start;
-		border-radius: 0.375rem;
-		background: var(--emerald-600);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	button:hover {
-		background: var(--emerald-700);
 	}
 </style>
