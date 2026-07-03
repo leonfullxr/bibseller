@@ -42,6 +42,31 @@ func (q *Queries) DeleteEmailVerificationsForUser(ctx context.Context, userID uu
 	return err
 }
 
+const deleteExpiredEmailVerificationsBatch = `-- name: DeleteExpiredEmailVerificationsBatch :execrows
+DELETE FROM email_verifications
+WHERE token_hash IN (
+    SELECT v.token_hash FROM email_verifications v
+    WHERE v.expires_at < $1
+    LIMIT $2
+)
+`
+
+type DeleteExpiredEmailVerificationsBatchParams struct {
+	Cutoff    time.Time `json:"cutoff"`
+	BatchSize int32     `json:"batch_size"`
+}
+
+// Janitor batch (#142): tokens for users who never verify are otherwise only
+// removed by account deletion (CASCADE), so expired rows accumulate. Same
+// retention buffer as sessions (expiry + 30 days); batch by primary key (#99).
+func (q *Queries) DeleteExpiredEmailVerificationsBatch(ctx context.Context, arg DeleteExpiredEmailVerificationsBatchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredEmailVerificationsBatch, arg.Cutoff, arg.BatchSize)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getEmailVerificationUser = `-- name: GetEmailVerificationUser :one
 SELECT user_id FROM email_verifications
 WHERE token_hash = $1
