@@ -5,7 +5,7 @@
 	import PolicyBadge from '$lib/components/PolicyBadge.svelte';
 	import PolicyCallout from '$lib/components/PolicyCallout.svelte';
 	import { formatDate, formatPrice } from '$lib/format';
-	import { getI18n } from '$lib/i18n';
+	import { getI18n, listingStatusLabel } from '$lib/i18n';
 	import { requiresAck } from '$lib/policy';
 	import type { PageProps } from './$types';
 
@@ -82,7 +82,7 @@
 
 	{#if !available}
 		<div class="gone">
-			{t('listingDetail.unavailable', { status: listing.status })}
+			{t('listingDetail.unavailable', { status: listingStatusLabel(t, listing.status) })}
 		</div>
 	{/if}
 
