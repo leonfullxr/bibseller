@@ -84,6 +84,7 @@ export interface ChatThreadSummary {
 	listing_id: string;
 	race_name: string;
 	race_slug: string;
+	transfer_policy: TransferPolicy; // drives the in-thread policy reminder
 	role: 'buyer' | 'seller'; // the caller's role in this thread
 	other_party: string; // display name of the other participant
 	other_party_id: string; // the other participant, for block/unblock

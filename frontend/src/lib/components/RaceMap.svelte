@@ -293,7 +293,7 @@
 		left: 50%;
 		top: 50%;
 		transform: translate(-50%, -50%);
-		border-radius: 999px;
+		border-radius: 9999px;
 		background: var(--emerald-600);
 		padding: 0.25rem 0.7rem;
 		font-size: 0.7rem;

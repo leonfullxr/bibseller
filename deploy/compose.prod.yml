@@ -135,6 +135,19 @@ services:
     depends_on:
       db: { condition: service_healthy }
       minio: { condition: service_healthy }
+    # Healthcheck runs the binary itself (distroless image: no shell/curl).
+    # /api/readyz includes DB reachability, which is what dependents care
+    # about. Note compose does NOT restart unhealthy containers - the win is
+    # startup ordering plus `docker compose ps` visibility during incidents.
+    # Corollary: `up` hard-fails dependents if this never turns healthy
+    # (~80s: start_period + retries x interval), so a deploy onto a broken
+    # DB stops loudly instead of serving a half-up stack.
+    healthcheck:
+      test: ['CMD', '/api', '-healthcheck']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # One-shot DB migrator (run via `make prod-migrate`; the profile keeps it out
   # of `up`). goose runs against the same keyword/value DATABASE_URL as the api,
@@ -180,7 +193,24 @@ services:
       ORIGIN: ${PUBLIC_ORIGIN}
       # Internal address the server-side load functions use to reach the API.
       API_URL: http://api:8080
-    depends_on: [api]
+    depends_on:
+      api: { condition: service_healthy }
+    # adapter-node has no health route; any HTTP response from the node
+    # process (even an SSR error page) means the web server itself is up -
+    # api readiness is the api healthcheck's job. node 22+ ships global
+    # fetch. 127.0.0.1, not localhost: adapter-node binds 0.0.0.0 (IPv4)
+    # and the alpine hosts file maps localhost to ::1 first. Same restart
+    # caveat as the api healthcheck.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/', { signal: AbortSignal.timeout(4000) }).then(() => process.exit(0), () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   caddy:
     image: caddy:2-alpine
@@ -193,7 +223,9 @@ services:
           memory: 128M
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-    depends_on: [api, web]
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
     # No published ports: only cloudflared (same network) reaches caddy:80.
 
   # Send-only Postfix relay. The app sends plain mail to mail:25 (internal,
@@ -218,6 +250,12 @@ services:
       # self-signed cert against host "mail" and fail. TLS still applies on the
       # Postfix -> Brevo relay hop (the relay config sets smtp_tls_security_level).
       POSTFIX_smtpd_tls_security_level: none
+    # The queue surviving blips is the reason Postfix exists at all
+    # (DEPLOYMENT.md), so queued-but-undelivered mail must outlive
+    # `make prod-down` (containers are removed). queue_directory is
+    # /var/spool/postfix (verified: `postconf queue_directory` in this image);
+    # the boky entrypoint re-owns the mounted spool on start.
+    volumes: [mailspool:/var/spool/postfix]
 
   # Outbound-only tunnel to Cloudflare's edge: no public IP, no inbound ports.
   # Set the tunnel's public hostname to route to http://caddy:80 in the
@@ -237,3 +275,4 @@ services:
 volumes:
   pgdata:
   miniodata:
+  mailspool:

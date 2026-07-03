@@ -61,7 +61,8 @@ export const actions: Actions = {
 			});
 		}
 
-		redirect(303, '/account/listings');
+		// ?created=1 renders the success box on the listings page.
+		redirect(303, '/account/listings?created=1');
 	}
 };
 

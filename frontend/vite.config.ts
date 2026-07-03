@@ -47,8 +47,6 @@ export default defineConfig({
 					'style-src': ['self'],
 					'style-src-attr': ['unsafe-inline'],
 					'img-src': ['self', 'data:'],
-					'font-src': ['self'],
-					'connect-src': ['self'],
 					'object-src': ['none'],
 					'base-uri': ['none'],
 					'form-action': ['self'],
