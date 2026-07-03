@@ -45,16 +45,28 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    groups:
+      docker-backend-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
 
   - package-ecosystem: docker
     directory: /frontend
     schedule:
       interval: weekly
+    groups:
+      docker-frontend-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
 
   - package-ecosystem: docker-compose
     directory: /
     schedule:
       interval: weekly
+    groups:
+      compose-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
     ignore:
       - dependency-name: minio/minio
       - dependency-name: minio/mc
