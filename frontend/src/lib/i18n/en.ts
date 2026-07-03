@@ -15,6 +15,9 @@ export const en = {
 	'nav.sell': 'Sell',
 	'nav.myListings': 'My listings',
 	'nav.inbox': 'Inbox',
+	// Header unread badge (pluralized via Intl.PluralRules, see messages.ts).
+	'nav.inboxUnread.one': '{n} unread message',
+	'nav.inboxUnread.other': '{n} unread messages',
 	'nav.login': 'Log in',
 	'nav.register': 'Register',
 	'nav.logout': 'Log out',
@@ -268,6 +271,19 @@ export const en = {
 	'myListings.listABib': 'List a bib',
 	'myListings.edit': 'Edit',
 	'myListings.cancel': 'Cancel',
+	'myListings.view': 'View',
+	'myListings.cancelConfirm': 'Cancel this listing? Buyers will no longer see it.',
+	'myListings.cancelled': 'Listing cancelled.',
+	'myListings.created': 'Your listing is live.',
+
+	// Listing status labels - the full listings_status_check set. Shared by the
+	// my-listings pills and the listing page's unavailable banner.
+	'listingStatus.active': 'Active',
+	'listingStatus.reserved': 'Reserved',
+	'listingStatus.sold': 'Sold',
+	'listingStatus.cancelled': 'Cancelled',
+	'listingStatus.expired': 'Expired',
+	'listingStatus.removed': 'Removed',
 
 	// Edit listing.
 	'editListing.title': 'Edit listing - Bibseller',

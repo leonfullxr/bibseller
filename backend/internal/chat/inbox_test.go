@@ -182,6 +182,76 @@ func TestInboxExcludesThreadWithNoMessage(t *testing.T) {
 	}
 }
 
+// unreadCount fetches GET /me/unread-count and returns the count.
+func unreadCount(t *testing.T, h http.Handler, token string) int {
+	t.Helper()
+	rec := doJSON(t, h, http.MethodGet, "/api/v1/me/unread-count", "", token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unread-count: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var resp struct {
+		UnreadCount int `json:"unread_count"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unread-count: bad JSON: %v", err)
+	}
+	return resp.UnreadCount
+}
+
+// TestUnreadCount proves the header-badge endpoint (#146): the total tracks
+// unread messages across threads, drops to zero once read, is gated exactly
+// like the inbox (401 unauthenticated, 403 unverified), and never counts the
+// caller's own messages.
+func TestUnreadCount(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	buyerTok, _ := registerUser(t, h, pool, "Buyer", true)
+	race := seedInboxTestRace(t, pool)
+
+	// Two sellers, one message each: the buyer's own sends are not unread for
+	// the buyer, but each seller has 1.
+	var sellerToks []string
+	var threadIDs []string
+	for i := 0; i < 2; i++ {
+		sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+		listingID := createListing(t, h, race.ID, sellerTok)
+		threadIDs = append(threadIDs, startThread(t, h, listingID, buyerTok, "hi"))
+		sellerToks = append(sellerToks, sellerTok)
+	}
+	if n := unreadCount(t, h, buyerTok); n != 0 {
+		t.Fatalf("buyer unread after own messages: %d, want 0", n)
+	}
+	if n := unreadCount(t, h, sellerToks[0]); n != 1 {
+		t.Fatalf("seller unread: %d, want 1", n)
+	}
+
+	// Both sellers reply: the buyer's total sums across threads.
+	for i, tok := range sellerToks {
+		if rec := doJSON(t, h, http.MethodPost, "/api/v1/threads/"+threadIDs[i]+"/messages",
+			`{"body":"hi back"}`, tok); rec.Code != http.StatusCreated {
+			t.Fatalf("seller reply: status = %d, body = %s", rec.Code, rec.Body)
+		}
+	}
+	if n := unreadCount(t, h, buyerTok); n != 2 {
+		t.Fatalf("buyer unread after two replies: %d, want 2", n)
+	}
+
+	// Reading one thread decrements the total; the other stays unread.
+	messages(t, h, threadIDs[0], "", buyerTok)
+	if n := unreadCount(t, h, buyerTok); n != 1 {
+		t.Fatalf("buyer unread after reading one thread: %d, want 1", n)
+	}
+
+	// Gated like the inbox.
+	if rec := doJSON(t, h, http.MethodGet, "/api/v1/me/unread-count", "", ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("unauthenticated: status = %d, want 401", rec.Code)
+	}
+	unverifiedTok, _ := registerUser(t, h, pool, "Unverified", false)
+	if rec := doJSON(t, h, http.MethodGet, "/api/v1/me/unread-count", "", unverifiedTok); rec.Code != http.StatusForbidden {
+		t.Errorf("unverified: status = %d, want 403", rec.Code)
+	}
+}
+
 // TestGetThreadHeader proves #97: the single-thread page's header endpoint
 // works for either participant, 403s a stranger, and 404s a missing thread.
 func TestGetThreadHeader(t *testing.T) {

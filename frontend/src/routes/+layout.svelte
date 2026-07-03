@@ -31,7 +31,7 @@
 		link: (path) => pathForLocale(locale, path) as ResolvedPathname
 	};
 	setI18n(i18n);
-	const { t, link } = i18n;
+	const { t, plural, link } = i18n;
 
 	const switchTo = $derived(data.locale === 'en' ? 'es' : 'en');
 	// hreflang alternates for the current page, from its locale-free path (no query).
@@ -67,7 +67,17 @@
 					<a href={link(resolve('/sell'))}>{t('nav.sell')}</a>
 					<a href={link(resolve('/account/listings'))}>{t('nav.myListings')}</a>
 					{#if data.user.email_verified}
-						<a href={link(resolve('/account/inbox'))}>{t('nav.inbox')}</a>
+						<a
+							href={link(resolve('/account/inbox'))}
+							aria-label={data.unreadCount > 0
+								? `${t('nav.inbox')}, ${plural('nav.inboxUnread', data.unreadCount)}`
+								: undefined}
+						>
+							{t('nav.inbox')}
+							{#if data.unreadCount > 0}
+								<span class="unread-pill" aria-hidden="true">{data.unreadCount}</span>
+							{/if}
+						</a>
 					{/if}
 					<a href={link(resolve('/settings'))}>{data.user.display_name}</a>
 					<form method="POST" action={link(resolve('/logout'))}>
@@ -246,6 +256,20 @@
 		background: none;
 		padding: 0;
 		font: inherit;
+	}
+
+	.unread-pill {
+		display: inline-flex;
+		min-width: 1.125rem;
+		justify-content: center;
+		vertical-align: text-top;
+		border-radius: 9999px;
+		background: var(--emerald-600);
+		padding: 0.0625rem 0.3125rem;
+		font-size: 0.6875rem;
+		line-height: 1rem;
+		font-weight: 700;
+		color: white;
 	}
 
 	.verify-banner {

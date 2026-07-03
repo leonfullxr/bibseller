@@ -12,6 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+const countUnreadForUser = `-- name: CountUnreadForUser :one
+SELECT count(*)
+FROM messages m
+JOIN chat_threads t ON t.id = m.thread_id
+JOIN listings l ON l.id = t.listing_id
+WHERE (t.buyer_id = $1 OR l.seller_id = $1)
+  AND m.sender_id <> $1
+  AND (
+    CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END IS NULL
+    OR m.created_at > CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END
+  )
+`
+
+// Total unread messages across every thread where the caller is the buyer or
+// the listing's seller - the header badge. Mirrors ListThreadsForUser's
+// per-thread unread subquery, flattened into one aggregate.
+func (q *Queries) CountUnreadForUser(ctx context.Context, caller uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadForUser, caller)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPolicyAck = `-- name: CreatePolicyAck :exec
 INSERT INTO policy_acks (id, user_id, race_id, policy)
 VALUES ($1, $2, $3, $4)
