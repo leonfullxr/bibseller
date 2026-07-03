@@ -15,9 +15,13 @@ export const en = {
 	'nav.sell': 'Sell',
 	'nav.myListings': 'My listings',
 	'nav.inbox': 'Inbox',
+	// Header unread badge (pluralized via Intl.PluralRules, see messages.ts).
+	'nav.inboxUnread.one': '{n} unread message',
+	'nav.inboxUnread.other': '{n} unread messages',
 	'nav.login': 'Log in',
 	'nav.register': 'Register',
 	'nav.logout': 'Log out',
+	'nav.skipToContent': 'Skip to content',
 	'banner.verifyEmail': 'Verify your email to unlock selling and chat.',
 	'banner.resend': 'Resend email',
 	'banner.verifySent': 'Verification email sent - check your inbox (and spam).',
@@ -148,7 +152,7 @@ export const en = {
 	'raceDetail.bibsForSale.other': '{n} bibs for sale',
 	'raceDetail.sellCta': 'Sell your bib',
 	'raceDetail.empty': 'No bibs listed for this race yet.',
-	'raceDetail.emptyHint': 'Selling yours? Listing opens soon.',
+	'raceDetail.emptyHint': 'Selling yours?',
 
 	// Listing detail.
 	'listingDetail.title': 'Bib for {name} - Bibseller',
@@ -222,6 +226,16 @@ export const en = {
 	'chat.reportConfirm': 'Report this message to the moderators?',
 	'chat.messageReported': 'Message reported.',
 	'chat.messageReportFailed': 'Could not report the message.',
+	'chat.safetySummary': 'Safety options',
+	'chat.policyReminder':
+		"Reminder: this race restricts transfers - the platform only connects you, so follow the race's own rules and never send money here.",
+	'chat.connectionLost': 'Connection lost - retrying...',
+	'chat.invalidImage': 'That file could not be read as an image.',
+	'chat.unsupportedImage': 'Only JPEG and PNG images are allowed.',
+	'chat.blockedSend': 'You cannot send messages in this conversation.',
+	'chat.logAria': 'Conversation messages',
+	'chat.previewAlt': 'Preview of the attached image',
+	'chat.clearImage': 'Remove the attached image',
 
 	// Sell - race search.
 	'sell.title': 'Sell a bib - Bibseller',
@@ -257,6 +271,19 @@ export const en = {
 	'myListings.listABib': 'List a bib',
 	'myListings.edit': 'Edit',
 	'myListings.cancel': 'Cancel',
+	'myListings.view': 'View',
+	'myListings.cancelConfirm': 'Cancel this listing? Buyers will no longer see it.',
+	'myListings.cancelled': 'Listing cancelled.',
+	'myListings.created': 'Your listing is live.',
+
+	// Listing status labels - the full listings_status_check set. Shared by the
+	// my-listings pills and the listing page's unavailable banner.
+	'listingStatus.active': 'Active',
+	'listingStatus.reserved': 'Reserved',
+	'listingStatus.sold': 'Sold',
+	'listingStatus.cancelled': 'Cancelled',
+	'listingStatus.expired': 'Expired',
+	'listingStatus.removed': 'Removed',
 
 	// Edit listing.
 	'editListing.title': 'Edit listing - Bibseller',

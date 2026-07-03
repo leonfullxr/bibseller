@@ -15,6 +15,7 @@
 	--emerald-50: #ecfdf5;
 	--emerald-100: #d1fae5;
 	--emerald-200: #a7f3d0;
+	--emerald-300: #6ee7b7;
 	--emerald-600: #059669;
 	--emerald-700: #047857;
 	--emerald-800: #065f46;
@@ -32,6 +33,7 @@
 	--amber-100: #fef3c7;
 	--amber-300: #fcd34d;
 	--amber-500: #f59e0b;
+	--amber-700: #b45309;
 	--amber-800: #92400e;
 	--amber-900: #78350f;
 }
@@ -41,6 +43,12 @@
 *::after {
 	box-sizing: border-box;
 	margin: 0;
+}
+
+/* Visible keyboard-focus ring everywhere; components may override locally. */
+:focus-visible {
+	outline: 2px solid var(--emerald-600);
+	outline-offset: 2px;
 }
 
 html {
@@ -88,4 +96,92 @@ button {
 code {
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	font-size: 0.875em;
+}
+
+/* Shared UI primitives - btn, field, panel, alert, pill, empty. This set is
+   deliberately closed (issue #147); pages add scoped margins/overrides only. */
+.btn {
+	display: inline-block;
+	border-radius: 0.375rem;
+	padding: 0.5rem 1rem;
+	font-size: 0.875rem;
+	line-height: 1.25rem;
+	font-weight: 600;
+	text-align: center;
+	color: white;
+}
+
+.btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.btn-primary {
+	background: var(--emerald-600);
+}
+
+.btn-primary:hover:not(:disabled) {
+	background: var(--emerald-700);
+}
+
+.btn-outline {
+	border: 1px solid var(--slate-300);
+	background: white;
+	color: var(--slate-700);
+}
+
+.btn-outline:hover:not(:disabled) {
+	background: var(--slate-100);
+}
+
+.field {
+	border-radius: 0.375rem;
+	border: 1px solid var(--slate-300);
+	background: white;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.875rem;
+	line-height: 1.25rem;
+}
+
+.panel {
+	border-radius: 0.5rem;
+	border: 1px solid var(--slate-200);
+	background: white;
+	padding: 1.5rem;
+}
+
+.alert {
+	border-radius: 0.375rem;
+	border: 1px solid var(--amber-300);
+	background: var(--amber-50);
+	padding: 0.5rem 0.75rem;
+	font-size: 0.875rem;
+	line-height: 1.25rem;
+	font-weight: 500;
+	color: var(--amber-900);
+}
+
+.pill {
+	display: inline-block;
+	border-radius: 9999px;
+	padding: 0.125rem 0.625rem;
+	font-size: 0.75rem;
+	line-height: 1rem;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+/* Dashed-box empty state (from the race catalog). */
+.empty {
+	border-radius: 0.5rem;
+	border: 1px dashed var(--slate-300);
+	padding: 2.5rem;
+	text-align: center;
+	font-weight: 500;
+	color: var(--slate-600);
+}
+
+.empty a {
+	color: var(--emerald-700);
+	text-decoration: underline;
 }
