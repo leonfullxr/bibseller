@@ -125,9 +125,16 @@
 		const f = files?.[0];
 		preview = '';
 		if (!f || f.size > 5 << 20) return;
+		let stale = false;
 		const reader = new FileReader();
-		reader.onload = () => (preview = reader.result as string);
+		reader.onload = () => {
+			if (!stale) preview = reader.result as string;
+		};
 		reader.readAsDataURL(f);
+		return () => {
+			stale = true;
+			reader.abort();
+		};
 	});
 
 	// UTC date-part of a timestamp, for the day separators. Deterministic on
@@ -562,12 +569,14 @@
 	   bubble is hovered or holds focus; touch keeps it always visible. */
 	@media (hover: hover) {
 		.msg .report-msg {
-			visibility: hidden;
+			opacity: 0;
+			pointer-events: none;
 		}
 
 		.msg:hover .report-msg,
 		.msg:focus-within .report-msg {
-			visibility: visible;
+			opacity: 1;
+			pointer-events: auto;
 		}
 	}
 

@@ -35,14 +35,22 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 	if (!msgsRes.ok) error(502, { message: 'Could not load messages.', key: 'apiError.loadFailed' });
 	const msgs = (await msgsRes.json()) as { items: ChatMessage[]; next_cursor: string | null };
 
-	// ponytail: history backfill capped at 5 extra pages (~600 messages total);
-	// anything older stays unloaded until a "load earlier" control exists (#125).
+	// ponytail: ListMessages pages oldest-first (id ASC), so this walks forward
+	// from the start of the thread, capped at 5 extra pages (~600 messages
+	// total). On threads longer than that, the newest messages - not older
+	// ones - are what stays unloaded, until a proper tail/reverse-cursor
+	// fetch exists (#125).
 	const items = msgs.items;
 	let cursor = msgs.next_cursor;
 	for (let i = 0; i < 5 && cursor; i++) {
-		const res = await apiFetch(`/api/v1/threads/${params.id}/messages?since=${cursor}`, {
-			headers: sessionHeader(cookies)
-		});
+		let res: Response;
+		try {
+			res = await apiFetch(`/api/v1/threads/${params.id}/messages?since=${cursor}`, {
+				headers: sessionHeader(cookies)
+			});
+		} catch {
+			break; // transient network error mid-backfill - keep what we already have
+		}
 		if (!res.ok) break;
 		const page = (await res.json()) as { items: ChatMessage[]; next_cursor: string | null };
 		items.push(...page.items);
