@@ -41,19 +41,19 @@
 
 <div class="head">
 	<h1>{t('myListings.heading')}</h1>
-	<a href={link(resolve('/sell'))} class="new">{t('sell.heading')}</a>
+	<a href={link(resolve('/sell'))} class="btn btn-primary new">{t('sell.heading')}</a>
 </div>
 
 {#if created}
-	<p class="feedback success" role="status">{t('myListings.created')}</p>
+	<p class="alert ok" role="status">{t('myListings.created')}</p>
 {/if}
 
 {#if form?.error}
-	<p class="feedback error" role="alert">{form.error}</p>
+	<p class="alert" role="alert">{form.error}</p>
 {/if}
 
 {#if form?.cancelled}
-	<p class="feedback success" role="status">{t('myListings.cancelled')}</p>
+	<p class="alert ok" role="status">{t('myListings.cancelled')}</p>
 {/if}
 
 {#if data.listings.length === 0}
@@ -85,7 +85,7 @@
 						>
 						<form method="POST" action="?/cancel" use:enhance={cancelListing}>
 							<input type="hidden" name="id" value={l.id} />
-							<button type="submit" class="cancel" disabled={busy.value}
+							<button type="submit" class="btn btn-outline cancel" disabled={busy.value}
 								>{t('myListings.cancel')}</button
 							>
 						</form>
@@ -111,26 +111,11 @@
 	}
 
 	.new {
-		border-radius: 0.375rem;
-		background: var(--emerald-600);
 		padding: 0.375rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	.new:hover {
-		background: var(--emerald-700);
 	}
 
 	.empty {
 		margin-top: 2rem;
-		color: var(--slate-600);
-	}
-
-	.empty a {
-		color: var(--emerald-700);
-		text-decoration: underline;
 	}
 
 	.listings {
@@ -216,40 +201,15 @@
 	}
 
 	.cancel {
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
 		padding: 0.375rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--slate-700);
 	}
 
-	.cancel:hover {
-		background: var(--slate-100);
-	}
-
-	.cancel:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-
-	.feedback {
+	.alert {
 		margin-top: 1rem;
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
 	}
 
-	.error {
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		color: var(--amber-900);
-	}
-
-	.success {
-		border: 1px solid var(--emerald-200);
+	.alert.ok {
+		border-color: var(--emerald-200);
 		background: var(--emerald-50);
 		color: var(--emerald-900);
 	}

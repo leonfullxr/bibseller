@@ -9,7 +9,7 @@
 	import { formatDate, formatPrice } from '$lib/format';
 	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n, listingStatusLabel } from '$lib/i18n';
-	import { requiresAck } from '$lib/policy';
+	import { policyView, requiresAck } from '$lib/policy';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -34,6 +34,12 @@
 	const available = $derived(listing.status === 'active');
 	const isOwn = $derived(listing.is_own_listing);
 	const needsAck = $derived(requiresAck(race.transfer_policy));
+	// Whether ListingCTA will actually render a control - mirrors its own
+	// branches, so no empty wrapper reserves space in the other modes.
+	const hasCta = $derived.by(() => {
+		const action = policyView[race.transfer_policy].primaryAction;
+		return action === 'buy' || (action === 'official' && !!race.official_transfer_url);
+	});
 
 	let reportReason = $state('scam');
 	let reportDetails = $state('');
@@ -100,7 +106,7 @@
 		<span class="price">{price ?? t('listingCard.priceOnRequest')}</span>
 		{#if belowFace && original}
 			<span class="original">{original}</span>
-			<span class="deal">{t('listingCard.belowFace')}</span>
+			<span class="pill deal">{t('listingCard.belowFace')}</span>
 		{/if}
 	</div>
 
@@ -114,19 +120,21 @@
 		})}
 	</p>
 
-	{#if available}
+	{#if available && hasCta}
 		<div class="cta-wrap">
 			<ListingCTA policy={race.transfer_policy} officialUrl={race.official_transfer_url} />
 		</div>
 	{/if}
 </div>
 
+<!-- No officialUrl here: the CTA above owns the official-transfer action, so
+     the callout stays informational (one button, not two). -->
 <div class="callout-wrap">
-	<PolicyCallout policy={race.transfer_policy} officialUrl={race.official_transfer_url} />
+	<PolicyCallout policy={race.transfer_policy} />
 </div>
 
 {#if available}
-	<section class="contact">
+	<section class="panel contact">
 		<h2>{t('listingDetail.contact')}</h2>
 
 		{#if !data.user}
@@ -148,6 +156,7 @@
 			<form method="POST" action="?/contact" use:enhance={submit} class="composer">
 				<textarea
 					name="body"
+					class="field"
 					rows="4"
 					required
 					maxlength="4000"
@@ -163,10 +172,12 @@
 				{/if}
 
 				{#if form?.error}
-					<p class="feedback error" role="alert">{form.error}</p>
+					<p class="alert" role="alert">{form.error}</p>
 				{/if}
 
-				<button type="submit" disabled={busy.value}>{t('listingDetail.send')}</button>
+				<button type="submit" class="btn btn-primary" disabled={busy.value}
+					>{t('listingDetail.send')}</button
+				>
 			</form>
 		{/if}
 	</section>
@@ -176,13 +187,14 @@
 	<details class="report">
 		<summary>{t('report.summary')}</summary>
 		<form class="report-form" onsubmit={reportListing}>
-			<select bind:value={reportReason} aria-label={t('report.reasonAria')}>
+			<select class="field" bind:value={reportReason} aria-label={t('report.reasonAria')}>
 				<option value="forbidden_transfer">{t('report.reason.forbidden_transfer')}</option>
 				<option value="scam">{t('report.reason.scam')}</option>
 				<option value="offensive">{t('report.reason.offensive')}</option>
 				<option value="other">{t('report.reason.other')}</option>
 			</select>
 			<textarea
+				class="field"
 				bind:value={reportDetails}
 				rows="2"
 				maxlength="2000"
@@ -190,7 +202,7 @@
 				placeholder={t('report.detailsPlaceholder')}
 			></textarea>
 			{#if reportStatus}<p class="report-status" role="status">{reportStatus}</p>{/if}
-			<button type="submit" disabled={reporting}
+			<button type="submit" class="btn btn-primary" disabled={reporting}
 				>{reporting ? t('report.submitting') : t('report.submit')}</button
 			>
 		</form>
@@ -213,10 +225,6 @@
 
 	.panel {
 		margin-top: 1rem;
-		border-radius: 0.5rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 1.5rem;
 	}
 
 	.panel.unavailable {
@@ -275,12 +283,7 @@
 	}
 
 	.deal {
-		border-radius: 9999px;
 		background: var(--emerald-100);
-		padding: 0.125rem 0.5rem;
-		font-size: 0.75rem;
-		line-height: 1rem;
-		font-weight: 600;
 		color: var(--emerald-800);
 	}
 
@@ -307,10 +310,6 @@
 
 	.contact {
 		margin-top: 1.5rem;
-		border-radius: 0.5rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 1.5rem;
 	}
 
 	.contact h2 {
@@ -341,10 +340,6 @@
 
 	textarea {
 		width: 100%;
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
-		padding: 0.5rem 0.75rem;
 		font: inherit;
 		font-size: 0.875rem;
 		resize: vertical;
@@ -363,36 +358,8 @@
 		flex-shrink: 0;
 	}
 
-	.feedback {
-		border-radius: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-
-	.error {
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		color: var(--amber-900);
-	}
-
 	button {
 		align-self: flex-start;
-		border-radius: 0.375rem;
-		background: var(--emerald-600);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	button:hover:not(:disabled) {
-		background: var(--emerald-700);
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 
 	.report {
@@ -414,12 +381,8 @@
 	}
 
 	select {
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
 		padding: 0.375rem 0.5rem;
 		font: inherit;
-		font-size: 0.875rem;
 	}
 
 	.report-status {
