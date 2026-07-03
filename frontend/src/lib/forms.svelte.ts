@@ -11,8 +11,11 @@ export function pendingForm() {
 	const submit: SubmitFunction = () => {
 		busy.value = true;
 		return async ({ update }) => {
-			await update();
-			busy.value = false;
+			try {
+				await update();
+			} finally {
+				busy.value = false;
+			}
 		};
 	};
 	return { busy, submit };

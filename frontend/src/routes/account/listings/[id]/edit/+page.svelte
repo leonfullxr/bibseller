@@ -105,7 +105,7 @@
 		color: white;
 	}
 
-	button:hover {
+	button:hover:not(:disabled) {
 		background: var(--slate-700);
 	}
 
