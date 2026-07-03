@@ -65,6 +65,10 @@ jobs:
         run: |
           go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
           git diff --exit-code -- internal/platform/db/sqlcgen
+      - name: govulncheck (known vulnerabilities in called code)
+        # Pinned like the repo's other `go run` tools (goose/sqlc in the
+        # Makefile); bump deliberately, not @latest.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.5.0 ./...
 
   frontend:
     runs-on: ubuntu-latest
