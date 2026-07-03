@@ -79,6 +79,7 @@ func run() error {
 	// locks; they stop when ctx is cancelled on shutdown.
 	go listing.StartExpiryJob(ctx, pool, logger, time.Hour)
 	go chat.StartRetentionJob(ctx, pool, store, logger, 24*time.Hour)
+	go auth.StartJanitorJob(ctx, pool, logger, 24*time.Hour)
 
 	errc := make(chan error, 1)
 	go func() {

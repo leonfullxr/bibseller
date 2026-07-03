@@ -51,6 +51,32 @@ func (q *Queries) DeleteAllSessionsForUser(ctx context.Context, userID uuid.UUID
 	return err
 }
 
+const deleteExpiredSessionsBatch = `-- name: DeleteExpiredSessionsBatch :execrows
+DELETE FROM sessions
+WHERE token_hash IN (
+    SELECT s.token_hash FROM sessions s
+    WHERE s.expires_at < $1
+    LIMIT $2
+)
+`
+
+type DeleteExpiredSessionsBatchParams struct {
+	Cutoff    time.Time `json:"cutoff"`
+	BatchSize int32     `json:"batch_size"`
+}
+
+// Janitor batch (#142): sessions are kept until expiry + 30 days
+// (docs/DATA_MODEL.md retention table) - reads already filter on expires_at,
+// so this is row bookkeeping, not correctness. Selecting the batch by primary
+// key bounds each DELETE's lock hold like the other jobs' batches (#99).
+func (q *Queries) DeleteExpiredSessionsBatch(ctx context.Context, arg DeleteExpiredSessionsBatchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredSessionsBatch, arg.Cutoff, arg.BatchSize)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions WHERE token_hash = $1
 `
