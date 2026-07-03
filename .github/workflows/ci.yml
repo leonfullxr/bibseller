@@ -113,10 +113,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: start minio + mailpit (smoke exercises image storage and email flows)
+        # MinIO pinned like docker-compose.yml / compose.prod.yml (D21: the OSS
+        # line is archived, so a floating tag is stale anyway). Mailpit floats,
+        # matching docker-compose.yml.
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio server /data
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
           docker run -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
           for i in $(seq 1 30); do
             curl -sf http://localhost:9000/minio/health/live && break || sleep 1
