@@ -145,6 +145,19 @@ else
 	fail "could not register a smoke user (token/user id missing)"
 fi
 
+# The CSP header is set per-request by SvelteKit (frontend/vite.config.ts,
+# kit.csp): assert it exists, keeps its stable directives, and carries the
+# per-request script nonce. Style directives are deliberately not asserted -
+# the dev server rewrites them ('unsafe-inline', no nonce) for Vite HMR.
+CSP=$(curl -s -D - -o /dev/null "$WEB/" | grep -i '^content-security-policy:')
+[ -n "$CSP" ] && pass "CSP header present on /" || fail "no Content-Security-Policy header on /"
+printf '%s' "$CSP" | grep -q "frame-ancestors 'none'" &&
+	pass "CSP forbids framing (frame-ancestors 'none')" || fail "CSP lost frame-ancestors 'none'"
+printf '%s' "$CSP" | grep -q "object-src 'none'" &&
+	pass "CSP forbids plugins (object-src 'none')" || fail "CSP lost object-src 'none'"
+printf '%s' "$CSP" | grep -qE "script-src [^;]*'nonce-" &&
+	pass "CSP script-src carries the per-request nonce" || fail "CSP script-src has no 'nonce-' token"
+
 # The limiter lives only in the real server (not the test router), so this is
 # its end-to-end proof: rapid logins from one IP must start returning 429.
 RL_429=0
