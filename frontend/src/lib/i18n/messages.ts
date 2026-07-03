@@ -39,6 +39,14 @@ export function sportLabel(t: Translator, sport: string): string {
 	return key in en ? t(key) : sport;
 }
 
+// listingStatusLabel translates a listing status coming from the API (e.g.
+// "sold"), same pattern as sportLabel: raw unknown values pass through so a
+// new server-side status never renders as a missing key.
+export function listingStatusLabel(t: Translator, status: string): string {
+	const key = `listingStatus.${status}` as MessageKey;
+	return key in en ? t(key) : status;
+}
+
 export function createPlural(locale: Locale): Pluralizer {
 	const dict = messages[locale];
 	const rules = new Intl.PluralRules(locale);

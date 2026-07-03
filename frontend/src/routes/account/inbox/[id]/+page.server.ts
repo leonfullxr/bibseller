@@ -33,7 +33,29 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}
 	if (!msgsRes.ok) error(502, { message: 'Could not load messages.', key: 'apiError.loadFailed' });
-	const msgs = (await msgsRes.json()) as { items: ChatMessage[] };
+	const msgs = (await msgsRes.json()) as { items: ChatMessage[]; next_cursor: string | null };
 
-	return { thread, messages: msgs.items, meId: locals.user.id };
+	// ponytail: ListMessages pages oldest-first (id ASC), so this walks forward
+	// from the start of the thread, capped at 5 extra pages (~600 messages
+	// total). On threads longer than that, the newest messages - not older
+	// ones - are what stays unloaded, until a proper tail/reverse-cursor
+	// fetch exists (#154).
+	const items = msgs.items;
+	let cursor = msgs.next_cursor;
+	for (let i = 0; i < 5 && cursor; i++) {
+		let res: Response;
+		try {
+			res = await apiFetch(`/api/v1/threads/${params.id}/messages?since=${cursor}`, {
+				headers: sessionHeader(cookies)
+			});
+		} catch {
+			break; // transient network error mid-backfill - keep what we already have
+		}
+		if (!res.ok) break;
+		const page = (await res.json()) as { items: ChatMessage[]; next_cursor: string | null };
+		items.push(...page.items);
+		cursor = page.next_cursor;
+	}
+
+	return { thread, messages: items, meId: locals.user.id };
 };
