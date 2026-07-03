@@ -1,0 +1,10 @@
+-- +goose Up
+-- Query-level observability (#136): the SCALING.md trigger table attaches
+-- actions to measurable signals; pg_stat_statements is the zero-new-
+-- infrastructure way to measure them. Collection needs the library preloaded
+-- (deploy/compose.prod.yml db command); in dev/CI it is not preloaded - the
+-- extension still creates fine, the views just collect nothing.
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+-- +goose Down
+DROP EXTENSION IF EXISTS pg_stat_statements;
