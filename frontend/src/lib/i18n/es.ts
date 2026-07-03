@@ -212,6 +212,16 @@ export const es: Record<MessageKey, string> = {
 	'chat.reportConfirm': '¿Denunciar este mensaje a los moderadores?',
 	'chat.messageReported': 'Mensaje denunciado.',
 	'chat.messageReportFailed': 'No se pudo denunciar el mensaje.',
+	'chat.safetySummary': 'Opciones de seguridad',
+	'chat.policyReminder':
+		'Recuerda: esta carrera restringe las transferencias; la plataforma solo os pone en contacto, así que sigue las normas de la propia carrera y nunca envíes dinero por aquí.',
+	'chat.connectionLost': 'Conexión perdida; reintentando...',
+	'chat.invalidImage': 'No se pudo leer ese archivo como imagen.',
+	'chat.unsupportedImage': 'Solo se permiten imágenes JPEG y PNG.',
+	'chat.blockedSend': 'No puedes enviar mensajes en esta conversación.',
+	'chat.logAria': 'Mensajes de la conversación',
+	'chat.previewAlt': 'Vista previa de la imagen adjunta',
+	'chat.clearImage': 'Quitar la imagen adjunta',
 
 	'sell.title': 'Vender un dorsal - Bibseller',
 	'sell.heading': 'Vender un dorsal',

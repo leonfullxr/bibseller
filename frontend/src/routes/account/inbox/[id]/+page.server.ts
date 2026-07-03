@@ -33,7 +33,21 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}
 	if (!msgsRes.ok) error(502, { message: 'Could not load messages.', key: 'apiError.loadFailed' });
-	const msgs = (await msgsRes.json()) as { items: ChatMessage[] };
+	const msgs = (await msgsRes.json()) as { items: ChatMessage[]; next_cursor: string | null };
 
-	return { thread, messages: msgs.items, meId: locals.user.id };
+	// ponytail: history backfill capped at 5 extra pages (~600 messages total);
+	// anything older stays unloaded until a "load earlier" control exists (#125).
+	const items = msgs.items;
+	let cursor = msgs.next_cursor;
+	for (let i = 0; i < 5 && cursor; i++) {
+		const res = await apiFetch(`/api/v1/threads/${params.id}/messages?since=${cursor}`, {
+			headers: sessionHeader(cookies)
+		});
+		if (!res.ok) break;
+		const page = (await res.json()) as { items: ChatMessage[]; next_cursor: string | null };
+		items.push(...page.items);
+		cursor = page.next_cursor;
+	}
+
+	return { thread, messages: items, meId: locals.user.id };
 };
