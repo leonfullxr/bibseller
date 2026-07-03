@@ -39,7 +39,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 	// from the start of the thread, capped at 5 extra pages (~600 messages
 	// total). On threads longer than that, the newest messages - not older
 	// ones - are what stays unloaded, until a proper tail/reverse-cursor
-	// fetch exists (#125).
+	// fetch exists (#154).
 	const items = msgs.items;
 	let cursor = msgs.next_cursor;
 	for (let i = 0; i < 5 && cursor; i++) {
