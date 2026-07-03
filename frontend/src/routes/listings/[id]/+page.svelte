@@ -19,7 +19,7 @@
 	// ?next= server-side (same-site paths only). Cast: a resolved path plus a
 	// query string is still one, which is what no-navigation-without-resolve checks.
 	const loginHref = $derived(
-		`${link(resolve('/login'))}?next=${encodeURIComponent(page.url.pathname)}` as ResolvedPathname
+		`${link(resolve('/login'))}?next=${encodeURIComponent(page.url.pathname + page.url.search)}` as ResolvedPathname
 	);
 	const listing = $derived(data.listing);
 	const race = $derived(data.listing.race);
