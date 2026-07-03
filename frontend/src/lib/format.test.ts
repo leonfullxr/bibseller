@@ -21,14 +21,29 @@ describe('formatDate', () => {
 });
 
 describe('formatWhen', () => {
+	// Expected strings are derived via the same Intl.DateTimeFormat call
+	// formatWhen uses, so these assert the today/older branching and options,
+	// not a hard-coded ICU rendering (fragile across Node/ICU versions).
 	it('shows a time for a timestamp from today (UTC)', () => {
-		expect(formatWhen(`${todayISO()}T09:30:00Z`)).toBe('9:30 AM');
+		const iso = `${todayISO()}T09:30:00Z`;
+		const expected = new Intl.DateTimeFormat('en', { timeStyle: 'short', timeZone: 'UTC' }).format(
+			new Date(iso)
+		);
+		expect(formatWhen(iso)).toBe(expected);
 	});
 	it('shows a medium date for older timestamps', () => {
-		expect(formatWhen('2024-12-06T09:30:00Z')).toBe('Dec 6, 2024');
+		const iso = '2024-12-06T09:30:00Z';
+		const expected = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' }).format(
+			new Date(iso)
+		);
+		expect(formatWhen(iso)).toBe(expected);
 	});
 	it('localizes', () => {
-		expect(formatWhen('2024-12-06T09:30:00Z', 'es')).toBe('6 dic 2024');
+		const iso = '2024-12-06T09:30:00Z';
+		const expected = new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeZone: 'UTC' }).format(
+			new Date(iso)
+		);
+		expect(formatWhen(iso, 'es')).toBe(expected);
 	});
 });
 
