@@ -21,6 +21,7 @@ export const en = {
 	'nav.login': 'Log in',
 	'nav.register': 'Register',
 	'nav.logout': 'Log out',
+	'nav.skipToContent': 'Skip to content',
 	'banner.verifyEmail': 'Verify your email to unlock selling and chat.',
 	'banner.resend': 'Resend email',
 	'banner.verifySent': 'Verification email sent - check your inbox (and spam).',
@@ -225,6 +226,16 @@ export const en = {
 	'chat.reportConfirm': 'Report this message to the moderators?',
 	'chat.messageReported': 'Message reported.',
 	'chat.messageReportFailed': 'Could not report the message.',
+	'chat.safetySummary': 'Safety options',
+	'chat.policyReminder':
+		"Reminder: this race restricts transfers - the platform only connects you, so follow the race's own rules and never send money here.",
+	'chat.connectionLost': 'Connection lost - retrying...',
+	'chat.invalidImage': 'That file could not be read as an image.',
+	'chat.unsupportedImage': 'Only JPEG and PNG images are allowed.',
+	'chat.blockedSend': 'You cannot send messages in this conversation.',
+	'chat.logAria': 'Conversation messages',
+	'chat.previewAlt': 'Preview of the attached image',
+	'chat.clearImage': 'Remove the attached image',
 
 	// Sell - race search.
 	'sell.title': 'Sell a bib - Bibseller',

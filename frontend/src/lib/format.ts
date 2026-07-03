@@ -49,6 +49,17 @@ export function formatWhen(iso: string, locale = 'en'): string {
 	).format(d);
 }
 
+/**
+ * Formats an RFC 3339 timestamp as a time in the viewer's own timezone -
+ * deliberately NOT pinned to UTC, unlike formatDateTime. Because the output
+ * depends on the client's timezone, callers must render it only after
+ * hydration (gate on an onMount flag; SSR/first paint shows a UTC value) to
+ * avoid a server/client hydration mismatch.
+ */
+export function formatTime(iso: string, locale = 'en'): string {
+	return new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(new Date(iso));
+}
+
 /** Today as YYYY-MM-DD (UTC) - the default lower bound for race browsing. */
 export function todayISO(): string {
 	return new Date().toISOString().slice(0, 10);

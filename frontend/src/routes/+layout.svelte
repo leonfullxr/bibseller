@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { ResolvedPathname } from '$app/types';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import {
 		createPlural,
 		createTranslator,
@@ -56,6 +56,8 @@
 </svelte:head>
 
 <div class="shell">
+	<a class="skip" href="#main">{t('nav.skipToContent')}</a>
+	{#if navigating.to}<div class="nav-progress"></div>{/if}
 	<header>
 		<div class="bar">
 			<a href={link(resolve('/'))} class="brand">bib<span>seller</span></a>
@@ -120,7 +122,7 @@
 		</div>
 	{/if}
 
-	<main>
+	<main id="main">
 		{@render children()}
 	</main>
 
@@ -146,6 +148,51 @@
 		color: var(--slate-900);
 	}
 
+	/* Visually hidden until keyboard-focused, then a small pill over the header. */
+	.skip {
+		position: fixed;
+		top: 0.5rem;
+		left: 0.5rem;
+		z-index: 20;
+		transform: translateY(-200%);
+		border-radius: 0.375rem;
+		background: var(--slate-900);
+		padding: 0.5rem 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: white;
+	}
+
+	.skip:focus {
+		transform: none;
+	}
+
+	.nav-progress {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 30;
+		height: 2px;
+		width: 100%;
+		background: var(--emerald-600);
+		transform-origin: left;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.nav-progress {
+			animation: nav-progress 1.2s ease-in-out infinite;
+		}
+
+		@keyframes nav-progress {
+			from {
+				transform: scaleX(0);
+			}
+			to {
+				transform: scaleX(1);
+			}
+		}
+	}
+
 	header {
 		border-bottom: 1px solid var(--slate-200);
 		background: white;
@@ -154,6 +201,7 @@
 	.bar {
 		margin-inline: auto;
 		display: flex;
+		flex-wrap: wrap;
 		width: 100%;
 		max-width: 64rem;
 		align-items: center;
@@ -162,7 +210,8 @@
 	}
 
 	header .bar {
-		height: 3.5rem;
+		min-height: 3.5rem;
+		padding-block: 0.5rem;
 	}
 
 	.brand {
@@ -178,8 +227,10 @@
 
 	nav {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 1rem;
+		row-gap: 0.25rem;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
 	}

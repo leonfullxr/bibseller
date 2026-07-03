@@ -15,6 +15,7 @@
 	--emerald-50: #ecfdf5;
 	--emerald-100: #d1fae5;
 	--emerald-200: #a7f3d0;
+	--emerald-300: #6ee7b7;
 	--emerald-600: #059669;
 	--emerald-700: #047857;
 	--emerald-800: #065f46;
@@ -32,6 +33,7 @@
 	--amber-100: #fef3c7;
 	--amber-300: #fcd34d;
 	--amber-500: #f59e0b;
+	--amber-700: #b45309;
 	--amber-800: #92400e;
 	--amber-900: #78350f;
 }
@@ -41,6 +43,12 @@
 *::after {
 	box-sizing: border-box;
 	margin: 0;
+}
+
+/* Visible keyboard-focus ring everywhere; components may override locally. */
+:focus-visible {
+	outline: 2px solid var(--emerald-600);
+	outline-offset: 2px;
 }
 
 html {

@@ -4,11 +4,14 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { formatDate, formatPrice } from '$lib/format';
+	import { pendingForm } from '$lib/forms.svelte';
 	import { getI18n, listingStatusLabel } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const { t, locale, link } = getI18n();
+	// ponytail: one shared flag - a pending cancel disables every row's cancel button.
+	const { busy, submit } = pendingForm();
 
 	// Active rows first, newest first within each group.
 	const listings = $derived(
@@ -22,8 +25,13 @@
 	// The publish flow redirects here with ?created=1 (sell/[slug] action).
 	const created = $derived(page.url.searchParams.get('created') === '1');
 
-	const confirmCancel: SubmitFunction = ({ cancel }) => {
-		if (!window.confirm(t('myListings.cancelConfirm'))) cancel();
+	// Confirm before cancelling, then hand off to the shared pending flag.
+	const cancelListing: SubmitFunction = (input) => {
+		if (!window.confirm(t('myListings.cancelConfirm'))) {
+			input.cancel();
+			return;
+		}
+		return submit(input);
 	};
 </script>
 
@@ -75,9 +83,11 @@
 						<a href={link(resolve('/account/listings/[id]/edit', { id: l.id }))} class="edit"
 							>{t('myListings.edit')}</a
 						>
-						<form method="POST" action="?/cancel" use:enhance={confirmCancel}>
+						<form method="POST" action="?/cancel" use:enhance={cancelListing}>
 							<input type="hidden" name="id" value={l.id} />
-							<button type="submit" class="cancel">{t('myListings.cancel')}</button>
+							<button type="submit" class="cancel" disabled={busy.value}
+								>{t('myListings.cancel')}</button
+							>
 						</form>
 					{/if}
 				</div>
@@ -217,6 +227,11 @@
 
 	.cancel:hover {
 		background: var(--slate-100);
+	}
+
+	.cancel:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 
 	.feedback {

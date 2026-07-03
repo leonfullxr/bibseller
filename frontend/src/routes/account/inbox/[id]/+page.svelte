@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount, tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { formatDateTime } from '$lib/format';
+	import { formatDate, formatTime } from '$lib/format';
 	import { pollInterval } from '$lib/chatPoll';
 	import { getI18n } from '$lib/i18n';
+	import { requiresAck } from '$lib/policy';
+	import type { MessageKey } from '$lib/i18n';
 	import type { ChatMessage } from '$lib/api/types';
 	import type { PageProps } from './$types';
 
@@ -26,6 +28,10 @@
 	let fileInput = $state<HTMLInputElement>();
 	let polling = false; // in-flight guard so slow polls cannot overlap
 	let notice = $state(''); // status line for block / report actions
+	let mounted = $state(false); // gates local-timezone times (see formatTime)
+	let stale = $state(false); // true after 3 consecutive poll failures
+	let pollFails = 0;
+	let preview = $state(''); // data-URL thumbnail of the attached image
 
 	// Re-seed and jump to the latest when navigating to a different thread.
 	$effect(() => {
@@ -44,9 +50,12 @@
 		const seen = new Set(messages.map((m) => m.id));
 		const fresh = incoming.filter((m) => !seen.has(m.id));
 		if (!fresh.length) return;
+		// Only auto-scroll when the reader is pinned near the bottom - a poll must
+		// not yank someone away from re-reading older messages.
+		const pinned = !list || list.scrollHeight - list.scrollTop - list.clientHeight < 48;
 		messages = [...messages, ...fresh];
 		await tick();
-		list?.scrollTo({ top: list.scrollHeight });
+		if (pinned) list?.scrollTo({ top: list.scrollHeight });
 	}
 
 	async function poll() {
@@ -56,15 +65,23 @@
 			const res = await fetch(`/api/v1/threads/${threadId}/messages?since=${cursor()}`, {
 				credentials: 'same-origin'
 			});
-			if (res.ok) await merge(((await res.json()) as { items: ChatMessage[] }).items);
+			if (res.ok) {
+				await merge(((await res.json()) as { items: ChatMessage[] }).items);
+				pollFails = 0;
+				stale = false;
+			} else {
+				stale = ++pollFails >= 3;
+			}
 		} catch {
 			/* transient; the next tick retries */
+			stale = ++pollFails >= 3;
 		} finally {
 			polling = false;
 		}
 	}
 
 	onMount(() => {
+		mounted = true; // hydration is done; times may switch to the local timezone
 		let id: ReturnType<typeof setInterval> | undefined;
 		function schedule() {
 			clearInterval(id);
@@ -77,6 +94,64 @@
 			document.removeEventListener('visibilitychange', schedule);
 		};
 	});
+
+	// The API's stable send-error codes -> translated messages (backend
+	// internal/chat/http.go). Unlisted codes fall back to chat.sendFailed.
+	const sendErrorKeys: Record<string, MessageKey> = {
+		invalid_image: 'chat.invalidImage',
+		unsupported_image: 'chat.unsupportedImage',
+		blocked: 'chat.blockedSend',
+		image_too_large: 'chat.imageTooLarge'
+	};
+
+	// Enter sends; Shift+Enter inserts a newline. Routes through the form's
+	// onsubmit, so the same empty/in-flight guard applies. IME composition
+	// (isComposing) must not send.
+	function onKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+			e.preventDefault();
+			(e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
+		}
+	}
+
+	function clearFile() {
+		files = null;
+		if (fileInput) fileInput.value = '';
+	}
+
+	// Thumbnail preview of the attached image. Skips files over the API's 5 MiB
+	// cap - they can never send anyway, and reading them wastes memory.
+	$effect(() => {
+		const f = files?.[0];
+		preview = '';
+		if (!f || f.size > 5 << 20) return;
+		let cancelled = false; // local to this effect run; not the poll-death `stale` above
+		const reader = new FileReader();
+		reader.onload = () => {
+			if (!cancelled) preview = reader.result as string;
+		};
+		reader.readAsDataURL(f);
+		return () => {
+			cancelled = true;
+			reader.abort();
+		};
+	});
+
+	// UTC date-part of a timestamp, for the day separators. Deterministic on
+	// server and client, so it needs no `mounted` gate.
+	function dayOf(iso: string): string {
+		return new Date(iso).toISOString().slice(0, 10);
+	}
+
+	// Bubble timestamps: UTC on SSR/first paint (hydration-safe), the viewer's
+	// own timezone once mounted (formatTime's contract in $lib/format).
+	function bubbleTime(iso: string): string {
+		if (!mounted)
+			return new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: 'UTC' }).format(
+				new Date(iso)
+			);
+		return formatTime(iso, locale);
+	}
 
 	async function send(e: SubmitEvent) {
 		e.preventDefault();
@@ -108,19 +183,21 @@
 			}
 			if (res.ok) {
 				await merge([(await res.json()) as ChatMessage]);
+				// Sending always snaps to the bottom, even if the reader had
+				// scrolled up (merge only scrolls while pinned).
+				list?.scrollTo({ top: list.scrollHeight });
 				draft = '';
-				files = null;
-				if (fileInput) fileInput.value = '';
+				clearFile();
 			} else if (res.status === 413) {
 				error = t('chat.imageTooLarge');
 			} else if (res.status === 429) {
 				error = t('chat.tooFast');
 			} else {
-				// Surface the API's specific reason (bad image, message/caption too long, ...).
+				// Map the API's stable error code to a translated message.
 				const detail = (await res.json().catch(() => null)) as {
-					error?: { message?: string };
+					error?: { code?: string };
 				} | null;
-				error = detail?.error?.message ?? t('chat.sendFailed');
+				error = t(sendErrorKeys[detail?.error?.code ?? ''] ?? 'chat.sendFailed');
 			}
 		} catch {
 			error = t('chat.networkError');
@@ -186,15 +263,27 @@
 			>{data.thread.race_name}</a
 		>
 	</p>
-	<div class="safety">
-		<button type="button" onclick={blockUser}>{t('chat.block')}</button>
-		<button type="button" onclick={unblockUser}>{t('chat.unblock')}</button>
-		{#if notice}<span class="notice" role="status">{notice}</span>{/if}
-	</div>
+	{#if requiresAck(data.thread.transfer_policy)}
+		<p class="feedback error policy-note" role="note">{t('chat.policyReminder')}</p>
+	{/if}
+	<details class="safety">
+		<summary>{t('chat.safetySummary')}</summary>
+		<div class="safety-actions">
+			<button type="button" onclick={blockUser}>{t('chat.block')}</button>
+			<button type="button" onclick={unblockUser}>{t('chat.unblock')}</button>
+			{#if notice}<span class="notice" role="status">{notice}</span>{/if}
+		</div>
+	</details>
 </header>
 
-<div class="messages" bind:this={list}>
-	{#each messages as m (m.id)}
+<!-- The tab stop lets keyboard users scroll the log; svelte-ignore because
+     role="log" is not interactive, but a scrollable region needs focus. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div class="messages" bind:this={list} role="log" tabindex="0" aria-label={t('chat.logAria')}>
+	{#each messages as m, i (m.id)}
+		{#if i === 0 || dayOf(messages[i - 1].created_at) !== dayOf(m.created_at)}
+			<div class="day">{formatDate(dayOf(m.created_at), locale)}</div>
+		{/if}
 		<div class="msg" class:mine={m.sender_id === meId}>
 			{#if m.has_image}
 				<img
@@ -206,14 +295,20 @@
 			{/if}
 			{#if m.body}<p class="body">{m.body}</p>{/if}
 			<div class="msg-foot">
-				<span class="time">{formatDateTime(m.created_at, locale)}</span>
-				<button type="button" class="report-msg" onclick={() => reportMessage(m.id)}
-					>{t('chat.reportMsg')}</button
-				>
+				<span class="time">{bubbleTime(m.created_at)}</span>
+				{#if m.sender_id !== meId}
+					<button type="button" class="report-msg" onclick={() => reportMessage(m.id)}
+						>{t('chat.reportMsg')}</button
+					>
+				{/if}
 			</div>
 		</div>
 	{/each}
 </div>
+
+{#if stale}
+	<p class="stale" role="status">{t('chat.connectionLost')}</p>
+{/if}
 
 <form class="composer" onsubmit={send}>
 	<textarea
@@ -222,9 +317,16 @@
 		maxlength="4000"
 		aria-label={t('chat.messageAria')}
 		placeholder={t('chat.messagePlaceholder')}
+		onkeydown={onKeydown}
 	></textarea>
 	{#if error}
 		<p class="feedback error" role="alert">{error}</p>
+	{/if}
+	{#if preview}
+		<div class="chip">
+			<img class="chip-img" src={preview} alt={t('chat.previewAlt')} />
+			<button type="button" class="chip-clear" onclick={clearFile}>{t('chat.clearImage')}</button>
+		</div>
 	{/if}
 	<div class="actions">
 		<input
@@ -279,12 +381,26 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		max-height: 60vh;
+		max-height: 60dvh;
+		min-height: 12rem;
 		overflow-y: auto;
 		border: 1px solid var(--slate-200);
 		border-radius: 0.5rem;
 		background: var(--slate-50);
 		padding: 1rem;
+	}
+
+	.messages:focus-visible {
+		outline: 2px solid var(--emerald-600);
+		outline-offset: 2px;
+	}
+
+	.day {
+		align-self: center;
+		font-size: 0.75rem;
+		line-height: 1rem;
+		color: var(--slate-400);
+		margin: 0.25rem 0;
 	}
 
 	.msg {
@@ -323,7 +439,7 @@
 		display: block;
 		font-size: 0.6875rem;
 		line-height: 1rem;
-		color: var(--slate-400);
+		color: var(--slate-500);
 	}
 
 	.composer {
@@ -389,12 +505,25 @@
 		cursor: default;
 	}
 
+	.policy-note {
+		margin-top: 0.5rem;
+	}
+
 	.safety {
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.safety summary {
+		cursor: pointer;
+		color: var(--slate-500);
+	}
+
+	.safety-actions {
 		margin-top: 0.5rem;
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		font-size: 0.875rem;
 	}
 
 	.safety button {
@@ -425,7 +554,7 @@
 	.msg-foot button {
 		align-self: auto;
 		background: none;
-		color: var(--slate-400);
+		color: var(--slate-500);
 		padding: 0;
 		font-size: 0.6875rem;
 		font-weight: 400;
@@ -434,5 +563,55 @@
 	.msg-foot button:hover {
 		background: none;
 		color: var(--amber-700);
+	}
+
+	/* Declutter: on hover-capable devices the report link appears only while the
+	   bubble is hovered or holds focus; touch keeps it always visible. */
+	@media (hover: hover) {
+		.msg .report-msg {
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		.msg:hover .report-msg,
+		.msg:focus-within .report-msg {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
+
+	.stale {
+		margin-top: 0.5rem;
+		font-size: 0.8125rem;
+		color: var(--slate-400);
+	}
+
+	.chip {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.chip-img {
+		height: 3rem;
+		width: 3rem;
+		object-fit: cover;
+		border-radius: 0.375rem;
+		border: 1px solid var(--slate-200);
+	}
+
+	.composer .chip-clear {
+		align-self: auto;
+		background: none;
+		color: var(--slate-600);
+		border: 1px solid var(--slate-300);
+		padding: 0.25rem 0.625rem;
+		font-size: 0.8125rem;
+		font-weight: 500;
+	}
+
+	.composer .chip-clear:hover {
+		background: var(--slate-100);
+		color: var(--slate-900);
 	}
 </style>

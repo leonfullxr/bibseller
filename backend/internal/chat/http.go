@@ -106,15 +106,18 @@ func toMessageDTO(m sqlcgen.Message) messageDTO {
 }
 
 type threadSummary struct {
-	ID            uuid.UUID  `json:"id"`
-	ListingID     uuid.UUID  `json:"listing_id"`
-	RaceName      string     `json:"race_name"`
-	RaceSlug      string     `json:"race_slug"`
-	Role          string     `json:"role"`           // the caller's role: "buyer" | "seller"
-	OtherParty    string     `json:"other_party"`    // display name of the other participant
-	OtherPartyID  uuid.UUID  `json:"other_party_id"` // the other participant, for block/unblock
-	LastMessageAt *time.Time `json:"last_message_at"`
-	UnreadCount   int        `json:"unread_count"`
+	ID        uuid.UUID `json:"id"`
+	ListingID uuid.UUID `json:"listing_id"`
+	RaceName  string    `json:"race_name"`
+	RaceSlug  string    `json:"race_slug"`
+	// The race's transfer policy, so the thread page can render the in-chat
+	// policy reminder without a second fetch (PRODUCT policy matrix).
+	TransferPolicy string     `json:"transfer_policy"`
+	Role           string     `json:"role"`           // the caller's role: "buyer" | "seller"
+	OtherParty     string     `json:"other_party"`    // display name of the other participant
+	OtherPartyID   uuid.UUID  `json:"other_party_id"` // the other participant, for block/unblock
+	LastMessageAt  *time.Time `json:"last_message_at"`
+	UnreadCount    int        `json:"unread_count"`
 }
 
 // ack records the buyer's acknowledgment of a race's transfer terms. Required
@@ -463,7 +466,7 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 		}
 		items[i] = threadSummary{
 			ID: row.ID, ListingID: row.ListingID,
-			RaceName: row.RaceName, RaceSlug: row.RaceSlug,
+			RaceName: row.RaceName, RaceSlug: row.RaceSlug, TransferPolicy: row.TransferPolicy,
 			Role: role, OtherParty: other, OtherPartyID: otherID,
 			LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
 		}
@@ -540,7 +543,7 @@ func (h *Handler) getThreadHeader(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.JSON(w, http.StatusOK, threadSummary{
 		ID: row.ID, ListingID: row.ListingID,
-		RaceName: row.RaceName, RaceSlug: row.RaceSlug,
+		RaceName: row.RaceName, RaceSlug: row.RaceSlug, TransferPolicy: row.TransferPolicy,
 		Role: role, OtherParty: other, OtherPartyID: otherID,
 		LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
 	})

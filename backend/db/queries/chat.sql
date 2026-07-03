@@ -122,7 +122,7 @@ ON CONFLICT (user_id, race_id) DO NOTHING;
 SELECT
     t.id, t.listing_id, t.buyer_id, t.last_message_at,
     l.seller_id,
-    r.name AS race_name, r.slug AS race_slug,
+    r.name AS race_name, r.slug AS race_slug, r.transfer_policy,
     bu.display_name AS buyer_name,
     su.display_name AS seller_name,
     (SELECT count(*) FROM messages m
@@ -168,7 +168,7 @@ WHERE (t.buyer_id = sqlc.arg('caller') OR l.seller_id = sqlc.arg('caller'))
 -- participant check) happens in the handler, same as the message routes.
 SELECT t.id, t.listing_id, t.buyer_id, t.last_message_at,
     l.seller_id,
-    r.name AS race_name, r.slug AS race_slug,
+    r.name AS race_name, r.slug AS race_slug, r.transfer_policy,
     bu.display_name AS buyer_name,
     su.display_name AS seller_name,
     (SELECT count(*) FROM messages m

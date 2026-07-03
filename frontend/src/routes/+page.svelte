@@ -424,7 +424,7 @@
 		max-width: 32rem;
 		font-size: 0.8125rem;
 		line-height: 1.25rem;
-		color: var(--slate-400);
+		color: var(--slate-500);
 	}
 
 	/* Buyer and seller journey: two people either side of a centre flow line;
@@ -730,7 +730,7 @@
 		text-align: center;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
-		color: var(--slate-400);
+		color: var(--slate-500);
 	}
 
 	.construction a {
