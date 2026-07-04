@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
+import { clientIPHeader } from '$lib/server/clientip';
 import type { Actions, PageServerLoad } from './$types';
 
 /** The reset link lands here as /reset?token=... (mirrors the verify flow). */
@@ -32,7 +33,9 @@ export const actions: Actions = {
 		try {
 			res = await apiFetch('/api/v1/auth/password/reset', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				// clientIPHeader: the per-IP limiter must see the user, not this
+				// server (#133).
+				headers: { 'Content-Type': 'application/json', ...clientIPHeader(request) },
 				body: JSON.stringify({ token, password })
 			});
 		} catch {

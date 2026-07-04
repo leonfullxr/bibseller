@@ -119,6 +119,9 @@ func clientAddr(r *http.Request) *netip.Addr {
 	if err != nil {
 		return nil
 	}
+	// Unmap 4-in-6 so the stored inet matches how ClientIPKey buckets the
+	// same client (::ffff:a.b.c.d and a.b.c.d are different inet values).
+	addr = addr.Unmap()
 	return &addr
 }
 
