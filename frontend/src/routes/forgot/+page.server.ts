@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
+import { clientIPHeader } from '$lib/server/clientip';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
@@ -21,7 +22,9 @@ export const actions: Actions = {
 			// reveals whether the account exists.
 			res = await apiFetch('/api/v1/auth/password/reset/request', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				// clientIPHeader: the per-IP limiter must see the user, not this
+				// server (#133).
+				headers: { 'Content-Type': 'application/json', ...clientIPHeader(request) },
 				body: JSON.stringify({ email })
 			});
 		} catch {

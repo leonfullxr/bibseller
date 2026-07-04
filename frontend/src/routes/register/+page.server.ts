@@ -4,6 +4,7 @@ import { apiErrorKey } from '$lib/api/errors';
 import { createTranslator } from '$lib/i18n';
 import type { SessionResponse } from '$lib/api/types';
 import { safeNext } from '$lib/nextParam';
+import { clientIPHeader } from '$lib/server/clientip';
 import { setSessionCookie } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -40,7 +41,9 @@ export const actions: Actions = {
 		try {
 			res = await apiFetch('/api/v1/auth/register', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				// clientIPHeader: the API's per-IP limiter and session audit must
+				// see the user, not this server (#133).
+				headers: { 'Content-Type': 'application/json', ...clientIPHeader(request) },
 				// Forward the locale the signup happened in so the account + its
 				// verification email default to it (the API re-validates).
 				body: JSON.stringify({ email, password, display_name: displayName, locale: locals.locale })

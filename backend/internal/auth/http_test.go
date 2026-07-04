@@ -83,6 +83,41 @@ func register(t *testing.T, h http.Handler, pool *pgxpool.Pool, password string)
 	return resp
 }
 
+// Behind the prod proxy chain RemoteAddr is Caddy's address; the sessions.ip
+// audit column must record the Cloudflare-provided client address (#133).
+func TestSessionRecordsHeaderClientIP(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := handler(pool)
+
+	email := "t-" + ids.New().String() + "@test.local"
+	body := `{"email":"` + email + `","password":"correct horse battery staple","display_name":"Auth Tester"}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("CF-Connecting-IP", "203.0.113.7")
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("register: status = %d, body = %s", rec.Code, rec.Body)
+	}
+	var resp sessionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("register: bad JSON: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, resp.User.ID)
+	})
+
+	sum := sha256.Sum256([]byte(resp.Token))
+	var ip string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT host(ip) FROM sessions WHERE token_hash = $1`, sum[:]).Scan(&ip); err != nil {
+		t.Fatalf("read sessions.ip: %v", err)
+	}
+	if ip != "203.0.113.7" {
+		t.Errorf("sessions.ip = %q, want %q", ip, "203.0.113.7")
+	}
+}
+
 func TestSessionLifecycle(t *testing.T) {
 	pool := testdb.Pool(t)
 	h := handler(pool)

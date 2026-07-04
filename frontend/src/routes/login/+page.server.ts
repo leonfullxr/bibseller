@@ -3,6 +3,7 @@ import { apiFetch } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
 import type { SessionResponse } from '$lib/api/types';
 import { safeNext } from '$lib/nextParam';
+import { clientIPHeader } from '$lib/server/clientip';
 import { sessionHeader, setSessionCookie } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -30,7 +31,10 @@ export const actions: Actions = {
 					// Forward any existing session so the API rotates it out:
 					// a token minted before this authentication must not
 					// survive it (session fixation defense).
-					...sessionHeader(cookies)
+					...sessionHeader(cookies),
+					// Forward the client address so the API's per-IP limiter and
+					// session audit see the user, not this server (#133).
+					...clientIPHeader(request)
 				},
 				body: JSON.stringify({ email, password })
 			});
