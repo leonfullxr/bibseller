@@ -114,7 +114,9 @@ func authenticate(ctx context.Context, q *sqlcgen.Queries, r *http.Request) (sql
 }
 
 func clientAddr(r *http.Request) *netip.Addr {
-	// httpx.ClientIP returns a bare address (no port) in both of its shapes.
+	// httpx.ClientIP returns a bare address (no port) on its expected paths;
+	// anything unparseable (e.g. a raw RemoteAddr that isn't host:port) fails
+	// ParseAddr below and the audit column stays null.
 	addr, err := netip.ParseAddr(httpx.ClientIP(r))
 	if err != nil {
 		return nil
