@@ -2,7 +2,9 @@ SHELL := /bin/bash
 -include .env
 export
 
-DATABASE_URL ?= postgres://postgres:dev@localhost:5432/bibseller?sslmode=disable
+# 54320: dev Postgres publishes off the default port so dev tooling can never
+# collide with the prod stack's 127.0.0.1:5432 on the self-host box (#159).
+DATABASE_URL ?= postgres://postgres:dev@localhost:54320/bibseller?sslmode=disable
 
 # Heavyweight tools run via `go run pkg@version`: pinned here, cached by Go,
 # and kept OUT of backend/go.mod - sqlc's dependency tree would otherwise
@@ -21,6 +23,10 @@ help: ## list targets
 
 infra: ## start Postgres + MinIO + Mailpit
 	docker compose up -d --wait
+	@# Stamp the server as dev infrastructure: `make seed` refuses to wipe a
+	@# database without the marker, and prod/staging never get one (#159).
+	@docker compose exec -T db psql -q -U postgres -d bibseller \
+		-c "CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())"
 
 dev: infra ## full dev loop: infra + Go API (:8080) + SvelteKit (:5173)
 	@trap 'kill 0' INT TERM; \

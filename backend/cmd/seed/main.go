@@ -30,6 +30,7 @@ func main() {
 	must(err)
 	defer pool.Close()
 	must(pool.Ping(ctx))
+	must(ensureDevMarker(ctx, pool))
 
 	_, err = pool.Exec(ctx, `TRUNCATE users, sessions, races, listings, chat_threads,
 		messages, policy_acks, orders, order_events, stripe_events, reports, audit_log
@@ -43,6 +44,25 @@ func main() {
 	nListings := seedListings(ctx, q, races, users)
 
 	fmt.Printf("seeded: %d users, %d races, %d listings\n", len(users), len(races), nListings)
+}
+
+// ensureDevMarker refuses to wipe any database that is not provably dev
+// infrastructure (#159). The ENV check above cannot catch the real accident -
+// a host shell has no ENV set - so the guard checks the SERVER: `make infra`
+// stamps a dev_marker table on every run (CI's smoke job stamps its service
+// container the same way); prod and staging never get one, so pointing seed
+// at them fails closed regardless of ports or passwords.
+func ensureDevMarker(ctx context.Context, pool *pgxpool.Pool) error {
+	var stamped bool
+	if err := pool.QueryRow(ctx,
+		`SELECT to_regclass('public.dev_marker') IS NOT NULL`).Scan(&stamped); err != nil {
+		return err
+	}
+	if !stamped {
+		return fmt.Errorf("target database has no dev_marker stamp - refusing to wipe it; " +
+			"if this really is dev infrastructure, run `make infra` (it stamps the marker)")
+	}
+	return nil
 }
 
 const noLoginHash = "*seeded-account-no-login*"

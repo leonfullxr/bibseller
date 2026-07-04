@@ -6,7 +6,11 @@ services:
     environment:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: bibseller
-    ports: ['5432:5432']
+    # 54320, not 5432: on the self-host box the PROD stack publishes Postgres
+    # on 127.0.0.1:5432 (compose.prod.yml), so dev defaults on the same port
+    # would silently target the live database (#159). Staging avoids the same
+    # clash via DB_HOST_PORT=5433.
+    ports: ['54320:5432']
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d bibseller']

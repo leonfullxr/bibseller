@@ -115,7 +115,7 @@ Package-by-domain, not package-by-layer. Everything about orders - handlers, ser
 
 Daily loop - `make dev` does all of this, or run pieces by hand:
 
-1. `docker compose up -d --wait`
+1. `make infra` (compose up, plus it stamps the `dev_marker` table that `make seed`'s wipe guard requires, #159)
 2. `cd backend && air` - recompiles on save; Go builds fast enough to feel like Python (falls back to `go run ./cmd/api` if air isn't installed)
 3. `cd frontend && npm run dev` - Vite proxies `/api/*` -> `localhost:8080`
 4. When working on payments: `stripe listen --forward-to localhost:8080/webhooks/stripe`
