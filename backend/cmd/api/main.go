@@ -24,6 +24,13 @@ import (
 )
 
 func main() {
+	// Container healthcheck mode (distroless image has no shell/curl): probe
+	// the serving process's readiness endpoint and exit 0/1. 127.0.0.1, not
+	// localhost, so the probe cannot false-negative on a ::1-first resolution
+	// in an IPv4-only environment (same reasoning as the web healthcheck).
+	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
+		os.Exit(healthcheck("http://127.0.0.1:" + config.Load().Port))
+	}
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)
 		os.Exit(1)
@@ -79,6 +86,7 @@ func run() error {
 	// locks; they stop when ctx is cancelled on shutdown.
 	go listing.StartExpiryJob(ctx, pool, logger, time.Hour)
 	go chat.StartRetentionJob(ctx, pool, store, logger, 24*time.Hour)
+	go auth.StartJanitorJob(ctx, pool, logger, 24*time.Hour)
 
 	errc := make(chan error, 1)
 	go func() {

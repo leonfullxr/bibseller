@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 )
 
 // CookieName is the browser-side session cookie. The __Host- prefix is
@@ -113,11 +114,16 @@ func authenticate(ctx context.Context, q *sqlcgen.Queries, r *http.Request) (sql
 }
 
 func clientAddr(r *http.Request) *netip.Addr {
-	ap, err := netip.ParseAddrPort(r.RemoteAddr)
+	// httpx.ClientIP returns a bare address (no port) on its expected paths;
+	// anything unparseable (e.g. a raw RemoteAddr that isn't host:port) fails
+	// ParseAddr below and the audit column stays null.
+	addr, err := netip.ParseAddr(httpx.ClientIP(r))
 	if err != nil {
 		return nil
 	}
-	addr := ap.Addr()
+	// Unmap 4-in-6 so the stored inet matches how ClientIPKey buckets the
+	// same client (::ffff:a.b.c.d and a.b.c.d are different inet values).
+	addr = addr.Unmap()
 	return &addr
 }
 

@@ -12,8 +12,11 @@
 		reverse_proxy web:3000
 	}
 
-	# Conservative security headers (a fuller CSP pass is M9-full). HSTS is set
-	# by Cloudflare at the edge.
+	# Conservative proxy-level security headers. CSP is set per-request by
+	# SvelteKit (frontend/vite.config.ts, kit.csp) - do NOT add a CSP header
+	# here: browsers intersect multiple CSP headers, and a static header
+	# without the per-request nonce would block the inline hydration script.
+	# HSTS is set by Cloudflare at the edge.
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY

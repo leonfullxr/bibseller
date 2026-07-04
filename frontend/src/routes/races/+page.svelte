@@ -9,9 +9,26 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	const { t, link } = getI18n();
+	const { t, locale, link } = getI18n();
 
-	const countries = ['AT', 'BE', 'DE', 'ES', 'FR', 'IT', 'NL', 'PL', 'PT'];
+	// Country options come from the live per-country counts; the hardcoded
+	// catalog set is the fallback when the map-counts fetch degraded to empty.
+	const fallbackCountries = ['AT', 'BE', 'DE', 'ES', 'FR', 'IT', 'NL', 'PL', 'PT'];
+	const countries = $derived.by(() => {
+		const live = Object.keys(data.countryCounts).sort();
+		const list = live.length ? live : [...fallbackCountries];
+		// Keep the active filter selectable even if it has no upcoming races.
+		if (data.filters.country && !list.includes(data.filters.country)) {
+			list.push(data.filters.country);
+			list.sort();
+		}
+		return list;
+	});
+	// Localized country names for the filter labels; fall back to the code.
+	const countryNames = $derived(new Intl.DisplayNames([locale], { type: 'region' }));
+	const anyFilter = $derived(
+		Boolean(data.filters.q || data.filters.country || data.filters.sport || data.filters.policy)
+	);
 	const sports = ['running', 'trail', 'triathlon', 'cycling', 'obstacle', 'other'] as const;
 	const policies = $derived(
 		transferPolicies.map((value) => ({ value, label: t(`policy.label.${value}`) }))
@@ -47,32 +64,36 @@
 		<input
 			type="search"
 			name="q"
+			class="field"
 			value={data.filters.q}
 			placeholder={t('races.filter.searchPlaceholder')}
 		/>
 	</label>
 	<label>
 		{t('races.filter.country')}
-		<select name="country" value={data.filters.country}>
+		<select name="country" class="field" value={data.filters.country}>
 			<option value="">{t('races.filter.all')}</option>
-			{#each countries as c (c)}<option value={c}>{c}</option>{/each}
+			{#each countries as c (c)}<option value={c}>{countryNames.of(c) ?? c}</option>{/each}
 		</select>
 	</label>
 	<label>
 		{t('races.filter.sport')}
-		<select name="sport" value={data.filters.sport} class="sport">
+		<select name="sport" value={data.filters.sport} class="field sport">
 			<option value="">{t('races.filter.all')}</option>
 			{#each sports as s (s)}<option value={s}>{t(`sport.${s}`)}</option>{/each}
 		</select>
 	</label>
 	<label>
 		{t('races.filter.policy')}
-		<select name="policy" value={data.filters.policy}>
+		<select name="policy" class="field" value={data.filters.policy}>
 			<option value="">{t('races.filter.all')}</option>
 			{#each policies as p (p.value)}<option value={p.value}>{p.label}</option>{/each}
 		</select>
 	</label>
-	<button type="submit">{t('races.filter.submit')}</button>
+	<button type="submit" class="btn btn-primary">{t('races.filter.submit')}</button>
+	{#if anyFilter}
+		<a class="clear" href={link(resolve('/races'))}>{t('races.clearFilters')}</a>
+	{/if}
 </form>
 
 {#if data.races.length === 0}
@@ -88,7 +109,9 @@
 	</div>
 	{#if nextQuery}
 		<div class="more">
-			<a href="{link(resolve('/races'))}?{nextQuery}">{t('races.nextPage')}</a>
+			<a class="btn btn-outline" href="{link(resolve('/races'))}?{nextQuery}"
+				>{t('races.nextPage')}</a
+			>
 		</div>
 	{/if}
 {/if}
@@ -118,15 +141,7 @@
 		color: var(--slate-600);
 	}
 
-	.filters input,
-	.filters select {
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-	}
-
+	/* Compact sizing for the filter bar; the visual style comes from .field. */
 	.filters input {
 		width: 11rem;
 		padding: 0.375rem 0.625rem;
@@ -141,30 +156,23 @@
 	}
 
 	.filters button {
-		border-radius: 0.375rem;
-		background: var(--slate-900);
 		padding: 0.375rem 1rem;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		font-weight: 600;
-		color: white;
 	}
 
-	.filters button:hover {
-		background: var(--slate-700);
+	.clear {
+		align-self: center;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
+		text-decoration: underline;
+	}
+
+	.clear:hover {
+		color: var(--slate-900);
 	}
 
 	.empty {
 		margin-top: 3rem;
-		border-radius: 0.5rem;
-		border: 1px dashed var(--slate-300);
-		padding: 2.5rem;
-		text-align: center;
-	}
-
-	.empty p {
-		font-weight: 500;
-		color: var(--slate-600);
 	}
 
 	.empty a {
@@ -172,8 +180,6 @@
 		display: inline-block;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
-		color: var(--emerald-700);
-		text-decoration: underline;
 	}
 
 	.grid {
@@ -197,20 +203,5 @@
 	.more {
 		margin-top: 2rem;
 		text-align: center;
-	}
-
-	.more a {
-		display: inline-block;
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		font-weight: 600;
-		color: var(--slate-700);
-	}
-
-	.more a:hover {
-		background: white;
 	}
 </style>

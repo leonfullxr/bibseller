@@ -12,6 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+const countUnreadForUser = `-- name: CountUnreadForUser :one
+SELECT count(*)
+FROM messages m
+JOIN chat_threads t ON t.id = m.thread_id
+JOIN listings l ON l.id = t.listing_id
+WHERE (t.buyer_id = $1 OR l.seller_id = $1)
+  AND m.sender_id <> $1
+  AND (
+    CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END IS NULL
+    OR m.created_at > CASE WHEN t.buyer_id = $1 THEN t.buyer_last_read_at ELSE t.seller_last_read_at END
+  )
+`
+
+// Total unread messages across every thread where the caller is the buyer or
+// the listing's seller - the header badge. Mirrors ListThreadsForUser's
+// per-thread unread subquery, flattened into one aggregate.
+func (q *Queries) CountUnreadForUser(ctx context.Context, caller uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadForUser, caller)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPolicyAck = `-- name: CreatePolicyAck :exec
 INSERT INTO policy_acks (id, user_id, race_id, policy)
 VALUES ($1, $2, $3, $4)
@@ -159,7 +182,7 @@ func (q *Queries) GetPolicyAck(ctx context.Context, arg GetPolicyAckParams) (Pol
 const getThreadHeader = `-- name: GetThreadHeader :one
 SELECT t.id, t.listing_id, t.buyer_id, t.last_message_at,
     l.seller_id,
-    r.name AS race_name, r.slug AS race_slug,
+    r.name AS race_name, r.slug AS race_slug, r.transfer_policy,
     bu.display_name AS buyer_name,
     su.display_name AS seller_name,
     (SELECT count(*) FROM messages m
@@ -183,16 +206,17 @@ type GetThreadHeaderParams struct {
 }
 
 type GetThreadHeaderRow struct {
-	ID            uuid.UUID  `json:"id"`
-	ListingID     uuid.UUID  `json:"listing_id"`
-	BuyerID       uuid.UUID  `json:"buyer_id"`
-	LastMessageAt *time.Time `json:"last_message_at"`
-	SellerID      uuid.UUID  `json:"seller_id"`
-	RaceName      string     `json:"race_name"`
-	RaceSlug      string     `json:"race_slug"`
-	BuyerName     string     `json:"buyer_name"`
-	SellerName    string     `json:"seller_name"`
-	UnreadCount   int64      `json:"unread_count"`
+	ID             uuid.UUID  `json:"id"`
+	ListingID      uuid.UUID  `json:"listing_id"`
+	BuyerID        uuid.UUID  `json:"buyer_id"`
+	LastMessageAt  *time.Time `json:"last_message_at"`
+	SellerID       uuid.UUID  `json:"seller_id"`
+	RaceName       string     `json:"race_name"`
+	RaceSlug       string     `json:"race_slug"`
+	TransferPolicy string     `json:"transfer_policy"`
+	BuyerName      string     `json:"buyer_name"`
+	SellerName     string     `json:"seller_name"`
+	UnreadCount    int64      `json:"unread_count"`
 }
 
 // Header fields for exactly one thread - listing/race context, both party
@@ -210,6 +234,7 @@ func (q *Queries) GetThreadHeader(ctx context.Context, arg GetThreadHeaderParams
 		&i.SellerID,
 		&i.RaceName,
 		&i.RaceSlug,
+		&i.TransferPolicy,
 		&i.BuyerName,
 		&i.SellerName,
 		&i.UnreadCount,
@@ -374,7 +399,7 @@ const listThreadsForUser = `-- name: ListThreadsForUser :many
 SELECT
     t.id, t.listing_id, t.buyer_id, t.last_message_at,
     l.seller_id,
-    r.name AS race_name, r.slug AS race_slug,
+    r.name AS race_name, r.slug AS race_slug, r.transfer_policy,
     bu.display_name AS buyer_name,
     su.display_name AS seller_name,
     (SELECT count(*) FROM messages m
@@ -407,16 +432,17 @@ type ListThreadsForUserParams struct {
 }
 
 type ListThreadsForUserRow struct {
-	ID            uuid.UUID  `json:"id"`
-	ListingID     uuid.UUID  `json:"listing_id"`
-	BuyerID       uuid.UUID  `json:"buyer_id"`
-	LastMessageAt *time.Time `json:"last_message_at"`
-	SellerID      uuid.UUID  `json:"seller_id"`
-	RaceName      string     `json:"race_name"`
-	RaceSlug      string     `json:"race_slug"`
-	BuyerName     string     `json:"buyer_name"`
-	SellerName    string     `json:"seller_name"`
-	UnreadCount   int64      `json:"unread_count"`
+	ID             uuid.UUID  `json:"id"`
+	ListingID      uuid.UUID  `json:"listing_id"`
+	BuyerID        uuid.UUID  `json:"buyer_id"`
+	LastMessageAt  *time.Time `json:"last_message_at"`
+	SellerID       uuid.UUID  `json:"seller_id"`
+	RaceName       string     `json:"race_name"`
+	RaceSlug       string     `json:"race_slug"`
+	TransferPolicy string     `json:"transfer_policy"`
+	BuyerName      string     `json:"buyer_name"`
+	SellerName     string     `json:"seller_name"`
+	UnreadCount    int64      `json:"unread_count"`
 }
 
 // Inbox: every thread where the caller is the buyer or the listing's seller,
@@ -452,6 +478,7 @@ func (q *Queries) ListThreadsForUser(ctx context.Context, arg ListThreadsForUser
 			&i.SellerID,
 			&i.RaceName,
 			&i.RaceSlug,
+			&i.TransferPolicy,
 			&i.BuyerName,
 			&i.SellerName,
 			&i.UnreadCount,

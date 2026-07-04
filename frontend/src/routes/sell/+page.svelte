@@ -17,7 +17,7 @@
 <p class="lede">{t('sell.lede')}</p>
 
 {#if !data.verified}
-	<p class="notice">
+	<p class="alert notice">
 		{t('sell.verifyNotice')}
 		<a href={link(resolve('/settings'))}>{t('listingDetail.accountSettings')}</a>
 	</p>
@@ -27,11 +27,12 @@
 	<input
 		type="search"
 		name="q"
+		class="field"
 		value={data.q}
 		placeholder={t('races.filter.searchPlaceholder')}
 		aria-label={t('sell.searchAria')}
 	/>
-	<button type="submit">{t('home.search')}</button>
+	<button type="submit" class="btn btn-primary">{t('home.search')}</button>
 </form>
 
 {#if data.races.length === 0}
@@ -49,7 +50,7 @@
 				</div>
 				<div class="right">
 					<PolicyBadge policy={race.transfer_policy} />
-					<a href={link(resolve('/sell/[slug]', { slug: race.slug }))} class="sell"
+					<a href={link(resolve('/sell/[slug]', { slug: race.slug }))} class="btn btn-primary sell"
 						>{t('sell.sellHere')}</a
 					>
 				</div>
@@ -72,12 +73,6 @@
 
 	.notice {
 		margin-top: 1rem;
-		border-radius: 0.375rem;
-		border: 1px solid var(--amber-300);
-		background: var(--amber-50);
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		color: var(--amber-900);
 	}
 
 	.notice a {
@@ -93,28 +88,12 @@
 
 	.search input {
 		flex: 1;
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-	}
-
-	.search button {
-		border-radius: 0.375rem;
-		background: var(--slate-900);
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
 	}
 
 	.empty {
 		margin-top: 2rem;
-		color: var(--slate-600);
 	}
 
-	.empty a,
 	.races .name {
 		color: var(--emerald-700);
 		text-decoration: underline;
@@ -158,15 +137,6 @@
 	}
 
 	.sell {
-		border-radius: 0.375rem;
-		background: var(--emerald-600);
 		padding: 0.375rem 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	.sell:hover {
-		background: var(--emerald-700);
 	}
 </style>

@@ -86,6 +86,7 @@ func Routes(pool *pgxpool.Pool, mailer Mailer, store Storage, appURL string) fun
 		mux.HandleFunc("GET /threads/{id}/messages/{mid}/image", h.getMessageImage)
 		mux.HandleFunc("GET /threads/{id}", h.getThreadHeader)
 		mux.HandleFunc("GET /threads", h.listThreads)
+		mux.HandleFunc("GET /me/unread-count", h.unreadCount)
 	}
 }
 
@@ -105,15 +106,18 @@ func toMessageDTO(m sqlcgen.Message) messageDTO {
 }
 
 type threadSummary struct {
-	ID            uuid.UUID  `json:"id"`
-	ListingID     uuid.UUID  `json:"listing_id"`
-	RaceName      string     `json:"race_name"`
-	RaceSlug      string     `json:"race_slug"`
-	Role          string     `json:"role"`           // the caller's role: "buyer" | "seller"
-	OtherParty    string     `json:"other_party"`    // display name of the other participant
-	OtherPartyID  uuid.UUID  `json:"other_party_id"` // the other participant, for block/unblock
-	LastMessageAt *time.Time `json:"last_message_at"`
-	UnreadCount   int        `json:"unread_count"`
+	ID        uuid.UUID `json:"id"`
+	ListingID uuid.UUID `json:"listing_id"`
+	RaceName  string    `json:"race_name"`
+	RaceSlug  string    `json:"race_slug"`
+	// The race's transfer policy, so the thread page can render the in-chat
+	// policy reminder without a second fetch (PRODUCT policy matrix).
+	TransferPolicy string     `json:"transfer_policy"`
+	Role           string     `json:"role"`           // the caller's role: "buyer" | "seller"
+	OtherParty     string     `json:"other_party"`    // display name of the other participant
+	OtherPartyID   uuid.UUID  `json:"other_party_id"` // the other participant, for block/unblock
+	LastMessageAt  *time.Time `json:"last_message_at"`
+	UnreadCount    int        `json:"unread_count"`
 }
 
 // ack records the buyer's acknowledgment of a race's transfer terms. Required
@@ -462,7 +466,7 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 		}
 		items[i] = threadSummary{
 			ID: row.ID, ListingID: row.ListingID,
-			RaceName: row.RaceName, RaceSlug: row.RaceSlug,
+			RaceName: row.RaceName, RaceSlug: row.RaceSlug, TransferPolicy: row.TransferPolicy,
 			Role: role, OtherParty: other, OtherPartyID: otherID,
 			LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
 		}
@@ -477,6 +481,28 @@ func (h *Handler) listThreads(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.JSON(w, http.StatusOK, resp)
+}
+
+// unreadCount returns the caller's total unread messages across all their
+// threads - the header badge. Gated like the inbox (verified participants
+// only); refreshed per navigation by the frontend, no polling (PR3 design).
+func (h *Handler) unreadCount(w http.ResponseWriter, r *http.Request) {
+	caller, ok := auth.UserFromContext(r.Context())
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthenticated", "not signed in")
+		return
+	}
+	if caller.EmailVerifiedAt == nil {
+		httpx.Error(w, http.StatusForbidden, "email_unverified", "verify your email before chatting")
+		return
+	}
+	n, err := h.q.CountUnreadForUser(r.Context(), caller.ID)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not count unread messages")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.JSON(w, http.StatusOK, map[string]int64{"unread_count": n})
 }
 
 // getThreadHeader returns one thread's header (listing/race context, the
@@ -517,7 +543,7 @@ func (h *Handler) getThreadHeader(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.JSON(w, http.StatusOK, threadSummary{
 		ID: row.ID, ListingID: row.ListingID,
-		RaceName: row.RaceName, RaceSlug: row.RaceSlug,
+		RaceName: row.RaceName, RaceSlug: row.RaceSlug, TransferPolicy: row.TransferPolicy,
 		Role: role, OtherParty: other, OtherPartyID: otherID,
 		LastMessageAt: row.LastMessageAt, UnreadCount: int(row.UnreadCount),
 	})
@@ -576,7 +602,7 @@ func (h *Handler) allowSend(w http.ResponseWriter, r *http.Request, sender uuid.
 		tooManyMessages(w, retry)
 		return false
 	}
-	if allowed, retry := h.ipLimiter.allow(clientIP(r), now); !allowed {
+	if allowed, retry := h.ipLimiter.allow(httpx.ClientIPKey(r), now); !allowed {
 		tooManyMessages(w, retry)
 		return false
 	}

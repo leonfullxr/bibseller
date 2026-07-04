@@ -3,15 +3,17 @@ import { apiFetch } from '$lib/api/server';
 import { apiErrorKey } from '$lib/api/errors';
 import { createTranslator } from '$lib/i18n';
 import type { SessionResponse } from '$lib/api/types';
+import { safeNext } from '$lib/nextParam';
+import { clientIPHeader } from '$lib/server/clientip';
 import { setSessionCookie } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals }) => {
-	if (locals.user) redirect(303, '/');
+export const load: PageServerLoad = ({ locals, url }) => {
+	if (locals.user) redirect(303, safeNext(url.searchParams.get('next')));
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, locals }) => {
+	default: async ({ request, cookies, locals, url }) => {
 		const t = createTranslator(locals.locale);
 		const data = await request.formData();
 		const email = String(data.get('email') ?? '').trim();
@@ -39,7 +41,9 @@ export const actions: Actions = {
 		try {
 			res = await apiFetch('/api/v1/auth/register', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				// clientIPHeader: the API's per-IP limiter and session audit must
+				// see the user, not this server (#133).
+				headers: { 'Content-Type': 'application/json', ...clientIPHeader(request) },
 				// Forward the locale the signup happened in so the account + its
 				// verification email default to it (the API re-validates).
 				body: JSON.stringify({ email, password, display_name: displayName, locale: locals.locale })
@@ -66,7 +70,7 @@ export const actions: Actions = {
 		setSessionCookie(cookies, session.token, session.expires_at);
 
 		// Post/Redirect/Get: the browser lands on a fresh GET, so refreshing
-		// never re-submits the registration.
-		redirect(303, '/');
+		// never re-submits the registration. ?next= validated same as login.
+		redirect(303, safeNext(url.searchParams.get('next')));
 	}
 };

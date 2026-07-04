@@ -50,6 +50,31 @@ func (q *Queries) CreatePasswordReset(ctx context.Context, arg CreatePasswordRes
 	return expires_at, err
 }
 
+const deleteExpiredPasswordResetsBatch = `-- name: DeleteExpiredPasswordResetsBatch :execrows
+DELETE FROM password_resets
+WHERE token_hash IN (
+    SELECT p.token_hash FROM password_resets p
+    WHERE p.expires_at < $1
+    LIMIT $2
+)
+`
+
+type DeleteExpiredPasswordResetsBatchParams struct {
+	Cutoff    time.Time `json:"cutoff"`
+	BatchSize int32     `json:"batch_size"`
+}
+
+// Janitor batch (#142): ConsumePasswordReset removes used tokens, but a
+// requested-and-never-clicked reset stays forever. Same retention buffer as
+// sessions (expiry + 30 days); batch by primary key (#99).
+func (q *Queries) DeleteExpiredPasswordResetsBatch(ctx context.Context, arg DeleteExpiredPasswordResetsBatchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredPasswordResetsBatch, arg.Cutoff, arg.BatchSize)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deletePasswordResetsForUser = `-- name: DeletePasswordResetsForUser :exec
 DELETE FROM password_resets WHERE user_id = $1
 `
