@@ -17,3 +17,14 @@ RETURNING user_id;
 
 -- name: DeletePasswordResetsForUser :exec
 DELETE FROM password_resets WHERE user_id = $1;
+
+-- name: DeleteExpiredPasswordResetsBatch :execrows
+-- Janitor batch (#142): ConsumePasswordReset removes used tokens, but a
+-- requested-and-never-clicked reset stays forever. Same retention buffer as
+-- sessions (expiry + 30 days); batch by primary key (#99).
+DELETE FROM password_resets
+WHERE token_hash IN (
+    SELECT p.token_hash FROM password_resets p
+    WHERE p.expires_at < sqlc.arg('cutoff')
+    LIMIT sqlc.arg('batch_size')
+);

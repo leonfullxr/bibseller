@@ -13,13 +13,17 @@
 </script>
 
 <label for="price">{t('listingFields.price')}</label>
+<!-- max mirrors decision D2 (ask <= face value) for pre-submit UX only; the
+     server stays authoritative. -->
 <input
 	id="price"
 	name="price"
 	type="number"
 	min="0"
+	max={original || undefined}
 	step="0.01"
 	inputmode="decimal"
+	class="field"
 	value={price}
 	placeholder={t('listingFields.pricePlaceholder')}
 />
@@ -32,6 +36,7 @@
 	min="0"
 	step="0.01"
 	inputmode="decimal"
+	class="field"
 	value={original}
 	placeholder={t('listingFields.optional')}
 />
@@ -43,6 +48,7 @@
 	name="description"
 	rows="3"
 	maxlength="2000"
+	class="field"
 	placeholder={t('listingFields.descriptionPlaceholder')}>{description}</textarea
 >
 
@@ -55,15 +61,8 @@
 		color: var(--slate-600);
 	}
 
-	input,
-	textarea {
+	.field {
 		width: 100%;
-		border-radius: 0.375rem;
-		border: 1px solid var(--slate-300);
-		background: white;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
 	}
 
 	textarea {

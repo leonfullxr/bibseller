@@ -16,11 +16,11 @@
 
 <div class="cta">
 	{#if action === 'buy'}
-		<button type="button" disabled class="buy" title={t('listingCta.buyTitle')}>
+		<button type="button" disabled class="btn btn-primary buy" title={t('listingCta.buyTitle')}>
 			{t('listingCta.buy')}
 		</button>
 	{:else if action === 'official' && officialUrl}
-		<a href={officialUrl} rel="external nofollow noopener" target="_blank" class="official">
+		<a href={officialUrl} rel="external nofollow noopener" target="_blank" class="btn official">
 			{t('policy.officialLink')}
 		</a>
 	{/if}
@@ -33,24 +33,15 @@
 		gap: 0.75rem;
 	}
 
-	.buy,
-	.official {
-		border-radius: 0.375rem;
-		padding: 0.5rem 1rem;
-		font-weight: 600;
-	}
-
-	.buy {
-		background: var(--emerald-600);
-		color: white;
+	.buy:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
+	/* The official-transfer action keeps the sky "official" tone (PolicyBadge,
+	   PolicyCallout) rather than the emerald primary. */
 	.official {
-		display: inline-block;
 		background: var(--sky-600);
-		color: white;
 	}
 
 	.official:hover {

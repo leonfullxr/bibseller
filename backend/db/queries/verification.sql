@@ -18,3 +18,14 @@ DELETE FROM email_verifications WHERE user_id = $1;
 UPDATE users
 SET email_verified_at = now(), updated_at = now()
 WHERE id = $1 AND email_verified_at IS NULL;
+
+-- name: DeleteExpiredEmailVerificationsBatch :execrows
+-- Janitor batch (#142): tokens for users who never verify are otherwise only
+-- removed by account deletion (CASCADE), so expired rows accumulate. Same
+-- retention buffer as sessions (expiry + 30 days); batch by primary key (#99).
+DELETE FROM email_verifications
+WHERE token_hash IN (
+    SELECT v.token_hash FROM email_verifications v
+    WHERE v.expires_at < sqlc.arg('cutoff')
+    LIMIT sqlc.arg('batch_size')
+);

@@ -1,14 +1,27 @@
-import { fail, redirect } from '@sveltejs/kit';
-import { apiFetch, apiGet } from '$lib/api/server';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { apiFetch } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
 import type { ListingDetail } from '$lib/api/types';
 import { parseListingPrice } from '$lib/listing';
 import { sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals, fetch }) => {
+export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 	if (!locals.user) redirect(303, '/login');
-	const listing = await apiGet<ListingDetail>(`/api/v1/listings/${params.id}`, fetch);
+	// Fetch authed so the API computes is_own_listing for this viewer; a 404 for
+	// someone else's listing avoids confirming it exists behind an edit URL.
+	let res: Response;
+	try {
+		res = await apiFetch(`/api/v1/listings/${params.id}`, { headers: sessionHeader(cookies) });
+	} catch {
+		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
+	}
+	if (res.status === 404) error(404, { message: 'Not found', key: 'apiError.not_found' });
+	if (!res.ok)
+		error(502, { message: 'The API returned an unexpected error.', key: 'apiError.unknown' });
+	const listing = (await res.json()) as ListingDetail;
+	if (!listing.is_own_listing) error(404, { message: 'Not found', key: 'apiError.not_found' });
+	if (listing.status !== 'active') redirect(303, '/account/listings');
 	return { listing };
 };
 
