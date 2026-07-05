@@ -6,7 +6,7 @@ require (
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/minio/minio-go/v7 v7.2.0
+	github.com/minio/minio-go/v7 v7.2.1
 )
 
 require (
