@@ -101,7 +101,7 @@ func (q *Queries) DeleteSessionsForUserExcept(ctx context.Context, arg DeleteSes
 }
 
 const getSessionWithUser = `-- name: GetSessionWithUser :one
-SELECT s.last_seen_at, u.id, u.email, u.email_verified_at, u.password_hash, u.display_name, u.locale, u.country, u.role, u.stripe_account_id, u.stripe_customer_id, u.anonymized_at, u.created_at, u.updated_at
+SELECT s.last_seen_at, u.id, u.email, u.email_verified_at, u.password_hash, u.display_name, u.locale, u.country, u.created_at, u.updated_at
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1
@@ -109,20 +109,16 @@ WHERE s.token_hash = $1
 `
 
 type GetSessionWithUserRow struct {
-	LastSeenAt       time.Time  `json:"last_seen_at"`
-	ID               uuid.UUID  `json:"id"`
-	Email            string     `json:"email"`
-	EmailVerifiedAt  *time.Time `json:"email_verified_at"`
-	PasswordHash     string     `json:"password_hash"`
-	DisplayName      string     `json:"display_name"`
-	Locale           string     `json:"locale"`
-	Country          *string    `json:"country"`
-	Role             string     `json:"role"`
-	StripeAccountID  *string    `json:"stripe_account_id"`
-	StripeCustomerID *string    `json:"stripe_customer_id"`
-	AnonymizedAt     *time.Time `json:"anonymized_at"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	LastSeenAt      time.Time  `json:"last_seen_at"`
+	ID              uuid.UUID  `json:"id"`
+	Email           string     `json:"email"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
+	PasswordHash    string     `json:"password_hash"`
+	DisplayName     string     `json:"display_name"`
+	Locale          string     `json:"locale"`
+	Country         *string    `json:"country"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 func (q *Queries) GetSessionWithUser(ctx context.Context, tokenHash []byte) (GetSessionWithUserRow, error) {
@@ -137,10 +133,6 @@ func (q *Queries) GetSessionWithUser(ctx context.Context, tokenHash []byte) (Get
 		&i.DisplayName,
 		&i.Locale,
 		&i.Country,
-		&i.Role,
-		&i.StripeAccountID,
-		&i.StripeCustomerID,
-		&i.AnonymizedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
