@@ -46,48 +46,67 @@ Single origin in prod (Caddy routes by path) and in dev (Vite proxies `/api/*` -
 
 ## Repo layout
 
+As built (packages marked M6 don't exist yet - they arrive with payments):
+
 ```
 bibseller/
+├── Makefile                    # the whole workflow: dev, verify, smoke, prod-*, staging-*, promote
 ├── docker-compose.yml          # dev infra only: Postgres + MinIO + Mailpit
-├── Makefile                    # dev, migrate, sqlc, seed, test, lint
 ├── .env.example
-├── .github/workflows/ci.yml
-├── docs/
+├── .github/workflows/          # ci.yml + Claude review workflows
+├── docs/                       # CONTEXT (binding), ARCHITECTURE, DATA_MODEL, DEPLOYMENT, SCALING, ...
+├── deploy/
+│   ├── compose.prod.yml        # the prod AND staging stack (D25), resource-limited (#94)
+│   ├── Caddyfile               # path router: /api/* -> api, else -> web
+│   └── seed-preview-races.sql  # staging preview data
+├── scripts/
+│   ├── smoke.sh                # end-to-end policy-matrix assertions (make smoke)
+│   ├── offsite-backup.sh       # nightly cron: pg_dump + mc mirror -> R2 (D26)
+│   └── restore-drill.sh        # monthly: prove the offsite dump restores
 ├── backend/
-│   ├── cmd/api/main.go         # wiring only: config -> pool -> router -> serve
-│   ├── internal/               # Go-enforced privacy boundary
-│   │   ├── auth/               # sessions, middleware, password hashing
-│   │   ├── user/
-│   │   ├── race/
-│   │   ├── listing/
-│   │   ├── chat/
-│   │   ├── order/              # the state machine lives here
-│   │   ├── payment/            # ALL Stripe code sealed here, incl. webhooks
-│   │   └── platform/           # shared: config, db, mailer, storage, jobs, httpx
+│   ├── cmd/api/main.go         # wiring only: config -> pool -> router -> jobs -> serve
+│   ├── cmd/seed/main.go        # dev-only wipe + load
+│   ├── internal/               # Go-enforced privacy boundary, package-by-domain
+│   │   ├── auth/               # sessions, argon2id, CSRF, rate limits, verification, resets
+│   │   ├── user/               # account settings
+│   │   ├── race/               # catalog: browse, detail, FTS
+│   │   ├── listing/            # CRUD, price cap (D2), past-race expiry job
+│   │   ├── chat/               # threads, polling, ack gate, private images, retention job
+│   │   ├── moderation/         # reports, blocks
+│   │   ├── order/              # (M6) the state machine lives here
+│   │   ├── payment/            # (M6) ALL Stripe code sealed here, incl. webhooks
+│   │   └── platform/           # shared infra, no domain logic:
+│   │       ├── config/         #   env -> Config
+│   │       ├── db/             #   pgx pool + sqlcgen (generated) + testdb harness
+│   │       ├── email/          #   SMTP mailer
+│   │       ├── httpx/          #   router, middleware, error envelope, healthz/readyz
+│   │       ├── ids/            #   app-generated UUIDv7
+│   │       └── storage/        #   minio-go S3 client (D16)
 │   ├── db/
-│   │   ├── migrations/         # goose: 0001_users.sql, 0002_races.sql, ...
-│   │   └── queries/            # sqlc inputs: race.sql, listing.sql, ...
+│   │   ├── migrations/         # goose, forward-only: 0001_users.sql ...
+│   │   └── queries/            # sqlc inputs: one file per domain + jobs.sql (advisory lock)
 │   ├── sqlc.yaml
 │   └── go.mod
 └── frontend/
     ├── src/
+    │   ├── hooks.server.ts     # session -> locals.user, locale resolution (D17/D18)
     │   ├── lib/
-    │   │   ├── api/            # typed client for the Go API
-    │   │   ├── components/     # PolicyBadge, DisclaimerBlock, ...
-    │   │   └── i18n/           # hand-rolled message dictionaries (D14/D17)
-    │   ├── routes/
-    │   │   ├── races/[slug]/
-    │   │   ├── listings/[id]/
-    │   │   ├── sell/
-    │   │   └── account/        # listings, inbox, settings
-    │   └── hooks.server.ts     # session -> locals.user, locale detection
-    ├── vite.config.ts          # Vite + SvelteKit config (incl. adapter-node) - no separate svelte.config.js
+    │   │   ├── api/            # server.ts (SSR client), types, error-code mapping, url helpers
+    │   │   ├── server/         # session forwarding helpers
+    │   │   ├── policy.ts       # the policy view: transfer_policy -> CTA/disclaimer/badge
+    │   │   ├── chatPoll.ts     # cursor polling loop
+    │   │   ├── i18n/           # hand-rolled message dictionaries (D14/D17)
+    │   │   ├── geo/            # build-time SVG map data
+    │   │   └── components/     # PolicyBadge, DisclaimerBlock, RaceMap, ...
+    │   └── routes/             # races/[slug], listings/[id], sell, account/{listings,inbox},
+    │                           # login/register/verify/reset, settings, (legal), locale
+    ├── vite.config.ts          # Vite + SvelteKit config (adapter-node, CSP) - no separate svelte.config.js
     └── package.json
 ```
 
 Package-by-domain, not package-by-layer. Everything about orders - handlers, service logic, queries - lives in `internal/order`. The classic `handlers/`-`services/`-`models/` smear (familiar from MVC Python) is exactly what we avoid; a vertical slice lifts out cleanly if it ever needs to.
 
-`payment/` is a sealed module. `order` consumes a small interface (`Charge`, `Transfer`, `Refund`); all Stripe SDK calls and webhook handling stay in one directory. The state machine is testable without Stripe, and Stripe API changes have a one-directory blast radius.
+`payment/` (M6) is a sealed module. `order` consumes a small interface (`Charge`, `Transfer`, `Refund`); all Stripe SDK calls and webhook handling stay in one directory. The state machine is testable without Stripe, and Stripe API changes have a one-directory blast radius.
 
 ## API conventions
 
@@ -135,7 +154,7 @@ Toolchain (once): Go 1.25+, Node 22+, Docker. Optional: `air`, `golangci-lint`, 
 
 ## Scaling path (the "millions of users" answer)
 
-A marketplace this shape is read-dominated (browse races/listings) with seasonal spikes (registration opens, race week). The design keeps every scaling door open; we walk through each only when a metric says so.
+A marketplace this shape is read-dominated (browse races/listings) with seasonal spikes (registration opens, race week). The design keeps every scaling door open; we walk through each only when a metric says so. The expanded treatment - as-built topology diagrams, the resilience/SPOF assessment, and the stage-by-stage vertical/horizontal models - lives in [SCALING.md](SCALING.md).
 
 | Stage | Fits | Setup |
 |---|---|---|

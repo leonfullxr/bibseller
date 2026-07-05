@@ -602,7 +602,7 @@ func (h *Handler) allowSend(w http.ResponseWriter, r *http.Request, sender uuid.
 		tooManyMessages(w, retry)
 		return false
 	}
-	if allowed, retry := h.ipLimiter.allow(clientIP(r), now); !allowed {
+	if allowed, retry := h.ipLimiter.allow(httpx.ClientIPKey(r), now); !allowed {
 		tooManyMessages(w, retry)
 		return false
 	}
