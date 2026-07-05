@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/config"
@@ -30,6 +31,7 @@ func main() {
 	must(err)
 	defer pool.Close()
 	must(pool.Ping(ctx))
+	must(ensureDevMarker(ctx, pool))
 
 	_, err = pool.Exec(ctx, `TRUNCATE users, sessions, races, listings, chat_threads,
 		messages, policy_acks, orders, order_events, stripe_events, reports, audit_log
@@ -43,6 +45,32 @@ func main() {
 	nListings := seedListings(ctx, q, races, users)
 
 	fmt.Printf("seeded: %d users, %d races, %d listings\n", len(users), len(races), nListings)
+}
+
+// markerQuerier is satisfied by both *pgxpool.Pool and pgx.Tx, so the guard
+// test can toggle the marker inside a rolled-back transaction instead of
+// mutating the shared test database.
+type markerQuerier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// ensureDevMarker refuses to wipe any database that is not provably dev
+// infrastructure (#159). The ENV check above cannot catch the real accident -
+// a host shell has no ENV set - so the guard checks the SERVER: `make infra`
+// stamps a dev_marker table on every run (CI's smoke job stamps its service
+// container the same way); prod and staging never get one, so pointing seed
+// at them fails closed regardless of ports or passwords.
+func ensureDevMarker(ctx context.Context, db markerQuerier) error {
+	var stamped bool
+	if err := db.QueryRow(ctx,
+		`SELECT to_regclass('public.dev_marker') IS NOT NULL`).Scan(&stamped); err != nil {
+		return err
+	}
+	if !stamped {
+		return fmt.Errorf("target database has no dev_marker stamp - refusing to wipe it; " +
+			"if this really is dev infrastructure, run `make infra` (it stamps the marker)")
+	}
+	return nil
 }
 
 const noLoginHash = "*seeded-account-no-login*"
