@@ -1,9 +1,7 @@
-// Package user owns user profile reads and updates.
+// Package user owns user profile updates.
 //
-// GET /users/{id} is public: it returns only id + display_name, the same
-// non-PII the catalog already exposes as a listing's seller_name. PATCH is
-// gated to the signed-in user - you may rename yourself, no one else
-// (401/403 per docs/ARCHITECTURE.md).
+// PATCH /users/{id} is gated to the signed-in user - you may rename
+// yourself, no one else (401/403 per docs/ARCHITECTURE.md).
 package user
 
 import (
@@ -36,37 +34,14 @@ type Handler struct {
 func Routes(q *sqlcgen.Queries) func(*http.ServeMux) {
 	h := &Handler{q: q}
 	return func(mux *http.ServeMux) {
-		mux.HandleFunc("GET /users/{id}", h.get)
 		mux.HandleFunc("PATCH /users/{id}", h.updateProfile)
 	}
 }
 
-// Profile deliberately excludes email and other PII: the endpoint is
-// unauthenticated until M3.
+// Profile deliberately excludes email and other PII.
 type Profile struct {
 	ID          uuid.UUID `json:"id"`
 	DisplayName string    `json:"display_name"`
-}
-
-func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		httpx.Error(w, http.StatusNotFound, "not_found", "user not found")
-		return
-	}
-
-	row, err := h.q.GetUserByID(r.Context(), id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		httpx.Error(w, http.StatusNotFound, "not_found", "user not found")
-		return
-	}
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load user")
-		return
-	}
-
-	w.Header().Set("Cache-Control", "no-store")
-	httpx.JSON(w, http.StatusOK, Profile{ID: row.ID, DisplayName: row.DisplayName})
 }
 
 // updateRequest replaces the editable profile fields. A signed-in user saves
