@@ -525,10 +525,17 @@ attached to a measurable signal. Watch these; act only when one fires:
 
 `pg_stat_statements` is preloaded in prod (`deploy/compose.prod.yml` db command;
 takes effect only after a Postgres restart: `make prod-down && make prod-up`)
-and the extension is created by migration 0012 (#136). Run these via
-`docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"`; reset
-counters between measurements with `SELECT pg_stat_statements_reset();`.
-(In dev/CI the library is not preloaded - the extension exists but SELECTing
+and the extension is created by migration 0012 (#136). Open a psql shell in
+the prod db container (same pattern as `make prod-backup` - the variables
+expand inside the container):
+
+```sh
+docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml \
+  exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Reset counters between measurements with `SELECT pg_stat_statements_reset();`.
+(In dev/CI the library is not preloaded - the extension exists but querying
 the view errors until a preloaded restart.)
 
 Where the DB spends its time overall - informs the box RAM/CPU, API CPU, and
