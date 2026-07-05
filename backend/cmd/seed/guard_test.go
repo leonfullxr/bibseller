@@ -9,42 +9,35 @@ import (
 
 // The wipe guard (#159): seed must refuse any database that does not carry
 // the dev_marker stamp (created by `make infra`'s stamp step; prod and
-// staging never get one). The test toggles the marker on the shared test DB
-// and restores whatever state it found.
+// staging never get one). Each case toggles the marker inside a transaction
+// that is rolled back - DDL is transactional in Postgres - so the shared
+// test database is never actually mutated.
 func TestEnsureDevMarker(t *testing.T) {
 	pool := testdb.Pool(t)
 	ctx := context.Background()
 
-	var had bool
-	if err := pool.QueryRow(ctx,
-		`SELECT to_regclass('public.dev_marker') IS NOT NULL`).Scan(&had); err != nil {
-		t.Fatalf("probe marker: %v", err)
-	}
-	t.Cleanup(func() {
-		// A silent restore failure would strip a dev machine's marker and make
-		// the next `make seed` refuse mysteriously - surface it.
-		var err error
-		if had {
-			_, err = pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())`)
-		} else {
-			_, err = pool.Exec(ctx, `DROP TABLE IF EXISTS dev_marker`)
-		}
+	inTx := func(t *testing.T, setup string, fn func(err error)) {
+		t.Helper()
+		tx, err := pool.Begin(ctx)
 		if err != nil {
-			t.Errorf("restore dev_marker state (had=%v): %v - re-run `make infra` if seed now refuses", had, err)
+			t.Fatalf("begin: %v", err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		if _, err := tx.Exec(ctx, setup); err != nil {
+			t.Fatalf("setup %q: %v", setup, err)
+		}
+		fn(ensureDevMarker(ctx, tx))
+	}
+
+	inTx(t, `DROP TABLE IF EXISTS dev_marker`, func(err error) {
+		if err == nil {
+			t.Error("unstamped database accepted: ensureDevMarker = nil, want an error")
 		}
 	})
 
-	if _, err := pool.Exec(ctx, `DROP TABLE IF EXISTS dev_marker`); err != nil {
-		t.Fatalf("drop marker: %v", err)
-	}
-	if err := ensureDevMarker(ctx, pool); err == nil {
-		t.Error("unstamped database accepted: ensureDevMarker = nil, want an error")
-	}
-
-	if _, err := pool.Exec(ctx, `CREATE TABLE dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())`); err != nil {
-		t.Fatalf("create marker: %v", err)
-	}
-	if err := ensureDevMarker(ctx, pool); err != nil {
-		t.Errorf("stamped database refused: ensureDevMarker = %v, want nil", err)
-	}
+	inTx(t, `CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())`, func(err error) {
+		if err != nil {
+			t.Errorf("stamped database refused: ensureDevMarker = %v, want nil", err)
+		}
+	})
 }
