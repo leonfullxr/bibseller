@@ -21,14 +21,14 @@ jobs:
         env:
           POSTGRES_PASSWORD: dev
           POSTGRES_DB: bibseller_test
-        ports: ['5432:5432']
+        ports: ['54320:5432'] # 54320 = the dev-default host port (#159)
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:dev@localhost:5432/bibseller_test?sslmode=disable
+      DATABASE_URL: postgres://postgres:dev@localhost:54320/bibseller_test?sslmode=disable
       S3_ENDPOINT: http://localhost:9000
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
@@ -99,7 +99,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: dev
           POSTGRES_DB: bibseller
-        ports: ['5432:5432']
+        ports: ['54320:5432'] # 54320 = the dev-default host port (#159)
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
@@ -135,7 +135,13 @@ jobs:
           curl -sf http://localhost:8025/api/v1/messages >/dev/null # fail the step if Mailpit never came up
       - run: npm ci
         working-directory: frontend
+      - name: stamp the dev marker (make seed refuses unstamped targets, #159)
+        # Locally `make infra` does this via compose exec; the service
+        # container has no init hook, so use the runner's psql client.
+        run: |
+          psql "postgres://postgres:dev@localhost:54320/bibseller" \
+            -c "CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())"
       # config.Load() and the Makefile default to this exact local topology
-      # (Postgres :5432/bibseller, MinIO :9000, Mailpit :1025/:8025), so no
+      # (Postgres :54320/bibseller, MinIO :9000, Mailpit :1025/:8025), so no
       # env overrides are needed; the api creates the bucket on boot.
       - run: make smoke

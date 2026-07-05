@@ -24,9 +24,11 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		Env:         getenv("ENV", "development"),
-		Port:        getenv("PORT", "8080"),
-		DatabaseURL: getenv("DATABASE_URL", "postgres://postgres:dev@localhost:5432/bibseller?sslmode=disable"),
+		Env:  getenv("ENV", "development"),
+		Port: getenv("PORT", "8080"),
+		// Dev Postgres publishes on 54320, off the default port, so dev tooling
+		// can never collide with the prod stack's 127.0.0.1:5432 (#159).
+		DatabaseURL: getenv("DATABASE_URL", "postgres://postgres:dev@localhost:54320/bibseller?sslmode=disable"),
 		SMTPAddr:    getenv("SMTP_ADDR", "localhost:1025"),
 		EmailFrom:   getenv("EMAIL_FROM", "Bibseller <noreply@bibseller.dev>"),
 		AppURL:      getenv("APP_URL", "http://localhost:5173"),
