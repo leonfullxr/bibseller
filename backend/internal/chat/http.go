@@ -30,6 +30,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/storage"
 	"github.com/leonfullxr/bibseller/backend/internal/race"
 )
 
@@ -48,29 +49,17 @@ type Mailer interface {
 	SendNewMessage(to, link, locale string) error
 }
 
-// Storage holds and serves the private image objects. Declared here (the
-// consumer) so chat depends on the capability, not the S3 implementation;
-// cmd/api injects *storage.Client, tests inject the real client (skipped when
-// the object store is unreachable).
-type Storage interface {
-	Put(ctx context.Context, key string, r io.Reader, size int64, contentType string) error
-	Get(ctx context.Context, key string) (io.ReadCloser, error)
-	Delete(ctx context.Context, key string) error
-	DeleteMany(ctx context.Context, keys []string) error
-	IsNotFound(err error) bool
-}
-
 type Handler struct {
 	pool       *pgxpool.Pool // for the send transaction (insert + thread touch)
 	q          *sqlcgen.Queries
 	mailer     Mailer
-	storage    Storage
-	appURL     string       // frontend base, for the inbox link in the email
-	msgLimiter *rateLimiter // per-account cap on message sends
-	ipLimiter  *rateLimiter // per-source-IP cap on message sends
+	storage    *storage.Client // private image objects (tests skip when unreachable)
+	appURL     string          // frontend base, for the inbox link in the email
+	msgLimiter *rateLimiter    // per-account cap on message sends
+	ipLimiter  *rateLimiter    // per-source-IP cap on message sends
 }
 
-func Routes(pool *pgxpool.Pool, mailer Mailer, store Storage, appURL string) func(*http.ServeMux) {
+func Routes(pool *pgxpool.Pool, mailer Mailer, store *storage.Client, appURL string) func(*http.ServeMux) {
 	h := &Handler{
 		pool: pool, q: sqlcgen.New(pool), mailer: mailer, storage: store, appURL: appURL,
 		msgLimiter: newRateLimiter(msgRateMax, msgRateWindow),
