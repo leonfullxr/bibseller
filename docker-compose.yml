@@ -2,7 +2,7 @@
 # See docs/ARCHITECTURE.md -> Dev environment.
 services:
   db:
-    image: postgres:16
+    image: postgres:18
     environment:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: bibseller
