@@ -28,19 +28,16 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      # S3_* env is not set: config.Load()'s dev defaults already match the
+      # throwaway MinIO container below, and EnsureBucket creates the bucket.
       DATABASE_URL: postgres://postgres:dev@localhost:54320/bibseller_test?sslmode=disable
-      S3_ENDPOINT: http://localhost:9000
-      S3_ACCESS_KEY: minioadmin
-      S3_SECRET_KEY: minioadmin
-      S3_BUCKET: bibseller-test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-      - run: go vet ./...
-      - name: golangci-lint
+      - name: golangci-lint # includes govet via the standard linter group
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
@@ -62,9 +59,8 @@ jobs:
           curl -sf http://localhost:9000/minio/health/live # fail the step if MinIO never came up
       - run: go test ./... # includes schema constraint tests against the migrated service DB
       - name: sqlc generated code is current
-        run: |
-          go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
-          git diff --exit-code -- internal/platform/db/sqlcgen
+        working-directory: . # the target cds into backend itself
+        run: make sqlc-check
       - name: govulncheck (known vulnerabilities in called code)
         # Pinned like the repo's other `go run` tools (goose/sqlc in the
         # Makefile); bump deliberately, not @latest.

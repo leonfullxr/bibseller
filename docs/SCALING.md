@@ -39,7 +39,6 @@ flowchart TB
             MINIO[("minio :9000 · 1G / 1.0 cpu<br/>private chat images (D21)")]
             MAIL["mail :25 · 128M<br/>Postfix send-only queue"]
             MIG["migrate (one-shot, profile: tools)<br/>goose up via make prod-migrate"]
-            MINIT["minio-init (one-shot)<br/>create bucket, exit"]
         end
         STG["compose project: bibseller-staging<br/>same stack, ephemeral, own tunnel/volumes/ports (D25)"]
         CRON["host cron 03:00<br/>scripts/offsite-backup.sh (D26)"]
@@ -59,7 +58,6 @@ flowchart TB
     API -->|SMTP| MAIL
     MAIL -->|TLS + auth| BREVO
     MIG -.-> PG
-    MINIT -.-> MINIO
     CRON -->|"pg_dump + mc mirror (append-only)"| R2
 ```
 
@@ -75,9 +73,9 @@ Notes that the diagram can't carry:
   time so asset URLs are absolute. Changing the domain means rebuilding the
   image - and (post-#120) opening the site via any non-canonical origin gives a
   blank page by design (CSP blocks cross-origin assets).
-- **Both one-shots are transient**: `migrate` runs only via `make prod-migrate`
-  (compose profile keeps it out of `up`), `minio-init` runs once per boot and
-  exits.
+- **The one-shot is transient**: `migrate` runs only via `make prod-migrate`
+  (a compose profile keeps it out of `up`). The api creates the MinIO bucket
+  itself on boot (EnsureBucket), so no init container exists (#127).
 
 ### Service inventory
 
@@ -91,7 +89,6 @@ Notes that the diagram can't carry:
 | `mail` | `boky/postfix` | Send-only SMTP queue → Brevo | 128M / 0.25 cpu | mail queue (in-container - see gaps) |
 | `cloudflared` | Cloudflare tunnel | Outbound-only ingress | 128M | none |
 | `migrate` | `golang:1.25-alpine` (one-shot) | goose migrations | 1G / 2.0 cpu (transient) | none |
-| `minio-init` | `minio/mc` (pinned, one-shot) | Idempotent bucket creation | 128M / 0.5 cpu | none |
 
 Only two services own state. Everything horizontal-scaling cares about is
 already concentrated in `db` and `minio` - that is the single most important
