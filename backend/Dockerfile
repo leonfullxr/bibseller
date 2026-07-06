@@ -2,7 +2,7 @@
 # Build context is backend/. Config is read from the environment at runtime
 # (internal/platform/config); migrations run separately via goose.
 # syntax=docker/dockerfile:1
-FROM golang:1.25-alpine AS build
+FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
