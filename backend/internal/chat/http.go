@@ -30,6 +30,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/ratelimit"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/storage"
 	"github.com/leonfullxr/bibseller/backend/internal/race"
 )
@@ -53,20 +54,20 @@ type Handler struct {
 	pool       *pgxpool.Pool // for the send transaction (insert + thread touch)
 	q          *sqlcgen.Queries
 	mailer     Mailer
-	storage    *storage.Client // private image objects (tests skip when unreachable)
-	appURL     string          // frontend base, for the inbox link in the email
-	msgLimiter *rateLimiter    // per-account cap on message sends
-	ipLimiter  *rateLimiter    // per-source-IP cap on message sends
+	storage    *storage.Client    // private image objects (tests skip when unreachable)
+	appURL     string             // frontend base, for the inbox link in the email
+	msgLimiter *ratelimit.Limiter // per-account cap on message sends
+	ipLimiter  *ratelimit.Limiter // per-source-IP cap on message sends
 }
 
 func Routes(pool *pgxpool.Pool, mailer Mailer, store *storage.Client, appURL string) func(*http.ServeMux) {
 	h := &Handler{
 		pool: pool, q: sqlcgen.New(pool), mailer: mailer, storage: store, appURL: appURL,
-		msgLimiter: newRateLimiter(msgRateMax, msgRateWindow),
-		ipLimiter:  newRateLimiter(ipRateMax, msgRateWindow),
+		msgLimiter: ratelimit.New(msgRateMax, msgRateWindow),
+		ipLimiter:  ratelimit.New(ipRateMax, msgRateWindow),
 	}
-	go h.msgLimiter.sweep(msgRateWindow)
-	go h.ipLimiter.sweep(msgRateWindow)
+	go h.msgLimiter.Sweep(msgRateWindow)
+	go h.ipLimiter.Sweep(msgRateWindow)
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /races/{slug}/ack", h.ack)
 		mux.HandleFunc("POST /listings/{id}/threads", h.startThread)
@@ -587,11 +588,11 @@ func (h *Handler) decodeBody(w http.ResponseWriter, r *http.Request, sender uuid
 // without tripping a shared NAT. It writes the 429 itself and returns false.
 func (h *Handler) allowSend(w http.ResponseWriter, r *http.Request, sender uuid.UUID) bool {
 	now := time.Now()
-	if allowed, retry := h.msgLimiter.allow("acct:"+sender.String(), now); !allowed {
+	if allowed, retry := h.msgLimiter.Allow("acct:"+sender.String(), now); !allowed {
 		tooManyMessages(w, retry)
 		return false
 	}
-	if allowed, retry := h.ipLimiter.allow(httpx.ClientIPKey(r), now); !allowed {
+	if allowed, retry := h.ipLimiter.Allow(httpx.ClientIPKey(r), now); !allowed {
 		tooManyMessages(w, retry)
 		return false
 	}

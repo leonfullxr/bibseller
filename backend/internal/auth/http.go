@@ -24,6 +24,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/ratelimit"
 )
 
 const (
@@ -48,15 +49,15 @@ type Handler struct {
 	// loginLimiter throttles login attempts per account (by email), complementing
 	// the per-IP RateLimit middleware so a distributed guessing attack can't dodge
 	// the cap by rotating source addresses.
-	loginLimiter *rateLimiter
+	loginLimiter *ratelimit.Limiter
 }
 
 func Routes(pool *pgxpool.Pool, mailer Mailer, appURL string) func(*http.ServeMux) {
 	h := &Handler{
 		pool: pool, q: sqlcgen.New(pool), mailer: mailer, appURL: appURL,
-		loginLimiter: newRateLimiter(rateLimitMax, rateLimitWindow),
+		loginLimiter: ratelimit.New(rateLimitMax, rateLimitWindow),
 	}
-	go h.loginLimiter.sweep(rateLimitWindow)
+	go h.loginLimiter.Sweep(rateLimitWindow)
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /auth/register", h.register)
 		mux.HandleFunc("POST /auth/login", h.login)
@@ -190,7 +191,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	// lowercased email (matching citext), so it caps attempts on one account
 	// regardless of which IP they come from. Applied to all attempts, not just
 	// failures, to stay stateless and simple.
-	if ok, retry := h.loginLimiter.allow("login:"+strings.ToLower(email), time.Now()); !ok {
+	if ok, retry := h.loginLimiter.Allow("login:"+strings.ToLower(email), time.Now()); !ok {
 		w.Header().Set("Retry-After", strconv.Itoa(retry))
 		httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many attempts for this account, try again later")
 		return

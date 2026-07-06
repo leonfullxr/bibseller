@@ -19,6 +19,7 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/httpx"
 	"github.com/leonfullxr/bibseller/backend/internal/platform/ids"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/ratelimit"
 )
 
 const maxDetailsLen = 2000
@@ -32,12 +33,12 @@ var (
 
 type Handler struct {
 	q       *sqlcgen.Queries
-	limiter *rateLimiter
+	limiter *ratelimit.Limiter
 }
 
 func Routes(q *sqlcgen.Queries) func(*http.ServeMux) {
-	h := &Handler{q: q, limiter: newRateLimiter(reportRateMax, reportRateWindow)}
-	go h.limiter.sweep(reportRateWindow)
+	h := &Handler{q: q, limiter: ratelimit.New(reportRateMax, reportRateWindow)}
+	go h.limiter.Sweep(reportRateWindow)
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /reports", h.createReport)
 		mux.HandleFunc("POST /blocks", h.createBlock)
@@ -170,7 +171,7 @@ func (h *Handler) deleteBlock(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) allow(w http.ResponseWriter, userID uuid.UUID) bool {
-	if ok, retry := h.limiter.allow(userID.String(), time.Now()); !ok {
+	if ok, retry := h.limiter.Allow(userID.String(), time.Now()); !ok {
 		w.Header().Set("Retry-After", strconv.Itoa(retry))
 		httpx.Error(w, http.StatusTooManyRequests, "rate_limited", "too many requests, slow down")
 		return false
