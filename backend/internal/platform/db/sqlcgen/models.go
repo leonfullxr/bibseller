@@ -53,7 +53,6 @@ type Listing struct {
 	Currency           string    `json:"currency"`
 	OriginalPriceCents *int32    `json:"original_price_cents"`
 	Description        *string   `json:"description"`
-	ImageKey           *string   `json:"image_key"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 	ExpiresAt          time.Time `json:"expires_at"`
@@ -168,17 +167,13 @@ type StripeEvent struct {
 }
 
 type User struct {
-	ID               uuid.UUID  `json:"id"`
-	Email            string     `json:"email"`
-	EmailVerifiedAt  *time.Time `json:"email_verified_at"`
-	PasswordHash     string     `json:"password_hash"`
-	DisplayName      string     `json:"display_name"`
-	Locale           string     `json:"locale"`
-	Country          *string    `json:"country"`
-	Role             string     `json:"role"`
-	StripeAccountID  *string    `json:"stripe_account_id"`
-	StripeCustomerID *string    `json:"stripe_customer_id"`
-	AnonymizedAt     *time.Time `json:"anonymized_at"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID              uuid.UUID  `json:"id"`
+	Email           string     `json:"email"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
+	PasswordHash    string     `json:"password_hash"`
+	DisplayName     string     `json:"display_name"`
+	Locale          string     `json:"locale"`
+	Country         *string    `json:"country"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
