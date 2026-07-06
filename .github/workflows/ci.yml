@@ -31,10 +31,6 @@ jobs:
       # S3_* env is not set: config.Load()'s dev defaults already match the
       # throwaway MinIO container below, and EnsureBucket creates the bucket.
       DATABASE_URL: postgres://postgres:dev@localhost:54320/bibseller_test?sslmode=disable
-      # setup-go@v6 defaults GOTOOLCHAIN=local; the pinned `go run` tools
-      # (sqlc needs go >= 1.26) must keep auto-downloading newer toolchains
-      # than go.mod's, as they did under v5.
-      GOTOOLCHAIN: auto
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
@@ -64,10 +60,17 @@ jobs:
       - run: go test ./... # includes schema constraint tests against the migrated service DB
       - name: sqlc generated code is current
         working-directory: . # the target cds into backend itself
+        # Step-level because setup-go@v6 exports GOTOOLCHAIN=local via
+        # GITHUB_ENV (overriding job env): sqlc v1.31.1 needs go >= 1.26,
+        # newer than go.mod's toolchain, so it must auto-download as under v5.
+        env:
+          GOTOOLCHAIN: auto
         run: make sqlc-check
       - name: govulncheck (known vulnerabilities in called code)
         # Pinned like the repo's other `go run` tools (goose/sqlc in the
         # Makefile); bump deliberately, not @latest.
+        env:
+          GOTOOLCHAIN: auto # same setup-go@v6 note as the sqlc step
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.5.0 ./...
 
   frontend:
