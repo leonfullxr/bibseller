@@ -1,22 +1,16 @@
-import { error, fail, redirect } from '@sveltejs/kit';
-import { apiFetch } from '$lib/api/server';
+import { fail, redirect } from '@sveltejs/kit';
+import { apiFetch, apiGet } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
 import type { OwnedListing } from '$lib/api/types';
 import { sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, cookies }) => {
+export const load: PageServerLoad = async ({ locals, cookies, fetch }) => {
 	if (!locals.user) redirect(303, '/login');
 
-	let res: Response;
-	try {
-		res = await apiFetch('/api/v1/me/listings', { headers: sessionHeader(cookies) });
-	} catch {
-		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
-	}
-	if (!res.ok) error(502, { message: 'Could not load your listings.', key: 'apiError.loadFailed' });
-
-	const data = (await res.json()) as { items: OwnedListing[] };
+	const data = await apiGet<{ items: OwnedListing[] }>('/api/v1/me/listings', fetch, {
+		headers: sessionHeader(cookies)
+	});
 	return { listings: data.items };
 };
 

@@ -1,10 +1,10 @@
 import { error, redirect } from '@sveltejs/kit';
-import { apiFetch } from '$lib/api/server';
+import { apiFetch, apiGet } from '$lib/api/server';
 import type { ChatMessage, ChatThreadSummary } from '$lib/api/types';
 import { sessionHeader } from '$lib/server/session';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals, cookies }) => {
+export const load: PageServerLoad = async ({ params, locals, cookies, fetch }) => {
 	if (!locals.user) redirect(303, '/login');
 	if (!locals.user.email_verified) redirect(303, '/settings');
 
@@ -24,16 +24,11 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 		error(502, { message: 'Could not load the conversation.', key: 'apiError.loadFailed' });
 	const thread = (await threadRes.json()) as ChatThreadSummary;
 
-	let msgsRes: Response;
-	try {
-		msgsRes = await apiFetch(`/api/v1/threads/${params.id}/messages`, {
-			headers: sessionHeader(cookies)
-		});
-	} catch {
-		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
-	}
-	if (!msgsRes.ok) error(502, { message: 'Could not load messages.', key: 'apiError.loadFailed' });
-	const msgs = (await msgsRes.json()) as { items: ChatMessage[]; next_cursor: string | null };
+	const msgs = await apiGet<{ items: ChatMessage[]; next_cursor: string | null }>(
+		`/api/v1/threads/${params.id}/messages`,
+		fetch,
+		{ headers: sessionHeader(cookies) }
+	);
 
 	// ponytail: ListMessages pages oldest-first (id ASC), so this walks forward
 	// from the start of the thread, capped at 5 extra pages (~600 messages

@@ -4,7 +4,6 @@
 // redirect target. Kept import-free so hooks and unit tests can use it directly.
 
 export type Locale = 'en' | 'es';
-export const locales: readonly Locale[] = ['en', 'es'];
 export const defaultLocale: Locale = 'en';
 
 // Presence of this cookie means "the visitor has a locale already" - it is what
