@@ -199,8 +199,7 @@
 				rows="2"
 				maxlength="2000"
 				aria-label={t('report.detailsAria')}
-				placeholder={t('report.detailsPlaceholder')}
-			></textarea>
+				placeholder={t('report.detailsPlaceholder')}></textarea>
 			{#if reportStatus}<p class="report-status" role="status">{reportStatus}</p>{/if}
 			<button type="submit" class="btn btn-primary" disabled={reporting}
 				>{reporting ? t('report.submitting') : t('report.submit')}</button

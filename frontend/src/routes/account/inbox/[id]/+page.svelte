@@ -318,8 +318,7 @@
 		maxlength="4000"
 		aria-label={t('chat.messageAria')}
 		placeholder={t('chat.messagePlaceholder')}
-		onkeydown={onKeydown}
-	></textarea>
+		onkeydown={onKeydown}></textarea>
 	{#if error}
 		<p class="alert" role="alert">{error}</p>
 	{/if}
