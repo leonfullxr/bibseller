@@ -52,10 +52,4 @@
 		line-height: 1.25rem;
 		color: var(--slate-600);
 	}
-
-	.alert.ok {
-		border-color: var(--emerald-200);
-		background: var(--emerald-50);
-		color: var(--emerald-900);
-	}
 </style>

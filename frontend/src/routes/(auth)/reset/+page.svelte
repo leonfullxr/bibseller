@@ -55,11 +55,3 @@
 		<button type="submit" class="btn btn-primary" disabled={busy.value}>{t('reset.submit')}</button>
 	</form>
 {/if}
-
-<style>
-	.alert.ok {
-		border-color: var(--emerald-200);
-		background: var(--emerald-50);
-		color: var(--emerald-900);
-	}
-</style>

@@ -42,6 +42,12 @@
 		margin-top: 0.75rem;
 	}
 
+	.panel :global(.alert.ok) {
+		border-color: var(--emerald-200);
+		background: var(--emerald-50);
+		color: var(--emerald-900);
+	}
+
 	.panel :global(button) {
 		margin-top: 1rem;
 	}
