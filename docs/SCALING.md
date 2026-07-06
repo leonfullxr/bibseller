@@ -520,3 +520,57 @@ attached to a measurable signal. Watch these; act only when one fires:
 | Jobs need retries/visibility | payments-era requirement | River | 2 |
 | FTS relevance complaints | real user signal | Meilisearch | 2 |
 | `/api/v1/races` p95 | degrading (known note: correlated subquery) | JOIN/COUNT FILTER or counter column | any |
+
+### Reading the signals (pg_stat_statements)
+
+`pg_stat_statements` is preloaded in prod (`deploy/compose.prod.yml` db command;
+takes effect only after a Postgres restart: `make prod-down && make prod-up`)
+and the extension is created by migration 0012 (#136). Open a psql shell in
+the prod db container (same pattern as `make prod-backup` - the variables
+expand inside the container):
+
+```sh
+docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml \
+  exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Reset counters between measurements with `SELECT pg_stat_statements_reset();`.
+(In dev/CI the library is not preloaded - the extension exists but querying
+the view errors until a preloaded restart.)
+
+Where the DB spends its time overall - informs the box RAM/CPU, API CPU, and
+PG connection-pressure triggers (a statement dominating total time is what
+pgbouncer or an api resize would actually be absorbing):
+
+```sql
+SELECT queryid, calls, round(total_exec_time) AS total_ms,
+       round(mean_exec_time::numeric, 2) AS mean_ms, rows,
+       left(query, 80) AS query
+FROM pg_stat_statements
+ORDER BY total_exec_time DESC
+LIMIT 10;
+```
+
+Slowest per call - informs the catalog read p95 and `/api/v1/races` p95
+triggers (the correlated-subquery note in CONTEXT.md shows up here first):
+
+```sql
+SELECT queryid, calls, round(mean_exec_time::numeric, 2) AS mean_ms, rows,
+       left(query, 80) AS query
+FROM pg_stat_statements
+WHERE calls > 10
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+```
+
+The chat-poll statement - informs the D13 SSE trigger (poll QPS > ~2k or
+p95 > 100ms). `calls` divided by the measurement window is the poll QPS;
+`mean_ms` is the DB share of poll latency:
+
+```sql
+SELECT calls, round(mean_exec_time::numeric, 2) AS mean_ms, rows,
+       left(query, 80) AS query
+FROM pg_stat_statements
+WHERE query LIKE '%FROM messages%WHERE thread_id%'
+ORDER BY calls DESC;
+```
