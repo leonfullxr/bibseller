@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { apiFetch } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
 import type { ListingDetail } from '$lib/api/types';
-import { parseListingPrice } from '$lib/listing';
+import { listingFormSnapshot, parseListingPrice } from '$lib/listing';
 import { sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -37,7 +37,7 @@ export const actions: Actions = {
 			String(form.get('original_price') ?? '')
 		);
 		if (!parsed.ok) {
-			return fail(400, { error: t(parsed.key), values: snapshot(form) });
+			return fail(400, { error: t(parsed.key), values: listingFormSnapshot(form) });
 		}
 
 		let res: Response;
@@ -52,30 +52,22 @@ export const actions: Actions = {
 				})
 			});
 		} catch {
-			return fail(502, { error: t('apiError.unreachable'), values: snapshot(form) });
+			return fail(502, { error: t('apiError.unreachable'), values: listingFormSnapshot(form) });
 		}
 
 		if (res.status === 403) {
-			return fail(403, { error: t('formError.editOwnOnly'), values: snapshot(form) });
+			return fail(403, { error: t('formError.editOwnOnly'), values: listingFormSnapshot(form) });
 		}
 		if (res.status === 409) {
-			return fail(409, { error: t('formError.editNotActive'), values: snapshot(form) });
+			return fail(409, { error: t('formError.editNotActive'), values: listingFormSnapshot(form) });
 		}
 		if (!res.ok) {
 			return fail(res.status >= 500 ? 502 : res.status, {
 				error: t('formError.editFailed'),
-				values: snapshot(form)
+				values: listingFormSnapshot(form)
 			});
 		}
 
 		redirect(303, '/account/listings');
 	}
 };
-
-function snapshot(form: FormData) {
-	return {
-		price: String(form.get('price') ?? ''),
-		original_price: String(form.get('original_price') ?? ''),
-		description: String(form.get('description') ?? '')
-	};
-}

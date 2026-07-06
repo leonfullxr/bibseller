@@ -2,7 +2,6 @@
 	import { onMount, tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { formatDate, formatTime } from '$lib/format';
-	import { pollInterval } from '$lib/chatPoll';
 	import { getI18n } from '$lib/i18n';
 	import { requiresAck } from '$lib/policy';
 	import type { MessageKey } from '$lib/i18n';
@@ -85,7 +84,9 @@
 		let id: ReturnType<typeof setInterval> | undefined;
 		function schedule() {
 			clearInterval(id);
-			id = setInterval(poll, pollInterval(document.visibilityState === 'hidden'));
+			// D13: 3-5s active polling. A hidden/backgrounded tab backs off ~10x
+			// (#96) - there's nothing new to show a tab nobody is looking at.
+			id = setInterval(poll, document.visibilityState === 'hidden' ? 30_000 : 4_000);
 		}
 		schedule();
 		document.addEventListener('visibilitychange', schedule);
@@ -318,8 +319,7 @@
 		maxlength="4000"
 		aria-label={t('chat.messageAria')}
 		placeholder={t('chat.messagePlaceholder')}
-		onkeydown={onKeydown}
-	></textarea>
+		onkeydown={onKeydown}></textarea>
 	{#if error}
 		<p class="alert" role="alert">{error}</p>
 	{/if}

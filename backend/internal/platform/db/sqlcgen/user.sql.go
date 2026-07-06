@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, password_hash, display_name, locale, country)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, email, email_verified_at, password_hash, display_name, locale, country, role, stripe_account_id, stripe_customer_id, anonymized_at, created_at, updated_at
+RETURNING id, email, email_verified_at, password_hash, display_name, locale, country, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -44,10 +44,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.DisplayName,
 		&i.Locale,
 		&i.Country,
-		&i.Role,
-		&i.StripeAccountID,
-		&i.StripeCustomerID,
-		&i.AnonymizedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -55,7 +51,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, email_verified_at, password_hash, display_name, locale, country, role, stripe_account_id, stripe_customer_id, anonymized_at, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, email_verified_at, password_hash, display_name, locale, country, created_at, updated_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -69,10 +65,6 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.DisplayName,
 		&i.Locale,
 		&i.Country,
-		&i.Role,
-		&i.StripeAccountID,
-		&i.StripeCustomerID,
-		&i.AnonymizedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -80,7 +72,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, email_verified_at, password_hash, display_name, locale, country, role, stripe_account_id, stripe_customer_id, anonymized_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, email_verified_at, password_hash, display_name, locale, country, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -94,10 +86,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.DisplayName,
 		&i.Locale,
 		&i.Country,
-		&i.Role,
-		&i.StripeAccountID,
-		&i.StripeCustomerID,
-		&i.AnonymizedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -124,7 +112,7 @@ const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET display_name = $2, locale = $3, country = $4, updated_at = now()
 WHERE id = $1
-RETURNING id, email, email_verified_at, password_hash, display_name, locale, country, role, stripe_account_id, stripe_customer_id, anonymized_at, created_at, updated_at
+RETURNING id, email, email_verified_at, password_hash, display_name, locale, country, created_at, updated_at
 `
 
 type UpdateUserProfileParams struct {
@@ -150,10 +138,6 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.DisplayName,
 		&i.Locale,
 		&i.Country,
-		&i.Role,
-		&i.StripeAccountID,
-		&i.StripeCustomerID,
-		&i.AnonymizedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
