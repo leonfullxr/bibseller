@@ -39,14 +39,14 @@ CREATE TABLE users (
     display_name       text NOT NULL,
     locale             text NOT NULL DEFAULT 'en',
     country            char(2),                          -- ISO 3166-1, needed for DAC7
-    role               text NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
-    stripe_account_id  text,                             -- Connect Express (sellers)
-    stripe_customer_id text,                             -- buyers
-    anonymized_at      timestamptz,                      -- GDPR delete marker
     created_at         timestamptz NOT NULL DEFAULT now(),
     updated_at         timestamptz NOT NULL DEFAULT now()
 );
 ```
+
+Deferred columns (dropped in 0013 as unused, #124): `role` arrives with the
+first admin-gated endpoint, `stripe_account_id`/`stripe_customer_id` with M6
+(Stripe Connect), `anonymized_at` with the M7 GDPR delete flow.
 
 ### sessions
 
@@ -127,7 +127,6 @@ CREATE TABLE listings (
     currency             char(3) NOT NULL DEFAULT 'EUR',
     original_price_cents integer CHECK (original_price_cents >= 0),  -- face value, basis for price cap
     description          text,
-    image_key            text,                             -- object storage key, private bucket
     created_at           timestamptz NOT NULL DEFAULT now(),
     updated_at           timestamptz NOT NULL DEFAULT now(),
     expires_at           timestamptz NOT NULL              -- defaults to race event_date
