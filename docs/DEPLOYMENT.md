@@ -54,8 +54,8 @@ Both stacks run on the self-host machine. Three things keep them apart:
   make the kernel OOM-killer take down prod's Postgres. Memory is the hard
   boundary. Budget for a ~16G box: per-stack steady state is ~4.9G (db 2G,
   minio 1G, api + web 768M each, caddy/mail/cloudflared 128M each), so two stacks
-  are ~10G, leaving ~6G for the OS, page cache, and the transient migrate (1G) /
-  minio-init one-shots. Postgres is tuned (`shared_buffers`, `work_mem`,
+  are ~10G, leaving ~6G for the OS, page cache, and the transient migrate (1G)
+  one-shot. Postgres is tuned (`shared_buffers`, `work_mem`,
   `max_connections=50`) to stay inside its 2G limit. Adjust the numbers in
   `compose.prod.yml` to your box's RAM and core count.
 
