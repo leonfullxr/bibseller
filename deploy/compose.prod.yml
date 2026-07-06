@@ -9,7 +9,7 @@
 # (DEPLOYMENT.md "One box, two stacks"), so each stack's limits are sized so TWO
 # can coexist. Per-stack steady state ~4.9G (db 2G, minio 1G, api+web 768M each,
 # caddy/mail/cloudflared 128M each); x2 ~10G, leaving ~6G for the OS, page cache,
-# and the transient migrate/minio-init one-shots. Memory is the hard boundary -
+# and the transient migrate one-shot. Memory is the hard boundary -
 # it stops a staging OOM from killing prod's Postgres. cpus are ceilings assuming
 # a ~4-vCPU box; honored by Compose v2's `docker compose up` (no Swarm).
 name: bibseller-prod
@@ -92,23 +92,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 12
-
-  # One-shot: create the bucket on first boot (idempotent), then exit.
-  minio-init:
-    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
-    depends_on:
-      minio: { condition: service_healthy }
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 ${S3_ACCESS_KEY} ${S3_SECRET_KEY} &&
-      mc mb --ignore-existing local/${S3_BUCKET}
-      "
-    restart: 'no'
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 128M
 
   api:
     build: ../backend

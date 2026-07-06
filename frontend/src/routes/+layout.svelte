@@ -84,8 +84,8 @@
 						<button type="submit">{t('nav.logout')}</button>
 					</form>
 				{:else}
-					<a href={link(resolve('/login'))}>{t('nav.login')}</a>
-					<a href={link(resolve('/register'))}>{t('nav.register')}</a>
+					<a href={link(resolve('/(auth)/login'))}>{t('nav.login')}</a>
+					<a href={link(resolve('/(auth)/register'))}>{t('nav.register')}</a>
 				{/if}
 				<form method="POST" action={link(resolve('/locale'))} class="lang">
 					<input type="hidden" name="to" value={switchTo} />

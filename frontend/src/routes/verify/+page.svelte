@@ -26,7 +26,7 @@
 	{:else if data.status === 'invalid'}
 		<h1>{t('verify.invalidHeading')}</h1>
 		<p>{t('verify.invalidBody')}</p>
-		<a class="btn btn-primary" href={link(resolve('/login'))}>{t('verify.signIn')}</a>
+		<a class="btn btn-primary" href={link(resolve('/(auth)/login'))}>{t('verify.signIn')}</a>
 	{:else if data.status === 'missing'}
 		<h1>{t('verify.missingHeading')}</h1>
 		<p>{t('verify.missingBody')}</p>

@@ -1,4 +1,4 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch, apiGet } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
 import type { ListingDetail } from '$lib/api/types';
@@ -10,16 +10,11 @@ export const load: PageServerLoad = async ({ params, fetch, setHeaders, locals, 
 	// Signed-in viewers get the per-viewer is_own_listing and an uncacheable
 	// response; anonymous viewers get the public, cacheable listing.
 	if (locals.user) {
-		let res: Response;
-		try {
-			res = await apiFetch(`/api/v1/listings/${params.id}`, { headers: sessionHeader(cookies) });
-		} catch {
-			error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
-		}
-		if (res.status === 404) error(404, { message: 'Not found', key: 'apiError.not_found' });
-		if (!res.ok) error(502, { message: 'Could not load the listing.', key: 'apiError.loadFailed' });
+		const listing = await apiGet<ListingDetail>(`/api/v1/listings/${params.id}`, fetch, {
+			headers: sessionHeader(cookies)
+		});
 		setHeaders({ 'cache-control': 'private, no-store' });
-		return { listing: (await res.json()) as ListingDetail };
+		return { listing };
 	}
 	const listing = await apiGet<ListingDetail>(`/api/v1/listings/${params.id}`, fetch);
 	setHeaders({ 'cache-control': 'public, max-age=60' });
