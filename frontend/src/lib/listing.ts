@@ -26,6 +26,19 @@ export function parseListingPrice(
 	return { ok: true, value: { priceCents: price, originalCents: original } };
 }
 
+/**
+ * Echoes the listing form's entered values back into a `fail()` payload so an
+ * invalid submit re-renders with the user's input preserved. Shared by the
+ * create (/sell) and edit actions.
+ */
+export function listingFormSnapshot(form: FormData) {
+	return {
+		price: String(form.get('price') ?? ''),
+		original_price: String(form.get('original_price') ?? ''),
+		description: String(form.get('description') ?? '')
+	};
+}
+
 // toCents returns null for empty (the field is optional), 'invalid' for a
 // non-numeric or negative amount, or the rounded integer cents otherwise.
 function toCents(raw: string): number | null | 'invalid' {

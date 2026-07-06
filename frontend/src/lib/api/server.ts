@@ -14,10 +14,14 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
 }
 
 /** GET a JSON payload, translating API failures into SvelteKit errors. */
-export async function apiGet<T>(path: string, fetchFn: typeof fetch = fetch): Promise<T> {
+export async function apiGet<T>(
+	path: string,
+	fetchFn: typeof fetch = fetch,
+	init?: RequestInit
+): Promise<T> {
 	let res: Response;
 	try {
-		res = await fetchFn(apiUrl(base(), path));
+		res = await fetchFn(apiUrl(base(), path), init);
 	} catch {
 		error(502, { message: 'The API is unreachable.', key: 'apiError.unreachable' });
 	}

@@ -15,11 +15,11 @@ import (
 const createListing = `-- name: CreateListing :one
 INSERT INTO listings (
     id, race_id, seller_id, price_cents, currency, original_price_cents,
-    description, image_key, expires_at
+    description, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
-RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, image_key, created_at, updated_at, expires_at
+RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, created_at, updated_at, expires_at
 `
 
 type CreateListingParams struct {
@@ -30,7 +30,6 @@ type CreateListingParams struct {
 	Currency           string    `json:"currency"`
 	OriginalPriceCents *int32    `json:"original_price_cents"`
 	Description        *string   `json:"description"`
-	ImageKey           *string   `json:"image_key"`
 	ExpiresAt          time.Time `json:"expires_at"`
 }
 
@@ -43,7 +42,6 @@ func (q *Queries) CreateListing(ctx context.Context, arg CreateListingParams) (L
 		arg.Currency,
 		arg.OriginalPriceCents,
 		arg.Description,
-		arg.ImageKey,
 		arg.ExpiresAt,
 	)
 	var i Listing
@@ -56,7 +54,6 @@ func (q *Queries) CreateListing(ctx context.Context, arg CreateListingParams) (L
 		&i.Currency,
 		&i.OriginalPriceCents,
 		&i.Description,
-		&i.ImageKey,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
@@ -103,7 +100,7 @@ func (q *Queries) ExpirePastRaceListings(ctx context.Context, arg ExpirePastRace
 }
 
 const getListingByID = `-- name: GetListingByID :one
-SELECT listings.id, listings.race_id, listings.seller_id, listings.status, listings.price_cents, listings.currency, listings.original_price_cents, listings.description, listings.image_key, listings.created_at, listings.updated_at, listings.expires_at, races.id, races.slug, races.name, races.series, races.sport, races.distance, races.event_date, races.city, races.country, races.website_url, races.transfer_policy, races.official_transfer_url, races.policy_source_url, races.policy_notes, races.policy_verified_at, races.policy_verified_by, races.status, races.created_by, races.created_at, races.updated_at, u.display_name AS seller_name
+SELECT listings.id, listings.race_id, listings.seller_id, listings.status, listings.price_cents, listings.currency, listings.original_price_cents, listings.description, listings.created_at, listings.updated_at, listings.expires_at, races.id, races.slug, races.name, races.series, races.sport, races.distance, races.event_date, races.city, races.country, races.website_url, races.transfer_policy, races.official_transfer_url, races.policy_source_url, races.policy_notes, races.policy_verified_at, races.policy_verified_by, races.status, races.created_by, races.created_at, races.updated_at, u.display_name AS seller_name
 FROM listings
 JOIN races ON races.id = listings.race_id
 JOIN users u ON u.id = listings.seller_id
@@ -128,7 +125,6 @@ func (q *Queries) GetListingByID(ctx context.Context, id uuid.UUID) (GetListingB
 		&i.Listing.Currency,
 		&i.Listing.OriginalPriceCents,
 		&i.Listing.Description,
-		&i.Listing.ImageKey,
 		&i.Listing.CreatedAt,
 		&i.Listing.UpdatedAt,
 		&i.Listing.ExpiresAt,
@@ -158,7 +154,7 @@ func (q *Queries) GetListingByID(ctx context.Context, id uuid.UUID) (GetListingB
 }
 
 const listActiveListingsByRace = `-- name: ListActiveListingsByRace :many
-SELECT l.id, l.race_id, l.seller_id, l.status, l.price_cents, l.currency, l.original_price_cents, l.description, l.image_key, l.created_at, l.updated_at, l.expires_at, u.display_name AS seller_name
+SELECT l.id, l.race_id, l.seller_id, l.status, l.price_cents, l.currency, l.original_price_cents, l.description, l.created_at, l.updated_at, l.expires_at, u.display_name AS seller_name
 FROM listings l
 JOIN users u ON u.id = l.seller_id
 WHERE l.race_id = $1
@@ -183,7 +179,6 @@ type ListActiveListingsByRaceRow struct {
 	Currency           string    `json:"currency"`
 	OriginalPriceCents *int32    `json:"original_price_cents"`
 	Description        *string   `json:"description"`
-	ImageKey           *string   `json:"image_key"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 	ExpiresAt          time.Time `json:"expires_at"`
@@ -208,7 +203,6 @@ func (q *Queries) ListActiveListingsByRace(ctx context.Context, arg ListActiveLi
 			&i.Currency,
 			&i.OriginalPriceCents,
 			&i.Description,
-			&i.ImageKey,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ExpiresAt,
@@ -225,7 +219,7 @@ func (q *Queries) ListActiveListingsByRace(ctx context.Context, arg ListActiveLi
 }
 
 const listListingsBySeller = `-- name: ListListingsBySeller :many
-SELECT l.id, l.race_id, l.seller_id, l.status, l.price_cents, l.currency, l.original_price_cents, l.description, l.image_key, l.created_at, l.updated_at, l.expires_at, r.name AS race_name, r.slug AS race_slug, r.event_date
+SELECT l.id, l.race_id, l.seller_id, l.status, l.price_cents, l.currency, l.original_price_cents, l.description, l.created_at, l.updated_at, l.expires_at, r.name AS race_name, r.slug AS race_slug, r.event_date
 FROM listings l
 JOIN races r ON r.id = l.race_id
 WHERE l.seller_id = $1
@@ -241,7 +235,6 @@ type ListListingsBySellerRow struct {
 	Currency           string    `json:"currency"`
 	OriginalPriceCents *int32    `json:"original_price_cents"`
 	Description        *string   `json:"description"`
-	ImageKey           *string   `json:"image_key"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 	ExpiresAt          time.Time `json:"expires_at"`
@@ -268,7 +261,6 @@ func (q *Queries) ListListingsBySeller(ctx context.Context, sellerID uuid.UUID) 
 			&i.Currency,
 			&i.OriginalPriceCents,
 			&i.Description,
-			&i.ImageKey,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ExpiresAt,
@@ -290,7 +282,7 @@ const updateListing = `-- name: UpdateListing :one
 UPDATE listings
 SET price_cents = $2, original_price_cents = $3, description = $4, updated_at = now()
 WHERE id = $1 AND seller_id = $5 AND status = 'active'
-RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, image_key, created_at, updated_at, expires_at
+RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, created_at, updated_at, expires_at
 `
 
 type UpdateListingParams struct {
@@ -322,7 +314,6 @@ func (q *Queries) UpdateListing(ctx context.Context, arg UpdateListingParams) (L
 		&i.Currency,
 		&i.OriginalPriceCents,
 		&i.Description,
-		&i.ImageKey,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
@@ -334,7 +325,7 @@ const updateListingStatus = `-- name: UpdateListingStatus :one
 UPDATE listings
 SET status = $1, updated_at = now()
 WHERE id = $2 AND status = $3
-RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, image_key, created_at, updated_at, expires_at
+RETURNING id, race_id, seller_id, status, price_cents, currency, original_price_cents, description, created_at, updated_at, expires_at
 `
 
 type UpdateListingStatusParams struct {
@@ -355,7 +346,6 @@ func (q *Queries) UpdateListingStatus(ctx context.Context, arg UpdateListingStat
 		&i.Currency,
 		&i.OriginalPriceCents,
 		&i.Description,
-		&i.ImageKey,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ExpiresAt,

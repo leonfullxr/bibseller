@@ -1,9 +1,9 @@
 -- name: CreateListing :one
 INSERT INTO listings (
     id, race_id, seller_id, price_cents, currency, original_price_cents,
-    description, image_key, expires_at
+    description, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 

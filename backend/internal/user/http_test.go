@@ -20,8 +20,8 @@ import (
 	"github.com/leonfullxr/bibseller/backend/internal/user"
 )
 
-// seedUser inserts a login-less account directly - used as the public-profile
-// subject and as the "victim" an attacker tries (and fails) to rename.
+// seedUser inserts a login-less account directly - used as the "victim" an
+// attacker tries (and fails) to rename.
 func seedUser(t *testing.T, pool *pgxpool.Pool) sqlcgen.User {
 	t.Helper()
 	ctx := context.Background()
@@ -94,31 +94,6 @@ func patch(t *testing.T, h http.Handler, id uuid.UUID, body, token string) *http
 	}
 	h.ServeHTTP(rec, req)
 	return rec
-}
-
-func TestGetUserIsPublic(t *testing.T) {
-	pool := testdb.Pool(t)
-	u := seedUser(t, pool)
-	h := handler(pool)
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/users/"+u.ID.String(), nil))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
-	}
-	var body user.Profile
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("bad JSON: %v", err)
-	}
-	if body.ID != u.ID || body.DisplayName != "Original Name" {
-		t.Errorf("unexpected body: %+v", body)
-	}
-
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/users/"+ids.New().String(), nil))
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("unknown user: status = %d, want 404", rec.Code)
-	}
 }
 
 func TestUpdateOwnDisplayName(t *testing.T) {
