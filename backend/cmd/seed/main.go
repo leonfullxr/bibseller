@@ -99,7 +99,7 @@ func seedUsers(ctx context.Context, q *sqlcgen.Queries, pool *pgxpool.Pool) map[
 		out[u.key] = row.ID
 	}
 	_, err := pool.Exec(ctx,
-		`UPDATE users SET role = 'admin', email_verified_at = now() WHERE id = $1`,
+		`UPDATE users SET email_verified_at = now() WHERE id = $1`,
 		out["admin"])
 	must(err)
 	return out

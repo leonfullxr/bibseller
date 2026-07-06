@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/sqlcgen"
+	"github.com/leonfullxr/bibseller/backend/internal/platform/storage"
 )
 
 // retentionLockKey serializes the message-retention job across API instances
@@ -29,7 +30,7 @@ const retentionBatchSize = 500
 // ctx is done (fires once immediately, then every `every`). Safe on every
 // instance: a transaction-scoped advisory lock means only one does the work per
 // tick (architecture invariant 5).
-func StartRetentionJob(ctx context.Context, pool *pgxpool.Pool, store Storage, logger *slog.Logger, every time.Duration) {
+func StartRetentionJob(ctx context.Context, pool *pgxpool.Pool, store *storage.Client, logger *slog.Logger, every time.Duration) {
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
@@ -51,7 +52,7 @@ func StartRetentionJob(ctx context.Context, pool *pgxpool.Pool, store Storage, l
 // advisory lock between batches), removing each batch's private image objects
 // from storage before moving to the next. Reports the total deleted and
 // whether this instance held the lock for at least the first batch.
-func purgeExpiredMessages(ctx context.Context, pool *pgxpool.Pool, store Storage, logger *slog.Logger, now time.Time, batchSize int32) (count int64, ran bool, err error) {
+func purgeExpiredMessages(ctx context.Context, pool *pgxpool.Pool, store *storage.Client, logger *slog.Logger, now time.Time, batchSize int32) (count int64, ran bool, err error) {
 	if batchSize <= 0 {
 		// A batch that deletes 0 rows never satisfies the loop's "fewer than a
 		// full batch" exit, so this would otherwise spin forever re-acquiring

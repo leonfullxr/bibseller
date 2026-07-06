@@ -49,7 +49,7 @@ function violations(src) {
 
 	// 2. Literal user-facing attribute values (t() output is {..}, never "..").
 	const attrRe = new RegExp(`\\b(${ATTRS.join('|')})\\s*=\\s*"([^"]*)"`, 'g');
-	for (let m; (m = attrRe.exec(masked)); ) {
+	for (let m; (m = attrRe.exec(masked));) {
 		const value = m[2].trim();
 		if (/[A-Za-z]{2}/.test(value) && !ALLOW.has(value)) {
 			found.push({ line: lineOf(masked, m.index), text: `${m[1]}="${value}"` });
@@ -61,7 +61,7 @@ function violations(src) {
 	// both unquoted `={...}` and quoted `="{...}?{qs}"` forms, reading up to the
 	// first } or " - enough to spot a bare resolve.
 	const navRe = /\b(href|action)=(?:\{|")([^"}]*)/g;
-	for (let m; (m = navRe.exec(masked)); ) {
+	for (let m; (m = navRe.exec(masked));) {
 		if (/\bresolve\(/.test(m[2]) && !/\blink\(/.test(m[2])) {
 			found.push({
 				line: lineOf(masked, m.index),
@@ -81,7 +81,7 @@ function violations(src) {
 	text = text.replace(/<[^>]*>/g, blank);
 
 	const wordRe = /[^\n<>]*[A-Za-z]{2}[^\n<>]*/g;
-	for (let m; (m = wordRe.exec(text)); ) {
+	for (let m; (m = wordRe.exec(text));) {
 		// A run of 2+ spaces is a blanked tag/expression, i.e. a boundary between
 		// separate text nodes (e.g. brand `bib<span>seller</span>`) - split on it
 		// so adjacent allowlisted nodes are judged individually, not merged.

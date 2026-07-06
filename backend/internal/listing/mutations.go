@@ -73,7 +73,6 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		ID: ids.New(), RaceID: raceID, SellerID: caller.ID,
 		PriceCents: req.PriceCents, Currency: "EUR", // EUR-only v1 (D11)
 		OriginalPriceCents: req.OriginalPriceCents, Description: req.Description,
-		ImageKey:  nil,          // photos are an M5 chat artifact (D15)
 		ExpiresAt: rc.EventDate, // meaningful until race day; M4.2's job flips status
 	})
 	if err != nil {
