@@ -31,6 +31,10 @@ jobs:
       # S3_* env is not set: config.Load()'s dev defaults already match the
       # throwaway MinIO container below, and EnsureBucket creates the bucket.
       DATABASE_URL: postgres://postgres:dev@localhost:54320/bibseller_test?sslmode=disable
+      # setup-go@v6 defaults GOTOOLCHAIN=local; the pinned `go run` tools
+      # (sqlc needs go >= 1.26) must keep auto-downloading newer toolchains
+      # than go.mod's, as they did under v5.
+      GOTOOLCHAIN: auto
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
