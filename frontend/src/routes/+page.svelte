@@ -75,48 +75,41 @@
 	</section>
 {/if}
 
+<!-- The four steps as checkpoints along a race course: a track line with
+     numbered markers, checkered flag at the finish. -->
 <section class="how" aria-labelledby="how-title">
 	<h2 id="how-title">{t('home.howTitle')}</h2>
-	<ol class="how-steps">
+	<ol class="course">
 		{#each steps as step, i (step.icon)}
-			<li class="how-step">
-				<span class="how-icon"><Icon name={step.icon} /></span>
+			<li class="checkpoint">
+				<span class="marker" class:finish={i === steps.length - 1} aria-hidden="true"
+					>{#if i < steps.length - 1}{i + 1}{/if}</span
+				>
 				<h3>{step.title}</h3>
 				<p>{step.desc}</p>
 			</li>
-			{#if i < steps.length - 1}
-				<li class="how-arrow" role="presentation" aria-hidden="true"><Icon name="arrow" /></li>
-			{/if}
 		{/each}
 	</ol>
 	<p class="how-note">{t('home.howNote')}</p>
 </section>
 
+<!-- The six-step handover as a race timing board: ink leaderboard rows,
+     orange positions, a lane tag naming whose move it is. -->
 <section class="journey" aria-labelledby="journey-title">
 	<h2 id="journey-title">{t('home.journeyTitle')}</h2>
 	<p class="journey-lead">{t('home.journeyLead')}</p>
-	<div class="flow">
-		<div class="flow-heads">
-			<div class="flow-head lane-seller">
-				<span class="lane-avatar"><Icon name="person" /></span>
-				<span class="lane-name">{t('home.journeySeller')}</span>
-			</div>
-			<div class="flow-head lane-buyer">
-				<span class="lane-avatar"><Icon name="person" /></span>
-				<span class="lane-name">{t('home.journeyBuyer')}</span>
-			</div>
-		</div>
-		<ol class="flow-steps">
-			{#each journey as step (step.n)}
-				<li class="flow-step flow-{step.who}">
-					<div class="flow-card">
-						<span class="flow-icon"><Icon name={step.icon} /></span>
-						<span class="flow-label">{step.label}</span>
-					</div>
-				</li>
-			{/each}
-		</ol>
-	</div>
+	<ol class="board">
+		{#each journey as step (step.n)}
+			<li class="row">
+				<span class="row-n" aria-hidden="true">{String(step.n).padStart(2, '0')}</span>
+				<span class="row-icon" aria-hidden="true"><Icon name={step.icon} /></span>
+				<span class="row-label">{step.label}</span>
+				<span class="row-who {step.who}"
+					>{step.who === 'seller' ? t('home.journeySeller') : t('home.journeyBuyer')}</span
+				>
+			</li>
+		{/each}
+	</ol>
 </section>
 
 <section class="modes">
@@ -391,74 +384,96 @@
 		text-align: center;
 	}
 
-	.how-steps {
+	/* The course: a track line through numbered checkpoint markers. */
+	.course {
 		list-style: none;
-		margin: 1.75rem 0 0;
+		margin: 2.25rem 0 0;
 		padding: 0;
+		position: relative;
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
+		gap: 1.75rem;
+		text-align: left;
 	}
 
-	.how-step {
-		width: 100%;
-		border-radius: 0.85rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 1.5rem 1rem;
+	.course::before {
+		content: '';
+		position: absolute;
+		left: 1.25rem;
+		top: 1rem;
+		bottom: 1rem;
+		width: 3px;
+		background: var(--ink);
 	}
 
-	.how-arrow {
-		flex: none;
+	.checkpoint {
+		position: relative;
+		padding-left: 3.75rem;
+	}
+
+	.marker {
+		position: absolute;
+		left: 0;
+		top: 0;
 		display: grid;
 		place-items: center;
-		color: var(--brand-600);
-		font-size: clamp(1.25rem, 6vw, 1.75rem);
-		transform: rotate(90deg);
-	}
-
-	@media (min-width: 640px) {
-		.how-steps {
-			flex-direction: row;
-			align-items: stretch;
-			gap: clamp(0.5rem, 2.5vw, 1.75rem);
-		}
-
-		.how-step {
-			flex: 1 1 0;
-			width: auto;
-		}
-
-		.how-arrow {
-			transform: none;
-			font-size: clamp(1rem, 2.5vw, 1.75rem);
-		}
-	}
-
-	.how-icon {
-		display: grid;
-		place-items: center;
-		width: 3rem;
-		height: 3rem;
-		margin: 0 auto;
+		width: 2.5rem;
+		height: 2.5rem;
 		border-radius: 9999px;
-		background: var(--brand-100);
-		color: var(--brand-700);
-		font-size: 1.5rem;
-	}
-
-	.how-step h3 {
-		margin-top: 0.85rem;
+		background: var(--brand-500);
+		border: 3px solid var(--ink);
+		color: var(--ink);
+		font-family: var(--font-display);
 		font-size: 1.25rem;
-		font-weight: 700;
+		font-weight: 800;
 	}
 
-	.how-step p {
-		margin-top: 0.35rem;
-		font-size: 0.85rem;
-		line-height: 1.25rem;
+	/* The last checkpoint is the finish: checkered flag, no number. */
+	.marker.finish {
+		border-radius: 0.25rem;
+		background: repeating-conic-gradient(var(--ink) 0% 25%, white 0% 50%) 50% / 0.625rem 0.625rem;
+	}
+
+	.checkpoint h3 {
+		font-size: 1.375rem;
+		line-height: 1.625rem;
+		font-weight: 800;
+	}
+
+	.checkpoint p {
+		margin-top: 0.25rem;
+		max-width: 34rem;
+		font-size: 0.9rem;
+		line-height: 1.4rem;
 		color: var(--slate-600);
+	}
+
+	@media (min-width: 720px) {
+		.course {
+			flex-direction: row;
+			gap: 1.5rem;
+			text-align: center;
+		}
+
+		.course::before {
+			left: 3rem;
+			right: 3rem;
+			top: 1.25rem;
+			bottom: auto;
+			width: auto;
+			height: 3px;
+		}
+
+		.checkpoint {
+			flex: 1 1 0;
+			padding-left: 0;
+			padding-top: 3.5rem;
+		}
+
+		.marker {
+			left: 50%;
+			translate: -50%;
+		}
 	}
 
 	.how-note {
@@ -469,8 +484,6 @@
 		color: var(--slate-500);
 	}
 
-	/* Buyer and seller journey: two people either side of a centre flow line;
-	   each step connects to that line with a coloured node + connector. */
 	.journey {
 		padding-block: 2rem;
 		text-align: center;
@@ -484,211 +497,75 @@
 		color: var(--slate-600);
 	}
 
-	.flow {
-		margin: 2rem auto 0;
-		max-width: 30rem;
-	}
-
-	.flow-heads {
-		display: flex;
-		justify-content: center;
-		gap: 1.5rem;
-		margin-bottom: 1.25rem;
-	}
-
-	.flow-head {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.lane-avatar {
-		display: grid;
-		place-items: center;
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 9999px;
-		font-size: 1.5rem;
-	}
-
-	.lane-seller .lane-avatar {
-		background: var(--emerald-100);
-		color: var(--emerald-700);
-	}
-
-	.lane-buyer .lane-avatar {
-		background: var(--sky-100);
-		color: var(--sky-700);
-	}
-
-	.lane-name {
-		font-weight: 700;
-	}
-
-	.lane-seller .lane-name {
-		color: var(--emerald-800);
-	}
-
-	.lane-buyer .lane-name {
-		color: var(--sky-800);
-	}
-
-	.flow-steps {
-		position: relative;
+	/* The timing board: an ink leaderboard, orange positions, lane tags. */
+	.board {
 		list-style: none;
-		margin: 0;
+		margin: 2rem auto 0;
 		padding: 0;
-		display: grid;
-		gap: 1rem;
+		max-width: 44rem;
+		background: var(--ink);
+		border-radius: 0.75rem;
+		box-shadow: var(--shadow-hard);
+		overflow: hidden;
+		text-align: left;
 	}
 
-	/* the centre flow line */
-	.flow-steps::before {
-		content: '';
-		position: absolute;
-		left: 1rem;
-		top: 0.5rem;
-		bottom: 0.5rem;
-		width: 2px;
-		background: var(--slate-200);
-	}
-
-	.flow-step {
-		position: relative;
+	.row {
 		display: flex;
-		min-height: 2.5rem;
-		padding-left: 2.85rem;
-	}
-
-	/* node sitting on the flow line */
-	.flow-step::before {
-		content: '';
-		position: absolute;
-		left: 1rem;
-		top: 50%;
-		transform: translate(-50%, -50%);
-		width: 0.8rem;
-		height: 0.8rem;
-		border-radius: 9999px;
-		border: 2px solid white;
-		z-index: 1;
-	}
-
-	/* connector from the node to the card */
-	.flow-step::after {
-		content: '';
-		position: absolute;
-		left: 1rem;
-		top: 50%;
-		width: 1.85rem;
-		height: 2px;
-	}
-
-	.flow-seller::before {
-		background: var(--emerald-600);
-	}
-
-	.flow-seller::after {
-		background: var(--emerald-600);
-	}
-
-	.flow-buyer::before {
-		background: var(--sky-600);
-	}
-
-	.flow-buyer::after {
-		background: var(--sky-600);
-	}
-
-	.flow-card {
-		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.7rem;
-		width: 100%;
-		border-radius: 0.85rem;
-		border: 1px solid var(--slate-200);
-		background: white;
-		padding: 0.7rem 0.95rem;
+		gap: 0.5rem 0.875rem;
+		padding: 0.875rem 1.25rem;
+		color: white;
 	}
 
-	.flow-seller .flow-card {
-		border-color: var(--emerald-200);
-		background: var(--emerald-50);
+	.row + .row {
+		border-top: 1px solid var(--ink-2);
 	}
 
-	.flow-buyer .flow-card {
-		border-color: var(--sky-200);
-		background: var(--sky-50);
+	.row-n {
+		min-width: 2ch;
+		font-family: var(--font-display);
+		font-size: 1.375rem;
+		line-height: 1.5rem;
+		font-weight: 800;
+		color: var(--brand-500);
 	}
 
-	.flow-icon {
-		flex: none;
+	.row-icon {
 		display: grid;
 		place-items: center;
-		font-size: 1.4rem;
-		color: var(--emerald-700);
+		font-size: 1.25rem;
+		color: var(--slate-400);
 	}
 
-	.flow-buyer .flow-icon {
-		color: var(--sky-700);
-	}
-
-	.flow-label {
+	.row-label {
+		min-width: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
-		color: var(--slate-900);
 	}
 
-	@media (min-width: 720px) {
-		.flow {
-			max-width: 46rem;
-		}
+	.row-who {
+		margin-left: auto;
+		flex-shrink: 0;
+		border-radius: 9999px;
+		padding: 0.125rem 0.625rem;
+		font-family: var(--font-display);
+		font-size: 0.8125rem;
+		line-height: 1.25rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
 
-		.flow-heads {
-			justify-content: space-between;
-			padding-inline: 3rem;
-		}
+	.row-who.seller {
+		background: var(--brand-500);
+		color: var(--ink);
+	}
 
-		.flow-steps::before {
-			left: 50%;
-			transform: translateX(-50%);
-		}
-
-		.flow-step {
-			padding-left: 0;
-		}
-
-		.flow-card {
-			width: calc(50% - 2.85rem);
-		}
-
-		.flow-seller {
-			justify-content: flex-start;
-		}
-
-		.flow-buyer {
-			justify-content: flex-end;
-		}
-
-		.flow-seller .flow-card {
-			flex-direction: row-reverse;
-			text-align: right;
-		}
-
-		.flow-step::before {
-			left: 50%;
-		}
-
-		.flow-seller::after {
-			left: auto;
-			right: 50%;
-			width: 2.85rem;
-		}
-
-		.flow-buyer::after {
-			left: 50%;
-			width: 2.85rem;
-		}
+	.row-who.buyer {
+		background: var(--sky-200);
+		color: var(--ink);
 	}
 
 	.modes {
