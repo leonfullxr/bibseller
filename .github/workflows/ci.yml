@@ -62,15 +62,17 @@ jobs:
         working-directory: . # the target cds into backend itself
         # Step-level because setup-go@v6 exports GOTOOLCHAIN=local via
         # GITHUB_ENV (overriding job env): sqlc v1.31.1 needs go >= 1.26,
-        # newer than go.mod's toolchain, so it must auto-download as under v5.
+        # newer than go.mod's toolchain. Pinned (not auto): a brand-new point
+        # release can 404 at sum.golang.org for hours before it propagates
+        # (bit us with go1.26.5 on 2026-07-07); bump deliberately.
         env:
-          GOTOOLCHAIN: auto
+          GOTOOLCHAIN: go1.26.4
         run: make sqlc-check
       - name: govulncheck (known vulnerabilities in called code)
         # Pinned like the repo's other `go run` tools (goose/sqlc in the
         # Makefile); bump deliberately, not @latest.
         env:
-          GOTOOLCHAIN: auto # same setup-go@v6 note as the sqlc step
+          GOTOOLCHAIN: go1.26.4 # same setup-go@v6 + propagation note as the sqlc step
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.5.0 ./...
 
   frontend:

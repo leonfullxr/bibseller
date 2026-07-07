@@ -1,17 +1,39 @@
-/* Global reset + design tokens. Everything else is scoped per component. */
+/* Global reset + design tokens. Everything else is scoped per component.
+
+   Race-day design language: warm paper surfaces, deep ink, start-gun orange
+   for every primary action, hard offset shadows (poster print, not soft UI),
+   condensed uppercase display type. Green stays reserved for its semantic
+   job (resale allowed / success); it is no longer the brand color. */
 
 :root {
-	/* Palette (Tailwind-derived hex values, kept after dropping the framework). */
-	--slate-50: #f8fafc;
-	--slate-100: #f1f5f9;
-	--slate-200: #e2e8f0;
-	--slate-300: #cbd5e1;
-	--slate-400: #94a3b8;
-	--slate-500: #64748b;
-	--slate-600: #475569;
-	--slate-700: #334155;
-	--slate-900: #0f172a;
+	/* Core surfaces & ink. */
+	--paper: #faf6ef; /* page background - warm paper */
+	--paper-2: #f3ede1; /* tinted wells (chat canvas, hero panels) */
+	--ink: #171c26; /* near-black ink: text, blocks, hard shadows */
+	--ink-2: #2a3140; /* secondary ink / hover on ink blocks */
 
+	/* Brand: start-gun orange (Tailwind orange ramp). */
+	--brand-50: #fff7ed;
+	--brand-100: #ffedd5;
+	--brand-300: #fdba74;
+	--brand-500: #f97316;
+	--brand-600: #ea580c;
+	--brand-700: #c2410c;
+	--brand-800: #9a3412;
+
+	/* Neutrals: historical slate-* names, retuned to warm stone values so
+	   every page shifts warm without touching its scoped styles. */
+	--slate-50: #faf9f7;
+	--slate-100: #f3f1ee;
+	--slate-200: #e7e4df;
+	--slate-300: #d6d2cb;
+	--slate-400: #a8a29a;
+	--slate-500: #79736b;
+	--slate-600: #57524b;
+	--slate-700: #44403a;
+	--slate-900: #1c1a17;
+
+	/* Semantic greens (resale allowed / success) - no longer the brand. */
 	--emerald-50: #ecfdf5;
 	--emerald-100: #d1fae5;
 	--emerald-200: #a7f3d0;
@@ -37,14 +59,16 @@
 	--amber-800: #92400e;
 	--amber-900: #78350f;
 
-	/* Type: a two-width superfamily. Barlow Condensed carries the display
-	   voice (a race bib's condensed numerals); Barlow does body/UI. Both are
-	   self-hosted via fontsource imports in +layout.svelte (strict CSP - no
-	   external font hosts), with the old system stack as fallback. */
+	/* Type: Barlow Condensed is the race voice (display), Barlow the body.
+	   Self-hosted via fontsource imports in +layout.svelte (strict CSP). */
 	--font-body:
 		'Barlow', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
 		sans-serif;
 	--font-display: 'Barlow Condensed', var(--font-body);
+
+	/* Poster shadows: hard offsets, no blur. */
+	--shadow-hard: 4px 4px 0 var(--ink);
+	--shadow-hard-sm: 3px 3px 0 var(--ink);
 }
 
 *,
@@ -56,27 +80,33 @@
 
 /* Visible keyboard-focus ring everywhere; components may override locally. */
 :focus-visible {
-	outline: 2px solid var(--emerald-600);
+	outline: 2px solid var(--brand-600);
 	outline-offset: 2px;
 }
 
 html {
+	/* Full-bleed blocks use 50vw negative margins; vw includes the scrollbar
+	   width, so clip the few overflow pixels instead of showing an h-scroll. */
+	overflow-x: clip;
 	font-family: var(--font-body);
 	/* Prices, dates, and counts line up everywhere; this is data-heavy UI,
 	   not prose. */
 	font-variant-numeric: tabular-nums;
 	line-height: 1.5;
 	-webkit-text-size-adjust: 100%;
+	background: var(--paper);
+	color: var(--ink);
 }
 
-/* Headings speak in the display face; sizes stay with component styles.
-   text-wrap: balance is a progressive nicety - unsupported browsers wrap
-   normally. Condensed at heavy weights needs a hair of tracking to breathe. */
+/* Headings speak in the display face, uppercase - race signage. Condensed
+   at heavy weights needs a hair of tracking to breathe. text-wrap: balance
+   is a progressive nicety. */
 h1,
 h2,
 h3 {
 	font-family: var(--font-display);
-	letter-spacing: 0.01em;
+	letter-spacing: 0.015em;
+	text-transform: uppercase;
 	text-wrap: balance;
 }
 
@@ -117,13 +147,20 @@ code {
    deliberately closed (issue #147); pages add scoped margins/overrides only. */
 .btn {
 	display: inline-block;
-	border-radius: 0.375rem;
-	padding: 0.5rem 1rem;
-	font-size: 0.875rem;
+	border-radius: 0.25rem;
+	padding: 0.5625rem 1.25rem;
+	font-family: var(--font-display);
+	font-size: 1rem;
 	line-height: 1.25rem;
-	font-weight: 600;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	text-align: center;
 	color: white;
+	transition:
+		translate 0.1s,
+		box-shadow 0.1s,
+		background-color 0.15s;
 }
 
 .btn:disabled {
@@ -132,30 +169,45 @@ code {
 }
 
 .btn-primary {
-	background: var(--emerald-600);
+	background: var(--brand-700);
+	box-shadow: var(--shadow-hard-sm);
 }
 
 .btn-primary:hover:not(:disabled) {
-	background: var(--emerald-700);
+	background: var(--brand-800);
+	translate: 1px 1px;
+	box-shadow: 2px 2px 0 var(--ink);
+}
+
+.btn-primary:active:not(:disabled) {
+	translate: 3px 3px;
+	box-shadow: 0 0 0 var(--ink);
 }
 
 .btn-outline {
-	border: 1px solid var(--slate-300);
+	border: 2px solid var(--ink);
 	background: white;
-	color: var(--slate-700);
+	color: var(--ink);
+	box-shadow: var(--shadow-hard-sm);
 }
 
 .btn-outline:hover:not(:disabled) {
 	background: var(--slate-100);
+	translate: 1px 1px;
+	box-shadow: 2px 2px 0 var(--ink);
 }
 
 .field {
-	border-radius: 0.375rem;
-	border: 1px solid var(--slate-300);
+	border-radius: 0.25rem;
+	border: 1.5px solid var(--slate-400);
 	background: white;
 	padding: 0.5rem 0.75rem;
 	font-size: 0.875rem;
 	line-height: 1.25rem;
+}
+
+.field:focus {
+	border-color: var(--ink);
 }
 
 .panel {
@@ -166,8 +218,9 @@ code {
 }
 
 .alert {
-	border-radius: 0.375rem;
+	border-radius: 0.25rem;
 	border: 1px solid var(--amber-300);
+	border-left: 4px solid var(--amber-500);
 	background: var(--amber-50);
 	padding: 0.5rem 0.75rem;
 	font-size: 0.875rem;
@@ -189,7 +242,7 @@ code {
 /* Dashed-box empty state (from the race catalog). */
 .empty {
 	border-radius: 0.5rem;
-	border: 1px dashed var(--slate-300);
+	border: 2px dashed var(--slate-300);
 	padding: 2.5rem;
 	text-align: center;
 	font-weight: 500;
@@ -197,6 +250,6 @@ code {
 }
 
 .empty a {
-	color: var(--emerald-700);
+	color: var(--brand-700);
 	text-decoration: underline;
 }

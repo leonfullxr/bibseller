@@ -33,20 +33,23 @@
 </a>
 
 <style>
+	/* Same bib-tag family as RaceCard: hard ink border, poster shadow that
+	   flattens a step on hover. */
 	.card {
 		display: block;
-		border: 1px solid var(--slate-200);
+		border: 2px solid var(--ink);
 		border-radius: 0.5rem;
 		background: white;
 		padding: 1rem;
+		box-shadow: var(--shadow-hard-sm);
 		transition:
-			border-color 150ms,
-			box-shadow 150ms;
+			translate 0.1s,
+			box-shadow 0.1s;
 	}
 
 	.card:hover {
-		border-color: var(--slate-300);
-		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+		translate: 1px 1px;
+		box-shadow: 2px 2px 0 var(--ink);
 	}
 
 	.price-row {
@@ -56,11 +59,13 @@
 		gap: 0.5rem;
 	}
 
+	/* The price is the bib number: condensed, heavy, ink. */
 	.price {
-		font-size: 1.25rem;
+		font-family: var(--font-display);
+		font-size: 1.5rem;
 		line-height: 1.75rem;
-		font-weight: 700;
-		color: var(--slate-900);
+		font-weight: 800;
+		color: var(--ink);
 	}
 
 	.original {

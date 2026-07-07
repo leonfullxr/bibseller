@@ -230,7 +230,7 @@
 	}
 
 	.map-wrap.zoomed :global(.has-races path) {
-		fill: var(--emerald-600);
+		fill: var(--brand-600);
 		stroke: white;
 		stroke-width: 0.4;
 		pointer-events: auto;
@@ -243,17 +243,17 @@
 	}
 
 	.map-wrap :global(.has-races path) {
-		fill: var(--emerald-600);
+		fill: var(--brand-600);
 	}
 
 	.map-wrap :global(.has-races:hover path),
 	.map-wrap :global(.has-races:focus-visible path) {
-		fill: var(--emerald-700);
+		fill: var(--brand-700);
 	}
 
 	/* City dots. */
 	.markers circle {
-		fill: var(--emerald-700);
+		fill: var(--brand-700);
 		stroke: white;
 		stroke-width: 0.4;
 		cursor: pointer;
@@ -270,7 +270,7 @@
 	}
 
 	.markers text {
-		fill: var(--slate-700);
+		fill: var(--ink);
 		stroke: white;
 		stroke-width: 0.8;
 		paint-order: stroke;
@@ -294,7 +294,8 @@
 		top: 50%;
 		transform: translate(-50%, -50%);
 		border-radius: 9999px;
-		background: var(--emerald-600);
+		/* brand-700, not 600: white text needs the darker step. */
+		background: var(--brand-700);
 		padding: 0.25rem 0.7rem;
 		font-size: 0.7rem;
 		font-weight: 700;
@@ -342,7 +343,7 @@
 	.race-box:hover {
 		transform: scale(1.22);
 		z-index: 3;
-		border-color: var(--emerald-600);
+		border-color: var(--brand-600);
 		color: var(--slate-900);
 		box-shadow: 0 10px 22px rgb(0 0 0 / 0.22);
 	}
@@ -373,7 +374,7 @@
 	}
 
 	.map-hint a {
-		color: var(--emerald-700);
+		color: var(--brand-700);
 		text-decoration: underline;
 	}
 </style>

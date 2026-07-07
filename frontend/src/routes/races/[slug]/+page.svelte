@@ -137,7 +137,7 @@
 		display: inline-block;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
-		color: var(--emerald-700);
+		color: var(--brand-700);
 		text-decoration: underline;
 	}
 

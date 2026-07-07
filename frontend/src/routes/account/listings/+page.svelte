@@ -150,7 +150,7 @@
 
 	.race {
 		font-weight: 600;
-		color: var(--emerald-700);
+		color: var(--brand-700);
 		text-decoration: underline;
 	}
 
