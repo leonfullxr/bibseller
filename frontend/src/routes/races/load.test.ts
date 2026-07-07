@@ -5,6 +5,7 @@
 // each call independently.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiGet } from '$lib/api/server';
+import { todayISO } from '$lib/format';
 import { load } from './+page.server';
 
 vi.mock('$lib/api/server', () => ({ apiGet: vi.fn() }));
@@ -69,14 +70,27 @@ describe('races load', () => {
 			.mockResolvedValueOnce({ countries: {}, cities: [] });
 
 		const ev = event();
-		ev.url = new URL('http://localhost/races?date_from=1999-01-01&date_to=tomorrow');
+		ev.url = new URL('http://localhost/races?date_from=1999-01-01&date_to=2026-13-01');
 		const data = (await load(ev)) as LoadData;
 
 		const raceUrl = mockedApiGet.mock.calls[0][0] as string;
 		expect(raceUrl).not.toContain('date_from=1999-01-01'); // past date -> today's floor
-		expect(raceUrl).not.toContain('date_to'); // malformed -> dropped
+		expect(raceUrl).not.toContain('date_to'); // impossible calendar date -> dropped
 		expect(data.filters.date_from).toBe(''); // not echoed as an active filter
 		expect(data.filters.date_to).toBe('');
+	});
+
+	it('honors an explicit date_from of today', async () => {
+		mockedApiGet
+			.mockResolvedValueOnce({ items: [], next_cursor: null })
+			.mockResolvedValueOnce({ countries: {}, cities: [] });
+
+		const today = todayISO();
+		const ev = event();
+		ev.url = new URL(`http://localhost/races?date_from=${today}`);
+		const data = (await load(ev)) as LoadData;
+
+		expect(data.filters.date_from).toBe(today); // shown as an active filter chip
 	});
 
 	it('still renders the grid when the map-counts fetch fails', async () => {
