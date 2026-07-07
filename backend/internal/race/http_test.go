@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,6 +146,22 @@ func TestListRacesFiltersAndPaginates(t *testing.T) {
 	if len(filtered.Items) != 1 || filtered.Items[0].ID != a.ID {
 		t.Errorf("policy filter returned %d items", len(filtered.Items))
 	}
+
+	// Distance filter: only the race stamped with the distance comes back.
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE races SET distance = 'marathon' WHERE id = $1`, a.ID); err != nil {
+		t.Fatalf("stamp distance: %v", err)
+	}
+	rec = get(t, h, "/api/v1/races?country=zz&distance=marathon")
+	var byDistance struct {
+		Items []race.Summary `json:"items"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &byDistance); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if len(byDistance.Items) != 1 || byDistance.Items[0].ID != a.ID {
+		t.Errorf("distance filter returned %d items", len(byDistance.Items))
+	}
 }
 
 func TestListRacesRejectsBadParams(t *testing.T) {
@@ -154,6 +171,7 @@ func TestListRacesRejectsBadParams(t *testing.T) {
 		"/api/v1/races?country=ESP",
 		"/api/v1/races?sport=swimming-with-sharks",
 		"/api/v1/races?policy=free_for_all",
+		"/api/v1/races?distance=" + strings.Repeat("x", 51),
 		"/api/v1/races?date_from=tomorrow",
 		"/api/v1/races?limit=0",
 		"/api/v1/races?limit=101",

@@ -98,6 +98,15 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		}
 		params.Sport = &v
 	}
+	if v := qp.Get("distance"); v != "" {
+		// Free-text catalog field (no enum to validate against); exact match,
+		// length-capped like q.
+		if len(v) > 50 {
+			httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "distance too long")
+			return
+		}
+		params.Distance = &v
+	}
 	if v := qp.Get("policy"); v != "" {
 		if !validPolicies[v] {
 			httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "unknown transfer policy")

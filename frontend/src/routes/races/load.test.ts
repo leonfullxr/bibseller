@@ -43,6 +43,42 @@ describe('races load', () => {
 		expect(data.cities[0].count).toBe(3);
 	});
 
+	it('passes distance and a valid future date range to the API', async () => {
+		mockedApiGet
+			.mockResolvedValueOnce({ items: [], next_cursor: null })
+			.mockResolvedValueOnce({ countries: {}, cities: [] });
+
+		const ev = event();
+		ev.url = new URL(
+			'http://localhost/races?distance=marathon&date_from=2099-01-01&date_to=2099-06-30'
+		);
+		const data = (await load(ev)) as LoadData;
+
+		const raceUrl = mockedApiGet.mock.calls[0][0] as string;
+		expect(raceUrl).toContain('distance=marathon');
+		expect(raceUrl).toContain('date_from=2099-01-01');
+		expect(raceUrl).toContain('date_to=2099-06-30');
+		expect(data.filters.distance).toBe('marathon');
+		expect(data.filters.date_from).toBe('2099-01-01');
+		expect(data.filters.date_to).toBe('2099-06-30');
+	});
+
+	it('floors date_from at today and drops malformed dates', async () => {
+		mockedApiGet
+			.mockResolvedValueOnce({ items: [], next_cursor: null })
+			.mockResolvedValueOnce({ countries: {}, cities: [] });
+
+		const ev = event();
+		ev.url = new URL('http://localhost/races?date_from=1999-01-01&date_to=tomorrow');
+		const data = (await load(ev)) as LoadData;
+
+		const raceUrl = mockedApiGet.mock.calls[0][0] as string;
+		expect(raceUrl).not.toContain('date_from=1999-01-01'); // past date -> today's floor
+		expect(raceUrl).not.toContain('date_to'); // malformed -> dropped
+		expect(data.filters.date_from).toBe(''); // not echoed as an active filter
+		expect(data.filters.date_to).toBe('');
+	});
+
 	it('still renders the grid when the map-counts fetch fails', async () => {
 		mockedApiGet
 			.mockResolvedValueOnce({ items: [{ id: '1' }], next_cursor: null }) // grid

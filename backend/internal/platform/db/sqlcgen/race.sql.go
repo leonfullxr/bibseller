@@ -192,21 +192,23 @@ FROM races r
 WHERE r.status = 'published'
   AND ($1::text IS NULL OR r.country = $1)
   AND ($2::text IS NULL OR r.sport = $2)
-  AND ($3::text IS NULL OR r.transfer_policy = $3)
-  AND ($4::date IS NULL OR r.event_date >= $4)
-  AND ($5::date IS NULL OR r.event_date <= $5)
-  AND ($6::text IS NULL
+  AND ($3::text IS NULL OR r.distance = $3)
+  AND ($4::text IS NULL OR r.transfer_policy = $4)
+  AND ($5::date IS NULL OR r.event_date >= $5)
+  AND ($6::date IS NULL OR r.event_date <= $6)
+  AND ($7::text IS NULL
        OR to_tsvector('simple', r.name || ' ' || r.city)
-          @@ plainto_tsquery('simple', $6))
-  AND ($7::date IS NULL
-       OR (r.event_date, r.id) > ($7, $8::uuid))
+          @@ plainto_tsquery('simple', $7))
+  AND ($8::date IS NULL
+       OR (r.event_date, r.id) > ($8, $9::uuid))
 ORDER BY r.event_date, r.id
-LIMIT $9
+LIMIT $10
 `
 
 type ListRacesParams struct {
 	Country        *string    `json:"country"`
 	Sport          *string    `json:"sport"`
+	Distance       *string    `json:"distance"`
 	TransferPolicy *string    `json:"transfer_policy"`
 	DateFrom       *time.Time `json:"date_from"`
 	DateTo         *time.Time `json:"date_to"`
@@ -244,6 +246,7 @@ func (q *Queries) ListRaces(ctx context.Context, arg ListRacesParams) ([]ListRac
 	rows, err := q.db.Query(ctx, listRaces,
 		arg.Country,
 		arg.Sport,
+		arg.Distance,
 		arg.TransferPolicy,
 		arg.DateFrom,
 		arg.DateTo,
