@@ -154,8 +154,8 @@
 		display: flex;
 		min-height: 100vh;
 		flex-direction: column;
-		background: var(--slate-50);
-		color: var(--slate-900);
+		background: var(--paper);
+		color: var(--ink);
 	}
 
 	/* Visually hidden until keyboard-focused, then a small pill over the header. */
@@ -179,7 +179,7 @@
 		z-index: 30;
 		height: 2px;
 		width: 100%;
-		background: var(--emerald-600);
+		background: var(--brand-600);
 		transform-origin: left;
 	}
 
@@ -198,9 +198,10 @@
 		}
 	}
 
+	/* The header is an ink block - race timing board, not a white toolbar. */
 	header {
-		border-bottom: 1px solid var(--slate-200);
-		background: white;
+		background: var(--ink);
+		color: var(--paper);
 	}
 
 	.bar {
@@ -221,15 +222,16 @@
 
 	.brand {
 		font-family: var(--font-display);
-		font-size: 1.375rem;
+		font-size: 1.5rem;
 		line-height: 1.75rem;
-		font-weight: 700;
-		letter-spacing: 0.01em;
+		font-weight: 800;
+		letter-spacing: 0.02em;
 		text-transform: uppercase;
+		color: white;
 	}
 
 	.brand span {
-		color: var(--emerald-600);
+		color: var(--brand-500);
 	}
 
 	nav {
@@ -245,12 +247,13 @@
 	nav a,
 	nav button {
 		font-weight: 500;
-		color: var(--slate-600);
+		color: var(--slate-300);
+		transition: color 0.15s;
 	}
 
 	nav a:hover,
 	nav button:hover {
-		color: var(--slate-900);
+		color: white;
 	}
 
 	nav form {
@@ -271,7 +274,7 @@
 		justify-content: center;
 		vertical-align: text-top;
 		border-radius: 9999px;
-		background: var(--emerald-600);
+		background: var(--brand-700);
 		padding: 0.0625rem 0.3125rem;
 		font-size: 0.6875rem;
 		line-height: 1rem;
@@ -317,11 +320,11 @@
 		align-items: center;
 		justify-content: center;
 		gap: 0.75rem;
-		background: var(--emerald-50);
-		border-bottom: 1px solid var(--emerald-300);
+		background: var(--brand-50);
+		border-bottom: 1px solid var(--brand-300);
 		padding: 0.5rem 1rem;
 		font-size: 0.875rem;
-		color: var(--emerald-900);
+		color: var(--brand-800);
 	}
 
 	.suggest-banner form {
@@ -330,9 +333,9 @@
 
 	.suggest-banner button {
 		cursor: pointer;
-		border-radius: 0.375rem;
-		border: 1px solid var(--emerald-600);
-		background: var(--emerald-600);
+		border-radius: 0.25rem;
+		border: 1px solid var(--brand-700);
+		background: var(--brand-700);
 		padding: 0.25rem 0.625rem;
 		font: inherit;
 		font-weight: 600;
@@ -340,17 +343,17 @@
 	}
 
 	.suggest-banner button:hover {
-		background: var(--emerald-700);
+		background: var(--brand-800);
 	}
 
 	.suggest-banner button.ghost {
-		border-color: var(--emerald-300);
+		border-color: var(--brand-300);
 		background: transparent;
-		color: var(--emerald-900);
+		color: var(--brand-800);
 	}
 
 	.suggest-banner button.ghost:hover {
-		background: var(--emerald-100);
+		background: var(--brand-100);
 	}
 
 	main {
@@ -361,16 +364,18 @@
 		padding: 2.5rem 1rem;
 	}
 
+	/* Ink footer with a finish-line diagonal along its top edge. */
 	footer {
-		border-top: 1px solid var(--slate-200);
-		background: white;
+		background: var(--ink);
+		color: var(--slate-300);
+		clip-path: polygon(0 1.5rem, 100% 0, 100% 100%, 0 100%);
+		margin-top: 2rem;
 	}
 
 	.foot {
-		padding-block: 1rem;
+		padding-block: 2.25rem 1.25rem;
 		font-size: 0.75rem;
 		line-height: 1rem;
-		color: var(--slate-500);
 	}
 
 	.foot-links {
@@ -379,6 +384,6 @@
 	}
 
 	.foot a:hover {
-		color: var(--slate-900);
+		color: white;
 	}
 </style>
