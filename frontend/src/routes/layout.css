@@ -71,7 +71,7 @@ html {
 
 /* Headings speak in the display face; sizes stay with component styles.
    text-wrap: balance is a progressive nicety - unsupported browsers wrap
-   normally. Condensed at 600/700 needs a hair of tracking to breathe. */
+   normally. Condensed at heavy weights needs a hair of tracking to breathe. */
 h1,
 h2,
 h3 {
