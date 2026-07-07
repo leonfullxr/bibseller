@@ -26,6 +26,7 @@ FROM races r
 WHERE r.status = 'published'
   AND (sqlc.narg('country')::text IS NULL OR r.country = sqlc.narg('country'))
   AND (sqlc.narg('sport')::text IS NULL OR r.sport = sqlc.narg('sport'))
+  AND (sqlc.narg('distance')::text IS NULL OR r.distance = sqlc.narg('distance'))
   AND (sqlc.narg('transfer_policy')::text IS NULL OR r.transfer_policy = sqlc.narg('transfer_policy'))
   AND (sqlc.narg('date_from')::date IS NULL OR r.event_date >= sqlc.narg('date_from'))
   AND (sqlc.narg('date_to')::date IS NULL OR r.event_date <= sqlc.narg('date_to'))
