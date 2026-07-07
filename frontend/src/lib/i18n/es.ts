@@ -323,6 +323,12 @@ export const es: Record<MessageKey, string> = {
 
 	'settings.title': 'Ajustes - Bibseller',
 	'settings.heading': 'Ajustes',
+	'settings.navAria': 'Secciones de ajustes',
+	'settings.security': 'Seguridad',
+	'settings.account': 'Cuenta',
+	'settings.profileHint': 'Tu nombre público, idioma y país.',
+	'settings.securityHint': 'Contraseña y dispositivos con sesión abierta.',
+	'settings.accountHint': 'Eliminar tu cuenta y tus datos.',
 	'settings.profile': 'Perfil',
 	'settings.country': 'País',
 	'settings.countryNotSet': 'Sin definir',
