@@ -85,6 +85,9 @@
 }
 
 html {
+	/* Full-bleed blocks use 50vw negative margins; vw includes the scrollbar
+	   width, so clip the few overflow pixels instead of showing an h-scroll. */
+	overflow-x: clip;
 	font-family: var(--font-body);
 	/* Prices, dates, and counts line up everywhere; this is data-heavy UI,
 	   not prose. */
