@@ -39,7 +39,7 @@
 	}
 
 	/* The official-transfer action keeps the sky "official" tone (PolicyBadge,
-	   PolicyCallout) rather than the emerald primary. */
+	   PolicyCallout) rather than the brand primary. */
 	.official {
 		background: var(--sky-600);
 	}

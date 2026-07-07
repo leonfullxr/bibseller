@@ -87,8 +87,8 @@
 	}
 
 	.row.unread {
-		border-color: var(--emerald-300);
-		background: var(--emerald-50);
+		border-color: var(--brand-300);
+		background: var(--brand-50);
 	}
 
 	.who {
@@ -139,7 +139,7 @@
 		min-width: 1.25rem;
 		justify-content: center;
 		border-radius: 9999px;
-		background: var(--emerald-600);
+		background: var(--brand-700);
 		padding: 0.125rem 0.375rem;
 		font-size: 0.75rem;
 		line-height: 1rem;

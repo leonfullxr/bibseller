@@ -267,11 +267,14 @@
 		gap: 0.75rem;
 	}
 
+	/* Bib-number price: condensed, heavy, ink. */
 	.price {
+		font-family: var(--font-display);
 		font-size: 2.25rem;
 		line-height: 2.5rem;
 		font-weight: 800;
-		letter-spacing: -0.025em;
+		letter-spacing: 0.015em;
+		color: var(--ink);
 	}
 
 	.original {
@@ -325,7 +328,7 @@
 	}
 
 	.hint a {
-		color: var(--emerald-700);
+		color: var(--brand-700);
 		text-decoration: underline;
 	}
 

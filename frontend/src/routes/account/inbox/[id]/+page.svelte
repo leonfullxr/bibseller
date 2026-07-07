@@ -443,8 +443,8 @@
 		height: 2.5rem;
 		flex-shrink: 0;
 		border-radius: 9999px;
-		background: var(--emerald-100);
-		color: var(--emerald-800);
+		background: var(--brand-100);
+		color: var(--brand-800);
 		font-weight: 700;
 	}
 
@@ -471,7 +471,7 @@
 	}
 
 	.about a {
-		color: var(--emerald-700);
+		color: var(--brand-700);
 		text-decoration: underline;
 	}
 
@@ -563,7 +563,7 @@
 	}
 
 	.messages:focus-visible {
-		outline: 2px solid var(--emerald-600);
+		outline: 2px solid var(--brand-600);
 		outline-offset: -2px;
 	}
 
@@ -588,8 +588,8 @@
 		color: var(--slate-600);
 	}
 
-	/* Bubbles: theirs = white on the left, mine = solid emerald on the right
-	   (white text on emerald-700 is 5.5:1). Same-sender runs group tightly;
+	/* Bubbles: theirs = white on the left, mine = solid brand orange on the
+	   right (white text on brand-700 is 5.2:1). Same-sender runs group tightly;
 	   the last bubble of a group gets the tail corner. */
 	.msg {
 		max-width: 75%;
@@ -618,8 +618,8 @@
 
 	.msg.mine {
 		align-self: flex-end;
-		border-color: var(--emerald-700);
-		background: var(--emerald-700);
+		border-color: var(--brand-700);
+		background: var(--brand-700);
 		color: white;
 		border-bottom-left-radius: 1rem;
 	}
@@ -659,7 +659,7 @@
 	}
 
 	.mine .time {
-		color: var(--emerald-100);
+		color: var(--brand-50);
 	}
 
 	.msg-foot button {
@@ -748,7 +748,7 @@
 	}
 
 	.attach:focus-within {
-		outline: 2px solid var(--emerald-600);
+		outline: 2px solid var(--brand-600);
 		outline-offset: 2px;
 	}
 

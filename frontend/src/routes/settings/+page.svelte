@@ -209,9 +209,9 @@
 	}
 
 	.rail a.active {
-		color: var(--emerald-700);
-		background: var(--emerald-50);
-		border-left-color: var(--emerald-600);
+		color: var(--brand-700);
+		background: var(--brand-50);
+		border-left-color: var(--brand-600);
 	}
 
 	.pane {
@@ -300,7 +300,7 @@
 		}
 
 		.rail a.active {
-			border-bottom-color: var(--emerald-600);
+			border-bottom-color: var(--brand-600);
 		}
 	}
 </style>
