@@ -144,8 +144,9 @@
 		return new Date(iso).toISOString().slice(0, 10);
 	}
 
-	// Consecutive same-sender, same-day messages render as one visual group:
-	// tight gaps, tail corner on the group's last bubble.
+	// Consecutive same-sender messages within one UTC day (dayOf - the same
+	// boundary the day separators use, not the viewer's local day) render as
+	// one visual group: tight gaps, tail corner on the group's last bubble.
 	function sameGroup(a: ChatMessage, b: ChatMessage): boolean {
 		return a.sender_id === b.sender_id && dayOf(a.created_at) === dayOf(b.created_at);
 	}
