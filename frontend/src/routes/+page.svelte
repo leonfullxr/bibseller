@@ -192,9 +192,10 @@
 		line-height: 1.5rem;
 	}
 
+	/* Border swap for any focus; the global :focus-visible ring still applies
+	   for keyboard users (visible against the ink hero). */
 	.search input:focus {
 		border-color: var(--brand-500);
-		outline: none;
 	}
 
 	.search button {
