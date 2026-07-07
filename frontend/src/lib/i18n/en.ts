@@ -353,6 +353,12 @@ export const en = {
 	// Settings.
 	'settings.title': 'Settings - Bibseller',
 	'settings.heading': 'Settings',
+	'settings.navAria': 'Settings sections',
+	'settings.security': 'Security',
+	'settings.account': 'Account',
+	'settings.profileHint': 'Your public name, language and country.',
+	'settings.securityHint': 'Password and signed-in devices.',
+	'settings.accountHint': 'Delete your account and data.',
 	'settings.profile': 'Profile',
 	'settings.country': 'Country',
 	'settings.countryNotSet': 'Not set',
