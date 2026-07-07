@@ -10,6 +10,14 @@
 		stripLocale,
 		type I18n
 	} from '$lib/i18n';
+	// Self-hosted fonts (fontsource -> vite-bundled woff2, same-origin so the
+	// strict CSP needs no font-src). Weights match what the UI actually uses.
+	import '@fontsource/barlow/400.css';
+	import '@fontsource/barlow/500.css';
+	import '@fontsource/barlow/600.css';
+	import '@fontsource/barlow/700.css';
+	import '@fontsource/barlow-condensed/600.css';
+	import '@fontsource/barlow-condensed/700.css';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
@@ -210,10 +218,12 @@
 	}
 
 	.brand {
-		font-size: 1.125rem;
+		font-family: var(--font-display);
+		font-size: 1.375rem;
 		line-height: 1.75rem;
 		font-weight: 700;
-		letter-spacing: -0.025em;
+		letter-spacing: 0.01em;
+		text-transform: uppercase;
 	}
 
 	.brand span {

@@ -36,6 +36,15 @@
 	--amber-700: #b45309;
 	--amber-800: #92400e;
 	--amber-900: #78350f;
+
+	/* Type: a two-width superfamily. Barlow Condensed carries the display
+	   voice (a race bib's condensed numerals); Barlow does body/UI. Both are
+	   self-hosted via fontsource imports in +layout.svelte (strict CSP - no
+	   external font hosts), with the old system stack as fallback. */
+	--font-body:
+		'Barlow', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+		sans-serif;
+	--font-display: 'Barlow Condensed', var(--font-body);
 }
 
 *,
@@ -52,17 +61,23 @@
 }
 
 html {
-	font-family:
-		ui-sans-serif,
-		system-ui,
-		-apple-system,
-		'Segoe UI',
-		Roboto,
-		'Helvetica Neue',
-		Arial,
-		sans-serif;
+	font-family: var(--font-body);
+	/* Prices, dates, and counts line up everywhere; this is data-heavy UI,
+	   not prose. */
+	font-variant-numeric: tabular-nums;
 	line-height: 1.5;
 	-webkit-text-size-adjust: 100%;
+}
+
+/* Headings speak in the display face; sizes stay with component styles.
+   text-wrap: balance is a progressive nicety - unsupported browsers wrap
+   normally. Condensed at 600/700 needs a hair of tracking to breathe. */
+h1,
+h2,
+h3 {
+	font-family: var(--font-display);
+	letter-spacing: 0.01em;
+	text-wrap: balance;
 }
 
 /* Headings size via component styles, not browser defaults. */
