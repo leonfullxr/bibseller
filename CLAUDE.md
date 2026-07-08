@@ -38,6 +38,17 @@ make sqlc           # regenerate after editing db/queries/*.sql - commit the out
 - Frontend internal links use `resolve()` (`svelte/no-navigation-without-resolve` is on). Server `load` functions call the Go API via `$lib/api/server.ts`.
 - Lint/format are CI-enforced: `golangci-lint`, Prettier, ESLint, `svelte-check`.
 
+### House style for issues, PRs, and commits (2026-07-08)
+
+- Plain ASCII hyphens (`-`) in issue/PR titles and bodies, docs, and commit
+  messages - never em/en dashes (`—`/`–`).
+- Every issue and PR is assigned to `leonfullxr` at creation
+  (`gh api .../assignees -X POST -f 'assignees[]=leonfullxr'`; `gh issue/pr edit
+  --add-assignee` hits the Projects-classic GraphQL bug in this repo).
+- Commits, pushes, and merges run as the founder's account (git user
+  `leonfullxr`, `gh` auth) with NO `Co-Authored-By` trailers - history shows
+  only the founder.
+
 ## Agent skills
 
 ### Issue tracker
