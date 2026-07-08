@@ -100,7 +100,7 @@
 	<p class="journey-lead">{t('home.journeyLead')}</p>
 	<ol class="board">
 		{#each journey as step (step.n)}
-			<li class="row">
+			<li class="row {step.who}">
 				<span class="row-n" aria-hidden="true">{String(step.n).padStart(2, '0')}</span>
 				<span class="row-icon" aria-hidden="true"><Icon name={step.icon} /></span>
 				<span class="row-label">{step.label}</span>
@@ -498,12 +498,14 @@
 		color: var(--slate-600);
 	}
 
-	/* The timing board: an ink leaderboard, orange positions, lane tags. */
+	/* The timing board: an ink leaderboard. Each row is lane-coded - an
+	   accent edge, a tinted wash, and a lane-colored position number - so the
+	   seller/buyer alternation reads at a glance. */
 	.board {
 		list-style: none;
 		margin: 2rem auto 0;
 		padding: 0;
-		max-width: 44rem;
+		max-width: 46rem;
 		background: var(--ink);
 		border-radius: 0.75rem;
 		box-shadow: var(--shadow-hard);
@@ -515,8 +517,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 0.875rem;
-		padding: 0.875rem 1.25rem;
+		gap: 0.5rem 1rem;
+		padding: 1.125rem 1.5rem;
 		color: white;
 	}
 
@@ -524,35 +526,58 @@
 		border-top: 1px solid var(--ink-2);
 	}
 
+	.row.seller {
+		box-shadow: inset 0.25rem 0 0 var(--brand-500);
+		background: rgb(249 115 22 / 0.07);
+	}
+
+	.row.buyer {
+		box-shadow: inset 0.25rem 0 0 var(--sky-200);
+		background: rgb(186 230 253 / 0.05);
+	}
+
 	.row-n {
-		min-width: 2ch;
+		min-width: 2.5ch;
 		font-family: var(--font-display);
-		font-size: 1.375rem;
-		line-height: 1.5rem;
+		font-size: 1.75rem;
+		line-height: 1.75rem;
 		font-weight: 800;
+	}
+
+	.row.seller .row-n {
 		color: var(--brand-500);
+	}
+
+	.row.buyer .row-n {
+		color: var(--sky-200);
 	}
 
 	.row-icon {
 		display: grid;
 		place-items: center;
-		font-size: 1.25rem;
-		color: var(--slate-400);
+		width: 2.75rem;
+		height: 2.75rem;
+		flex-shrink: 0;
+		border-radius: 9999px;
+		background: var(--ink-2);
+		font-size: 1.375rem;
+		color: var(--slate-300);
 	}
 
 	.row-label {
+		flex: 1;
 		min-width: 0;
-		font-size: 0.95rem;
+		font-size: 1.125rem;
+		line-height: 1.5rem;
 		font-weight: 600;
 	}
 
 	.row-who {
-		margin-left: auto;
 		flex-shrink: 0;
 		border-radius: 9999px;
-		padding: 0.125rem 0.625rem;
+		padding: 0.1875rem 0.75rem;
 		font-family: var(--font-display);
-		font-size: 0.8125rem;
+		font-size: 0.875rem;
 		line-height: 1.25rem;
 		font-weight: 700;
 		letter-spacing: 0.04em;
