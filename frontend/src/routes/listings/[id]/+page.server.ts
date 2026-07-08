@@ -3,6 +3,7 @@ import { apiFetch, apiGet } from '$lib/api/server';
 import { createTranslator } from '$lib/i18n';
 import type { ListingDetail } from '$lib/api/types';
 import { requiresAck } from '$lib/policy';
+import { clientIPHeader } from '$lib/server/clientip';
 import { sessionHeader } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -63,7 +64,11 @@ export const actions: Actions = {
 		try {
 			res = await apiFetch(`/api/v1/listings/${params.id}/threads`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', ...sessionHeader(cookies) },
+				headers: {
+					'Content-Type': 'application/json',
+					...sessionHeader(cookies),
+					...clientIPHeader(request)
+				},
 				body: JSON.stringify({ body })
 			});
 		} catch {

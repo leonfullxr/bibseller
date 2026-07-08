@@ -104,12 +104,40 @@ make staging-down
 # 3. promote the SAME commit to prod:
 git checkout production && git merge --ff-only main && git push
 #    then on the box, in the prod clone (checked out on production):
-git pull && make prod-migrate && make prod-up
+git pull
+#    then migrate and start in the order the release requires - see
+#    "Migration ordering" below. For a purely additive (or no-migration)
+#    release that is:
+make prod-migrate && make prod-up
 ```
 
 `merge --ff-only` guarantees `production` is a commit `main` already carried,
 never a fresh merge. If you want a deploy record, open a PR from `main` into
 `production` instead of the fast-forward push: same commit, plus a CI run.
+
+### Migration ordering: expand/contract
+
+A migration must be safe against the binary currently running in prod: the old
+api container keeps serving while `prod-migrate` runs, and `prod-up` takes
+minutes to build and swap the new image. Pick the deploy order by what the
+migration does:
+
+- **Expand** (additive: new tables, columns, indexes the new code needs):
+  `make prod-migrate && make prod-up`. Migrate first, so the new binary never
+  starts against a schema missing what it queries.
+- **Contract** (destructive: DROP or rename of anything the old binary still
+  references): `make prod-up && make prod-migrate`. Swap the binary first - or
+  better, land the DROP one release after the code stopped referencing it.
+  Running the DROP under the old binary 500s every request that names the
+  column: migration 0013 (drops `users.role` etc.) against the pre-#175 binary
+  was exactly this, remediated on 2026-07-07 by deploying in the inverted
+  order.
+- **Mixed** (one release both adds and drops): split the migration into an
+  expand release and a later contract release, or accept brief downtime:
+  `make prod-build && make prod-down && make prod-migrate && make prod-up`.
+
+The rule applies in reverse on rollback: rolling the binary back without
+running the Down migration reintroduces queries against dropped columns.
 
 ### Migration rehearsal (before a risky migration)
 
@@ -206,6 +234,7 @@ deploy:
 | `S3_ENDPOINT` | `http://minio:9000`, or the R2 / Scaleway endpoint |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | object-storage credentials |
 | `S3_BUCKET` | `bibseller` |
+| `TRUST_PROXY_HEADER` | `1` - trust `CF-Connecting-IP` for rate-limit keys and session audit (#182). Only safe when every request traverses the Cloudflare edge (true here: no published api port). Unset/other keys on `RemoteAddr` |
 
 ### Postgres
 
