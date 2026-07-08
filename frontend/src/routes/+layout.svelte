@@ -11,15 +11,13 @@
 		type I18n
 	} from '$lib/i18n';
 	// Self-hosted fonts (fontsource -> vite-bundled woff2, same-origin so the
-	// strict CSP needs no font-src). Weights match what the UI actually uses.
+	// strict CSP needs no font-src). Fraunces (variable) is the journal's
+	// display serif; Barlow stays the body workhorse.
+	import '@fontsource-variable/fraunces/index.css';
 	import '@fontsource/barlow/400.css';
 	import '@fontsource/barlow/500.css';
 	import '@fontsource/barlow/600.css';
 	import '@fontsource/barlow/700.css';
-	import '@fontsource/barlow/800.css';
-	import '@fontsource/barlow-condensed/600.css';
-	import '@fontsource/barlow-condensed/700.css';
-	import '@fontsource/barlow-condensed/800.css';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
@@ -198,10 +196,10 @@
 		}
 	}
 
-	/* The header is an ink block - race timing board, not a white toolbar. */
+	/* Masthead: ivory with a single hairline rule - a journal, not a toolbar. */
 	header {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--paper);
+		border-bottom: 1px solid var(--ink);
 	}
 
 	.bar {
@@ -222,16 +220,16 @@
 
 	.brand {
 		font-family: var(--font-display);
-		font-size: 1.5rem;
+		font-size: 1.625rem;
 		line-height: 1.75rem;
-		font-weight: 800;
-		letter-spacing: 0.02em;
-		text-transform: uppercase;
-		color: white;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--ink);
 	}
 
 	.brand span {
-		color: var(--brand-500);
+		color: var(--brand-600);
+		font-style: italic;
 	}
 
 	nav {
@@ -246,14 +244,17 @@
 
 	nav a,
 	nav button {
-		font-weight: 500;
-		color: var(--slate-300);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--slate-600);
 		transition: color 0.15s;
 	}
 
 	nav a:hover,
 	nav button:hover {
-		color: white;
+		color: var(--brand-700);
 	}
 
 	nav form {
@@ -364,16 +365,16 @@
 		padding: 2.5rem 1rem;
 	}
 
-	/* Ink footer with a finish-line diagonal along its top edge. */
+	/* Colophon: a hairline rule and quiet small text. */
 	footer {
-		background: var(--ink);
-		color: var(--slate-300);
-		clip-path: polygon(0 1.5rem, 100% 0, 100% 100%, 0 100%);
+		border-top: 1px solid var(--ink);
+		background: var(--paper);
+		color: var(--slate-500);
 		margin-top: 2rem;
 	}
 
 	.foot {
-		padding-block: 2.25rem 1.25rem;
+		padding-block: 1.25rem;
 		font-size: 0.75rem;
 		line-height: 1rem;
 	}
@@ -384,6 +385,6 @@
 	}
 
 	.foot a:hover {
-		color: white;
+		color: var(--brand-700);
 	}
 </style>

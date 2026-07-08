@@ -37,7 +37,7 @@
 	   flattens a step on hover. */
 	.card {
 		display: block;
-		border: 2px solid var(--ink);
+		border: 1px solid var(--slate-200);
 		border-radius: 0.5rem;
 		background: white;
 		padding: 1rem;
@@ -64,7 +64,7 @@
 		font-family: var(--font-display);
 		font-size: 1.5rem;
 		line-height: 1.75rem;
-		font-weight: 800;
+		font-weight: 600;
 		color: var(--ink);
 	}
 

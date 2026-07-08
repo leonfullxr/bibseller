@@ -11,8 +11,8 @@
 	const bibs = $derived(plural('raceCard.bibs', race.active_listings));
 </script>
 
-<!-- The card is a bib tag: punched holes on the top band, the event date as
-     the "number", hard poster shadow that flattens on hover. -->
+<!-- Catalog plate: a hairline-framed card, the date as a small-caps
+     bordeaux eyebrow, the race name in the journal serif. -->
 <a href={link(resolve('/races/[slug]', { slug: race.slug }))} class="card">
 	<div class="strip">
 		<span class="date">{formatDate(race.event_date, locale)}</span>
@@ -36,71 +36,48 @@
 <style>
 	.card {
 		display: block;
-		border: 2px solid var(--ink);
-		border-radius: 0.5rem;
+		border: 1px solid var(--slate-200);
+		border-radius: 0.25rem;
 		background: white;
-		box-shadow: var(--shadow-hard);
+		box-shadow: var(--shadow-hard-sm);
 		overflow: hidden;
 		transition:
-			translate 0.1s,
-			box-shadow 0.1s;
+			box-shadow 0.15s,
+			border-color 0.15s;
 	}
 
 	.card:hover {
-		translate: 2px 2px;
-		box-shadow: 2px 2px 0 var(--ink);
+		border-color: var(--slate-400);
+		box-shadow: var(--shadow-hard);
 	}
 
-	/* Top band with the zip-tie holes. */
 	.strip {
-		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.5rem;
-		background: var(--paper-2);
-		border-bottom: 2px solid var(--ink);
-		padding: 0.375rem 1.75rem;
-	}
-
-	.strip::before,
-	.strip::after {
-		content: '';
-		position: absolute;
-		top: 50%;
-		translate: 0 -50%;
-		width: 0.625rem;
-		height: 0.625rem;
-		border-radius: 9999px;
-		background: var(--paper);
-		border: 2px solid var(--ink);
-	}
-
-	.strip::before {
-		left: 0.5rem;
-	}
-
-	.strip::after {
-		right: 0.5rem;
+		border-bottom: 1px solid var(--slate-200);
+		padding: 0.5rem 1.125rem;
 	}
 
 	.date {
-		font-family: var(--font-display);
-		font-size: 1rem;
-		line-height: 1.5rem;
-		font-weight: 800;
-		letter-spacing: 0.02em;
+		font-size: 0.6875rem;
+		line-height: 1.25rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
+		color: var(--brand-700);
 	}
 
 	.body {
-		padding: 0.875rem 1rem 1rem;
+		padding: 0.875rem 1.125rem 1.125rem;
 	}
 
 	h3 {
+		font-family: var(--font-display);
 		font-size: 1.375rem;
-		line-height: 1.625rem;
-		font-weight: 800;
+		line-height: 1.75rem;
+		font-weight: 600;
 		color: var(--ink);
 	}
 
@@ -122,7 +99,7 @@
 	}
 
 	.tag {
-		border-radius: 0.25rem;
+		border-radius: 0.125rem;
 		background: var(--slate-100);
 		border: 1px solid var(--slate-200);
 		padding: 0.125rem 0.375rem;

@@ -272,8 +272,8 @@
 		font-family: var(--font-display);
 		font-size: 2.25rem;
 		line-height: 2.5rem;
-		font-weight: 800;
-		letter-spacing: 0.015em;
+		font-weight: 600;
+		letter-spacing: -0.01em;
 		color: var(--ink);
 	}
 
