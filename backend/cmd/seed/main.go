@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -19,7 +20,23 @@ import (
 )
 
 func main() {
+	// -guard-only runs the SERVER-side dev_marker check and exits without
+	// touching data, so `make migrate`/`migrate-down` can refuse a non-dev
+	// target (a stale .env pointing at prod) the same way seed does (#184).
+	guardOnly := flag.Bool("guard-only", false,
+		"verify the target DB is dev infrastructure (dev_marker), then exit without seeding")
+	flag.Parse()
+
 	cfg := config.Load()
+
+	// -guard-only returns before the ENV/IsDev gate and before any truncation:
+	// its whole point is that a host shell has no ENV set (#159), so it checks
+	// the SERVER, not the environment.
+	if *guardOnly {
+		must(runGuardOnly(cfg.DatabaseURL))
+		return
+	}
+
 	if !cfg.IsDev() {
 		log.Fatal("seed is dev-only: refusing to run with ENV != development")
 	}
@@ -45,6 +62,24 @@ func main() {
 	nListings := seedListings(ctx, q, races, users)
 
 	fmt.Printf("seeded: %d users, %d races, %d listings\n", len(users), len(races), nListings)
+}
+
+// runGuardOnly connects to databaseURL, verifies it is dev infrastructure
+// (dev_marker) and returns - touching no data. It is the -guard-only path that
+// gates `make migrate`/`migrate-down` (#184); any error (unreachable target or
+// a missing marker) fails closed, so make aborts before goose runs.
+func runGuardOnly(databaseURL string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	pool, err := db.NewPool(ctx, databaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		return err
+	}
+	return ensureDevMarker(ctx, pool)
 }
 
 // markerQuerier is satisfied by both *pgxpool.Pool and pgx.Tx, so the guard

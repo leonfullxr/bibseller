@@ -12,7 +12,7 @@ DATABASE_URL ?= postgres://postgres:dev@localhost:54320/bibseller?sslmode=disabl
 GOOSE := go run github.com/pressly/goose/v3/cmd/goose@v3.27.1
 SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
-.PHONY: help infra dev migrate migrate-down sqlc sqlc-check seed \
+.PHONY: help infra dev guard-dev-db migrate migrate-down sqlc sqlc-check seed \
         test test-backend test-frontend lint lint-backend lint-frontend \
         verify smoke check-prod-env prod-up prod-build prod-down prod-logs prod-migrate prod-backup \
         staging-up staging-down staging-logs staging-migrate staging-seed \
@@ -34,10 +34,18 @@ dev: infra ## full dev loop: infra + Go API (:8080) + SvelteKit (:5173)
 	( cd frontend && npm run dev ) & \
 	wait
 
-migrate: ## apply goose migrations
+guard-dev-db: ## refuse to touch a DB not stamped as dev infrastructure (dev_marker); gates migrate
+	@# Same server-side check as `make seed` (#159), extended to the goose
+	@# targets so a stale .env on :5432 cannot roll back the live prod DB (#184).
+	@# When it fires: `make infra` stamps a compose DB; a local server must be
+	@# stamped by hand (see the seed error / #185). Prod/staging migrate via the
+	@# compose `migrate` service and CI via goose directly, so neither hits this.
+	cd backend && go run ./cmd/seed -guard-only
+
+migrate: guard-dev-db ## apply goose migrations
 	cd backend && $(GOOSE) -dir db/migrations postgres "$(DATABASE_URL)" up
 
-migrate-down: ## roll back one migration
+migrate-down: guard-dev-db ## roll back one migration
 	cd backend && $(GOOSE) -dir db/migrations postgres "$(DATABASE_URL)" down
 
 sqlc: ## regenerate type-safe query code
