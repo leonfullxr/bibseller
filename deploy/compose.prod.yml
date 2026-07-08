@@ -73,7 +73,8 @@ services:
   minio:
     # Pinned: MinIO's OSS edition is archived (no new images); :latest is stale.
     # This is the last published official release. Migration path = R2 or the
-    # pgsty/minio fork (CONTEXT D21).
+    # pgsty/minio fork (CONTEXT D21). Same tag in docker-compose.yml and both
+    # .github/workflows/ci.yml jobs (backend + smoke); bump all four together.
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     restart: unless-stopped
     logging: *default-logging
