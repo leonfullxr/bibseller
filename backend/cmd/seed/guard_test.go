@@ -35,11 +35,12 @@ func TestEnsureDevMarker(t *testing.T) {
 			t.Fatal("unstamped database accepted: ensureDevMarker = nil, want an error")
 		}
 		// The refusal must carry the copy-pasteable stamp for local/non-compose
-		// servers, byte-identical to the `make infra` stamp (#185). Spelled out
-		// literally so a drifted constant cannot hide the regression.
-		const stamp = "CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())"
-		if !strings.Contains(err.Error(), stamp) {
-			t.Errorf("refusal message is missing the stamp SQL:\n%v", err)
+		// servers, byte-identical to the `make infra` stamp (#185). Assert the
+		// exact printed line (two-space indent, no trailing punctuation) spelled
+		// out literally, so a drifted constant or reformatted message is caught.
+		const wantLine = "  CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())"
+		if !strings.Contains(err.Error(), wantLine) {
+			t.Errorf("refusal message is missing the exact stamp line:\n%v", err)
 		}
 	})
 

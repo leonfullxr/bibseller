@@ -5,7 +5,7 @@
 #
 # Usage: make smoke   (requires Postgres reachable; `make infra` or local PG)
 #        A local (non-compose) PG must be stamped once as dev infrastructure:
-#        CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now());
+#        CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())
 set -u
 
 API=http://localhost:8080

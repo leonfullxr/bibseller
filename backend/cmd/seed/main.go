@@ -73,10 +73,12 @@ func ensureDevMarker(ctx context.Context, db markerQuerier) error {
 		return err
 	}
 	if !stamped {
+		// One canonical stamp, no trailing punctuation, byte-identical to the
+		// Makefile stamp - run it with `psql -c` (the same form make infra uses).
 		return fmt.Errorf("target database has no dev_marker stamp - refusing to wipe it.\n"+
 			"compose dev DB: run `make infra` (it stamps the marker).\n"+
 			"local/non-compose dev DB: run against it:\n"+
-			"  %s;", devMarkerStampSQL)
+			"  %s", devMarkerStampSQL)
 	}
 	return nil
 }
