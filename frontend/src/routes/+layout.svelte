@@ -11,9 +11,7 @@
 		type I18n
 	} from '$lib/i18n';
 	// Self-hosted fonts (fontsource -> vite-bundled woff2, same-origin so the
-	// strict CSP needs no font-src). Fraunces (variable) is the journal's
-	// display serif; Barlow stays the body workhorse.
-	import '@fontsource-variable/fraunces/index.css';
+	// strict CSP needs no font-src). One face: Barlow.
 	import '@fontsource/barlow/400.css';
 	import '@fontsource/barlow/500.css';
 	import '@fontsource/barlow/600.css';
@@ -196,10 +194,14 @@
 		}
 	}
 
-	/* Masthead: ivory with a single hairline rule - a journal, not a toolbar. */
+	/* App bar: white, sticky, quietly elevated. */
 	header {
-		background: var(--paper);
-		border-bottom: 1px solid var(--ink);
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		background: white;
+		border-bottom: 1px solid var(--slate-200);
+		box-shadow: 0 1px 2px rgb(23 26 32 / 0.04);
 	}
 
 	.bar {
@@ -219,17 +221,15 @@
 	}
 
 	.brand {
-		font-family: var(--font-display);
-		font-size: 1.625rem;
+		font-size: 1.375rem;
 		line-height: 1.75rem;
-		font-weight: 600;
-		letter-spacing: -0.01em;
+		font-weight: 800;
+		letter-spacing: -0.03em;
 		color: var(--ink);
 	}
 
 	.brand span {
 		color: var(--brand-600);
-		font-style: italic;
 	}
 
 	nav {
@@ -244,17 +244,15 @@
 
 	nav a,
 	nav button {
-		font-size: 0.75rem;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
+		font-size: 0.875rem;
+		font-weight: 500;
 		color: var(--slate-600);
 		transition: color 0.15s;
 	}
 
 	nav a:hover,
 	nav button:hover {
-		color: var(--brand-700);
+		color: var(--ink);
 	}
 
 	nav form {
@@ -365,10 +363,9 @@
 		padding: 2.5rem 1rem;
 	}
 
-	/* Colophon: a hairline rule and quiet small text. */
 	footer {
-		border-top: 1px solid var(--ink);
-		background: var(--paper);
+		border-top: 1px solid var(--slate-200);
+		background: white;
 		color: var(--slate-500);
 		margin-top: 2rem;
 	}
