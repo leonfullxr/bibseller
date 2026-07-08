@@ -14,7 +14,7 @@ SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
 .PHONY: help infra dev guard-dev-db migrate migrate-down sqlc sqlc-check seed \
         test test-backend test-frontend lint lint-backend lint-frontend \
-        verify smoke prod-up prod-down prod-logs prod-migrate prod-backup \
+        verify smoke check-prod-env prod-up prod-build prod-down prod-logs prod-migrate prod-backup \
         staging-up staging-down staging-logs staging-migrate staging-seed \
         prod-backup-offsite prod-restore-drill promote
 
@@ -84,14 +84,19 @@ smoke: ## end-to-end assertions against the seeded local stack (wipes dev data)
 # Secrets live in deploy/.env.prod (gitignored; copy from .env.prod.example).
 PROD_COMPOSE := docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml
 
-prod-up: ## build + start the self-host prod stack (needs deploy/.env.prod)
+check-prod-env: ## fail fast if deploy/.env.prod is missing or still has placeholders
 	@test -f deploy/.env.prod || { echo "ERROR: deploy/.env.prod missing (copy from deploy/.env.prod.example)"; exit 1; }
 	@if grep -qE 'replace-with|\.example' deploy/.env.prod; then \
 	  echo "ERROR: deploy/.env.prod still has placeholder values to fill:"; \
 	  grep -nE 'replace-with|\.example' deploy/.env.prod | sed -E 's/=.*/=<PLACEHOLDER>/'; \
 	  exit 1; \
 	fi
+
+prod-up: check-prod-env ## build + start the self-host prod stack (needs deploy/.env.prod)
 	$(PROD_COMPOSE) up -d --build
+
+prod-build: check-prod-env ## build prod images without starting them (mixed expand/contract deploys - docs/DEPLOYMENT.md)
+	$(PROD_COMPOSE) build
 
 prod-down: ## back up offsite if the stack is up, then stop the prod stack (volumes kept)
 	@if $(PROD_COMPOSE) ps --services --status running | grep -qx db; then \
@@ -126,7 +131,7 @@ promote: ## fast-forward production to the tested origin/main and push (run from
 	@git merge-base --is-ancestor HEAD origin/main || { echo "ERROR: production is not behind origin/main - nothing to promote, or it diverged"; exit 1; }
 	git merge --ff-only origin/main
 	git push
-	@echo "Promoted production -> $$(git rev-parse --short HEAD). Deploy with: make prod-migrate && make prod-up"
+	@echo "Promoted production -> $$(git rev-parse --short HEAD). Deploy in the order the release's migrations require: docs/DEPLOYMENT.md 'Migration ordering: expand/contract'."
 
 # --- Staging: ephemeral parallel stack on the same box (docs/DEPLOYMENT.md) --
 # The prod compose file + Caddyfile, isolated by a different compose project name
