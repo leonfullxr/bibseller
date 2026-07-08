@@ -134,43 +134,39 @@
 </p>
 
 <style>
-	/* Full-bleed ink hero with a finish-line diagonal at the bottom - the page
-	   opens like a race poster, not a web form. */
+	/* Masthead hero: a quiet ivory opening framed by a hairline below, the
+	   headline in the journal's serif with an italic bordeaux accent. */
 	.hero {
-		margin-top: -2.5rem; /* cancel main's padding so the ink meets the header */
-		margin-inline: calc(50% - 50vw);
-		padding: 4rem 1rem 6rem;
-		background: var(--ink);
-		color: var(--paper);
+		padding: 3rem 0 3.5rem;
 		text-align: center;
-		clip-path: polygon(0 0, 100% 0, 100% calc(100% - 2.75rem), 0 100%);
+		border-bottom: 1px solid var(--ink);
 	}
 
 	.hero h1 {
 		margin-inline: auto;
-		max-width: 56rem;
-		font-size: 3.25rem;
-		line-height: 0.95;
-		font-weight: 800;
-		color: white;
+		max-width: 52rem;
+		font-size: 3rem;
+		line-height: 1.05;
+		font-weight: 550;
 	}
 
 	@media (min-width: 640px) {
 		.hero h1 {
-			font-size: 5rem;
+			font-size: 4.25rem;
 		}
 	}
 
 	.hero h1 span {
-		color: var(--brand-500);
+		color: var(--brand-600);
+		font-style: italic;
 	}
 
 	.tagline {
-		margin: 1.25rem auto 0;
-		max-width: 42rem;
-		font-size: 1.125rem;
+		margin: 1.5rem auto 0;
+		max-width: 40rem;
+		font-size: 1.0625rem;
 		line-height: 1.75rem;
-		color: var(--slate-300);
+		color: var(--slate-600);
 	}
 
 	.search {
@@ -183,31 +179,29 @@
 
 	.search input {
 		width: 100%;
-		border-radius: 0.25rem;
-		border: 2px solid transparent;
+		border-radius: 0.125rem;
+		border: 1px solid var(--slate-400);
 		background: white;
 		color: var(--ink);
-		padding: 0.75rem 1rem;
+		padding: 0.6875rem 1rem;
 		font-size: 1rem;
 		line-height: 1.5rem;
 	}
 
 	/* Border swap for any focus; the global :focus-visible ring still applies
-	   for keyboard users (visible against the ink hero). */
+	   for keyboard users. */
 	.search input:focus {
-		border-color: var(--brand-500);
+		border-color: var(--brand-600);
 	}
 
 	.search button {
-		border-radius: 0.25rem;
+		border-radius: 0.125rem;
 		background: var(--brand-700);
-		padding: 0.75rem 1.5rem;
-		font-family: var(--font-display);
-		font-size: 1.125rem;
+		padding: 0.6875rem 1.5rem;
+		font-size: 0.9375rem;
 		line-height: 1.5rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
+		font-weight: 600;
+		letter-spacing: 0.01em;
 		white-space: nowrap;
 		color: white;
 		transition: background-color 0.15s;
@@ -222,12 +216,12 @@
 		display: inline-block;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
-		color: var(--brand-300);
+		color: var(--brand-700);
 		text-decoration: underline;
 	}
 
 	.browse-all:hover {
-		color: var(--brand-100);
+		color: var(--brand-800);
 	}
 
 	.api-status {
@@ -263,15 +257,15 @@
 		text-align: center;
 	}
 
-	/* Section headings share one device: condensed 800 with a short orange
-	   underline bar - start-line tape under the sign. */
+	/* Section headings share one device: the journal serif over a short
+	   hairline rule. */
 	.upcoming-title,
 	.how h2,
 	.journey h2,
 	.contact h2 {
-		font-size: 1.75rem;
-		line-height: 2.25rem;
-		font-weight: 800;
+		font-size: 1.875rem;
+		line-height: 2.375rem;
+		font-weight: 550;
 	}
 
 	.upcoming-title::after,
@@ -279,10 +273,10 @@
 	.journey h2::after {
 		content: '';
 		display: block;
-		margin: 0.5rem auto 0;
-		width: 3rem;
-		height: 0.25rem;
-		background: var(--brand-500);
+		margin: 0.75rem auto 0;
+		width: 4rem;
+		height: 1px;
+		background: var(--ink);
 	}
 
 	/* Auto-scrolling "roulette" of a few races. The list is rendered twice (the
@@ -357,26 +351,17 @@
 	.browse-btn {
 		margin-top: 1.75rem;
 		display: inline-block;
-		border-radius: 0.25rem;
-		background: var(--brand-700);
-		padding: 0.625rem 1.5rem;
-		font-family: var(--font-display);
-		font-size: 1.0625rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: white;
-		box-shadow: var(--shadow-hard-sm);
-		transition:
-			translate 0.1s,
-			box-shadow 0.1s,
-			background-color 0.15s;
+		border-radius: 0.125rem;
+		border: 1px solid var(--ink);
+		padding: 0.5625rem 1.5rem;
+		font-size: 0.9375rem;
+		font-weight: 600;
+		color: var(--ink);
+		transition: background-color 0.15s;
 	}
 
 	.browse-btn:hover {
-		background: var(--brand-800);
-		translate: 1px 1px;
-		box-shadow: 2px 2px 0 var(--ink);
+		background: var(--paper-2);
 	}
 
 	/* How it works: icon cards joined by arrows that scale with the viewport. */
@@ -403,7 +388,7 @@
 		left: 1.25rem;
 		top: 1rem;
 		bottom: 1rem;
-		width: 3px;
+		width: 1px;
 		background: var(--ink);
 	}
 
@@ -421,24 +406,24 @@
 		width: 2.5rem;
 		height: 2.5rem;
 		border-radius: 9999px;
-		background: var(--brand-500);
-		border: 3px solid var(--ink);
+		background: var(--paper);
+		border: 1px solid var(--ink);
 		color: var(--ink);
 		font-family: var(--font-display);
 		font-size: 1.25rem;
-		font-weight: 800;
+		font-weight: 550;
 	}
 
-	/* The last checkpoint is the finish: checkered flag, no number. */
+	/* The last checkpoint is the finish: a filled bordeaux full stop. */
 	.marker.finish {
-		border-radius: 0.25rem;
-		background: repeating-conic-gradient(var(--ink) 0% 25%, white 0% 50%) 50% / 0.625rem 0.625rem;
+		background: var(--brand-700);
+		border-color: var(--brand-700);
 	}
 
 	.checkpoint h3 {
 		font-size: 1.375rem;
-		line-height: 1.625rem;
-		font-weight: 800;
+		line-height: 1.75rem;
+		font-weight: 600;
 	}
 
 	.checkpoint p {
@@ -462,7 +447,7 @@
 			top: 1.25rem;
 			bottom: auto;
 			width: auto;
-			height: 3px;
+			height: 1px;
 		}
 
 		.checkpoint {
@@ -498,18 +483,17 @@
 		color: var(--slate-600);
 	}
 
-	/* The timing board: an ink leaderboard. Each row is lane-coded - an
-	   accent edge, a tinted wash, and a lane-colored position number - so the
-	   seller/buyer alternation reads at a glance. */
+	/* The ledger: a white plate with hairline rows; serif folio numbers in
+	   bordeaux for the seller's moves, charcoal for the buyer's. */
 	.board {
 		list-style: none;
 		margin: 2rem auto 0;
 		padding: 0;
-		max-width: 46rem;
-		background: var(--ink);
-		border-radius: 0.75rem;
-		box-shadow: var(--shadow-hard);
-		overflow: hidden;
+		max-width: 44rem;
+		background: white;
+		border: 1px solid var(--slate-200);
+		border-radius: 0.25rem;
+		box-shadow: var(--shadow-hard-sm);
 		text-align: left;
 	}
 
@@ -519,79 +503,64 @@
 		align-items: center;
 		gap: 0.5rem 1rem;
 		padding: 1.125rem 1.5rem;
-		color: white;
+		color: var(--ink);
 	}
 
 	.row + .row {
-		border-top: 1px solid var(--ink-2);
-	}
-
-	.row.seller {
-		box-shadow: inset 0.25rem 0 0 var(--brand-500);
-		background: rgb(249 115 22 / 0.07);
-	}
-
-	.row.buyer {
-		box-shadow: inset 0.25rem 0 0 var(--sky-200);
-		background: rgb(186 230 253 / 0.05);
+		border-top: 1px solid var(--slate-200);
 	}
 
 	.row-n {
 		min-width: 2.5ch;
 		font-family: var(--font-display);
-		font-size: 1.75rem;
+		font-size: 1.5rem;
 		line-height: 1.75rem;
-		font-weight: 800;
+		font-weight: 550;
 	}
 
 	.row.seller .row-n {
-		color: var(--brand-500);
+		color: var(--brand-600);
 	}
 
 	.row.buyer .row-n {
-		color: var(--sky-200);
+		color: var(--slate-400);
 	}
 
 	.row-icon {
 		display: grid;
 		place-items: center;
-		width: 2.75rem;
-		height: 2.75rem;
+		width: 2.5rem;
+		height: 2.5rem;
 		flex-shrink: 0;
 		border-radius: 9999px;
-		background: var(--ink-2);
-		font-size: 1.375rem;
-		color: var(--slate-300);
+		background: var(--paper-2);
+		font-size: 1.25rem;
+		color: var(--slate-600);
 	}
 
 	.row-label {
 		flex: 1;
 		min-width: 0;
-		font-size: 1.125rem;
+		font-size: 1.0625rem;
 		line-height: 1.5rem;
-		font-weight: 600;
+		font-weight: 500;
 	}
 
 	.row-who {
 		flex-shrink: 0;
-		border-radius: 9999px;
-		padding: 0.1875rem 0.75rem;
-		font-family: var(--font-display);
-		font-size: 0.875rem;
+		font-size: 0.6875rem;
 		line-height: 1.25rem;
 		font-weight: 700;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 	}
 
 	.row-who.seller {
-		background: var(--brand-500);
-		color: var(--ink);
+		color: var(--brand-700);
 	}
 
 	.row-who.buyer {
-		background: var(--sky-200);
-		color: var(--ink);
+		color: var(--slate-500);
 	}
 
 	.modes {
@@ -607,16 +576,17 @@
 	}
 
 	.mode {
-		border-radius: 0.5rem;
+		border-radius: 0.25rem;
 		border: 1px solid var(--slate-200);
-		border-top: 4px solid var(--brand-500);
+		border-top: 2px solid var(--ink);
 		background: white;
 		padding: 1.25rem;
+		box-shadow: var(--shadow-hard-sm);
 	}
 
 	.mode h2 {
 		font-size: 1.25rem;
-		font-weight: 700;
+		font-weight: 600;
 	}
 
 	.mode p {
@@ -626,18 +596,14 @@
 		color: var(--slate-600);
 	}
 
-	/* The closing block answers the hero: an orange slab with an ink button. */
+	/* The closing note: a mat panel with a bordeaux invitation. */
 	.contact {
 		margin-top: 1rem;
-		border-radius: 0.75rem;
-		background: var(--brand-700);
+		border-radius: 0.25rem;
+		border: 1px solid var(--slate-200);
+		background: var(--paper-2);
 		padding: 2.5rem 1.5rem;
 		text-align: center;
-		color: white;
-	}
-
-	.contact h2 {
-		color: white;
 	}
 
 	.contact-lead {
@@ -645,26 +611,23 @@
 		max-width: 32rem;
 		font-size: 0.95rem;
 		line-height: 1.5rem;
-		color: var(--brand-100);
+		color: var(--slate-600);
 	}
 
 	.contact-cta {
 		margin-top: 1.25rem;
 		display: inline-block;
-		border-radius: 0.25rem;
-		background: var(--ink);
-		padding: 0.625rem 1.5rem;
-		font-family: var(--font-display);
-		font-size: 1.0625rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
+		border-radius: 0.125rem;
+		background: var(--brand-700);
+		padding: 0.5625rem 1.5rem;
+		font-size: 0.9375rem;
+		font-weight: 600;
 		color: white;
 		transition: background-color 0.15s;
 	}
 
 	.contact-cta:hover {
-		background: var(--ink-2);
+		background: var(--brand-800);
 	}
 
 	.construction {

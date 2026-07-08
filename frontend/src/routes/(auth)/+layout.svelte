@@ -13,8 +13,6 @@
 	.panel {
 		margin-inline: auto;
 		max-width: 24rem;
-		border: 2px solid var(--ink);
-		box-shadow: var(--shadow-hard);
 	}
 
 	/* Form styling shared by every auth page. :global so the child page's own

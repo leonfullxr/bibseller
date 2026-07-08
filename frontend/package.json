@@ -35,6 +35,7 @@
 		"vitest": "^4.1.9"
 	},
 	"dependencies": {
+		"@fontsource-variable/fraunces": "5.2.9",
 		"@fontsource/barlow": "5.2.8",
 		"@fontsource/barlow-condensed": "5.2.8"
 	}

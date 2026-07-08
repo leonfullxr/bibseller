@@ -1,28 +1,30 @@
 /* Global reset + design tokens. Everything else is scoped per component.
 
-   Race-day design language: warm paper surfaces, deep ink, start-gun orange
-   for every primary action, hard offset shadows (poster print, not soft UI),
-   condensed uppercase display type. Green stays reserved for its semantic
-   job (resale allowed / success); it is no longer the brand color. */
+   EXPLORATION BRANCH - "The Runner's Journal": a calm editorial alternative
+   to the race-day system (docs/DESIGN.md). Ivory paper, warm charcoal ink,
+   bordeaux as the only action color, Fraunces serif display, hairline rules
+   and soft plate shadows instead of ink blocks and poster offsets. Token
+   NAMES are unchanged so every page restyles through the variables; the
+   brand-* ramp holds bordeaux here, not orange. Semantic tones (emerald /
+   sky / amber / slate) keep their exact meanings in both designs. */
 
 :root {
 	/* Core surfaces & ink. */
-	--paper: #faf6ef; /* page background - warm paper */
-	--paper-2: #f3ede1; /* tinted wells (chat canvas, hero panels) */
-	--ink: #171c26; /* near-black ink: text, blocks, hard shadows */
-	--ink-2: #2a3140; /* secondary ink / hover on ink blocks */
+	--paper: #f7f3ea; /* page background - ivory */
+	--paper-2: #efe9db; /* mat tints (chat canvas, wells) */
+	--ink: #26221c; /* warm charcoal: text, rules */
+	--ink-2: #3d372e; /* secondary ink */
 
-	/* Brand: start-gun orange (Tailwind orange ramp). */
-	--brand-50: #fff7ed;
-	--brand-100: #ffedd5;
-	--brand-300: #fdba74;
-	--brand-500: #f97316;
-	--brand-600: #ea580c;
-	--brand-700: #c2410c;
-	--brand-800: #9a3412;
+	/* Brand: bordeaux. White text needs brand-600 or deeper (7:1+). */
+	--brand-50: #faf1f2;
+	--brand-100: #f4e0e4;
+	--brand-300: #d9a2ac;
+	--brand-500: #a83b50;
+	--brand-600: #93283b;
+	--brand-700: #7a1f31;
+	--brand-800: #611926;
 
-	/* Neutrals: historical slate-* names, retuned to warm stone values so
-	   every page shifts warm without touching its scoped styles. */
+	/* Neutrals: historical slate-* names, warm stone values. */
 	--slate-50: #faf9f7;
 	--slate-100: #f3f1ee;
 	--slate-200: #e7e4df;
@@ -33,7 +35,7 @@
 	--slate-700: #44403a;
 	--slate-900: #1c1a17;
 
-	/* Semantic greens (resale allowed / success) - no longer the brand. */
+	/* Semantic greens (resale allowed / success). */
 	--emerald-50: #ecfdf5;
 	--emerald-100: #d1fae5;
 	--emerald-200: #a7f3d0;
@@ -59,16 +61,17 @@
 	--amber-800: #92400e;
 	--amber-900: #78350f;
 
-	/* Type: Barlow Condensed is the race voice (display), Barlow the body.
-	   Self-hosted via fontsource imports in +layout.svelte (strict CSP). */
+	/* Type: Fraunces carries the display voice; Barlow stays the workhorse.
+	   Self-hosted fontsource imports in +layout.svelte (strict CSP). */
 	--font-body:
 		'Barlow', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
 		sans-serif;
-	--font-display: 'Barlow Condensed', var(--font-body);
+	--font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
 
-	/* Poster shadows: hard offsets, no blur. */
-	--shadow-hard: 4px 4px 0 var(--ink);
-	--shadow-hard-sm: 3px 3px 0 var(--ink);
+	/* Plate shadows: soft and photographic, not poster offsets. The names
+	   stay so components restyle through the variables. */
+	--shadow-hard: 0 1px 2px rgb(38 34 28 / 0.05), 0 10px 28px rgb(38 34 28 / 0.08);
+	--shadow-hard-sm: 0 1px 2px rgb(38 34 28 / 0.05), 0 4px 14px rgb(38 34 28 / 0.07);
 }
 
 *,
@@ -85,12 +88,10 @@
 }
 
 html {
-	/* Full-bleed blocks use 50vw negative margins; vw includes the scrollbar
-	   width, so clip the few overflow pixels instead of showing an h-scroll. */
+	/* Full-bleed sections use 50vw negative margins; clip the scrollbar-width
+	   overflow instead of showing an h-scroll. */
 	overflow-x: clip;
 	font-family: var(--font-body);
-	/* Prices, dates, and counts line up everywhere; this is data-heavy UI,
-	   not prose. */
 	font-variant-numeric: tabular-nums;
 	line-height: 1.5;
 	-webkit-text-size-adjust: 100%;
@@ -98,15 +99,13 @@ html {
 	color: var(--ink);
 }
 
-/* Headings speak in the display face, uppercase - race signage. Condensed
-   at heavy weights needs a hair of tracking to breathe. text-wrap: balance
-   is a progressive nicety. */
+/* Headings speak in the serif display face, sentence case - a journal, not
+   signage. Fraunces sits best a touch tight. */
 h1,
 h2,
 h3 {
 	font-family: var(--font-display);
-	letter-spacing: 0.015em;
-	text-transform: uppercase;
+	letter-spacing: -0.01em;
 	text-wrap: balance;
 }
 
@@ -147,20 +146,18 @@ code {
    deliberately closed (issue #147); pages add scoped margins/overrides only. */
 .btn {
 	display: inline-block;
-	border-radius: 0.25rem;
-	padding: 0.5625rem 1.25rem;
-	font-family: var(--font-display);
-	font-size: 1rem;
+	border-radius: 0.125rem;
+	padding: 0.5625rem 1.375rem;
+	font-size: 0.9375rem;
 	line-height: 1.25rem;
-	font-weight: 700;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	font-weight: 600;
+	letter-spacing: 0.01em;
 	text-align: center;
 	color: white;
 	transition:
-		translate 0.1s,
-		box-shadow 0.1s,
-		background-color 0.15s;
+		background-color 0.15s,
+		color 0.15s,
+		border-color 0.15s;
 }
 
 .btn:disabled {
@@ -170,36 +167,25 @@ code {
 
 .btn-primary {
 	background: var(--brand-700);
-	box-shadow: var(--shadow-hard-sm);
 }
 
 .btn-primary:hover:not(:disabled) {
 	background: var(--brand-800);
-	translate: 1px 1px;
-	box-shadow: 2px 2px 0 var(--ink);
-}
-
-.btn-primary:active:not(:disabled) {
-	translate: 3px 3px;
-	box-shadow: 0 0 0 var(--ink);
 }
 
 .btn-outline {
-	border: 2px solid var(--ink);
-	background: white;
+	border: 1px solid var(--ink);
+	background: transparent;
 	color: var(--ink);
-	box-shadow: var(--shadow-hard-sm);
 }
 
 .btn-outline:hover:not(:disabled) {
-	background: var(--slate-100);
-	translate: 1px 1px;
-	box-shadow: 2px 2px 0 var(--ink);
+	background: var(--paper-2);
 }
 
 .field {
-	border-radius: 0.25rem;
-	border: 1.5px solid var(--slate-400);
+	border-radius: 0.125rem;
+	border: 1px solid var(--slate-400);
 	background: white;
 	padding: 0.5rem 0.75rem;
 	font-size: 0.875rem;
@@ -207,20 +193,22 @@ code {
 }
 
 .field:focus {
-	border-color: var(--ink);
+	border-color: var(--brand-600);
 }
 
+/* Plates: white on ivory with a hairline frame and a soft shadow. */
 .panel {
-	border-radius: 0.5rem;
+	border-radius: 0.25rem;
 	border: 1px solid var(--slate-200);
 	background: white;
 	padding: 1.5rem;
+	box-shadow: var(--shadow-hard-sm);
 }
 
 .alert {
-	border-radius: 0.25rem;
+	border-radius: 0.125rem;
 	border: 1px solid var(--amber-300);
-	border-left: 4px solid var(--amber-500);
+	border-left: 2px solid var(--amber-700);
 	background: var(--amber-50);
 	padding: 0.5rem 0.75rem;
 	font-size: 0.875rem;
@@ -241,8 +229,8 @@ code {
 
 /* Dashed-box empty state (from the race catalog). */
 .empty {
-	border-radius: 0.5rem;
-	border: 2px dashed var(--slate-300);
+	border-radius: 0.25rem;
+	border: 1px dashed var(--slate-400);
 	padding: 2.5rem;
 	text-align: center;
 	font-weight: 500;
