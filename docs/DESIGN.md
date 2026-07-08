@@ -42,6 +42,13 @@ serif display face and one deep accent color, never from blocks or shadows.
 - Buttons: body face, sentence case, weight 600, near-square radius;
   `.btn-primary` = `brand-700`, hover `brand-800`.
 - Section headings sit over a short 1px hairline (the shared device).
+- Home devices: the how-it-works course ends in a checkered roundel (the one
+  race artifact kept from D27); the buyer/seller journey is the "duet" -
+  paired SELLER/BUYER columns whose lane colors are bordeaux (seller) and
+  sky-700 (buyer), numerals and left edges matching; below 40rem it stacks
+  1-6 with a lane eyebrow per card.
+- Header actions (log out, language) are small bordered chips at nav type
+  size - actions get frames, links stay bare.
 - Motion budget: 150ms color transitions only.
 - Keep `overflow-x: clip` on html; never suppress focus outlines
   (`brand-600` ring); the four-policy-mode question applies to anything
