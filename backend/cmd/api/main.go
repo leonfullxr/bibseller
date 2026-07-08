@@ -42,6 +42,9 @@ func run() error {
 	logger := newLogger(cfg)
 	slog.SetDefault(logger)
 
+	// Once, before serving (see SetTrustProxyHeader's contract).
+	httpx.SetTrustProxyHeader(cfg.TrustProxyHeader)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
