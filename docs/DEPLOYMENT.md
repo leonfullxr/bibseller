@@ -206,6 +206,7 @@ deploy:
 | `S3_ENDPOINT` | `http://minio:9000`, or the R2 / Scaleway endpoint |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | object-storage credentials |
 | `S3_BUCKET` | `bibseller` |
+| `TRUST_PROXY_HEADER` | `1` - trust `CF-Connecting-IP` for rate-limit keys and session audit (#182). Only safe when every request traverses the Cloudflare edge (true here: no published api port). Unset/other keys on `RemoteAddr` |
 
 ### Postgres
 
