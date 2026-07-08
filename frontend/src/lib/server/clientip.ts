@@ -6,9 +6,11 @@
  * CF-Connecting-IP intact, but form actions hop through this server
  * (browser -> caddy -> web -> api); without forwarding, the API keys its
  * per-IP rate limits and sessions.ip audit on the web container's address -
- * one shared budget for every user (#133). Deliberately used only by the
- * throttled auth actions (login, register, forgot, reset, verify/resend);
- * catalog loads are unmetered and don't need it.
+ * one shared budget for every user (#133). Used by every form action that
+ * POSTs to a rate-limited endpoint: the throttled auth actions (login,
+ * register, forgot, reset, verify/resend) and the listing contact action
+ * (thread-start messages hit the chat send limiter). Unmetered calls
+ * (catalog loads, the ack POST) don't need it.
  *
  * Trust: the inbound value was set by Cloudflare at the edge (D20), and both
  * hops (caddy -> web, web -> api) run on the private compose network, so it

@@ -73,7 +73,8 @@ services:
   minio:
     # Pinned: MinIO's OSS edition is archived (no new images); :latest is stale.
     # This is the last published official release. Migration path = R2 or the
-    # pgsty/minio fork (CONTEXT D21).
+    # pgsty/minio fork (CONTEXT D21). Same tag in docker-compose.yml and both
+    # .github/workflows/ci.yml jobs (backend + smoke); bump all four together.
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     restart: unless-stopped
     logging: *default-logging
@@ -111,6 +112,10 @@ services:
       SMTP_ADDR: mail:25
       EMAIL_FROM: ${EMAIL_FROM}
       APP_URL: ${PUBLIC_ORIGIN}
+      # Every request reaches the api through Cloudflare (no published api
+      # port; see the SECURITY note in internal/platform/httpx/clientip.go),
+      # so CF-Connecting-IP is edge-set and safe to trust (#182).
+      TRUST_PROXY_HEADER: '1'
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
