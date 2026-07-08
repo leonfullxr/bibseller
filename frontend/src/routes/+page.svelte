@@ -503,9 +503,16 @@
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		text-align: center;
-		color: var(--slate-500);
 		border-bottom: 1px solid var(--ink);
 		padding-bottom: 0.375rem;
+	}
+
+	.col-head:first-child {
+		color: var(--brand-700);
+	}
+
+	.col-head:nth-child(2) {
+		color: var(--sky-700);
 	}
 
 	.move {
@@ -524,7 +531,7 @@
 	}
 
 	.move.buyer {
-		border-left: 2px solid var(--slate-400);
+		border-left: 2px solid var(--sky-600);
 	}
 
 	.move-n {
@@ -537,7 +544,7 @@
 	}
 
 	.move.buyer .move-n {
-		color: var(--slate-400);
+		color: var(--sky-700);
 	}
 
 	.move-icon {

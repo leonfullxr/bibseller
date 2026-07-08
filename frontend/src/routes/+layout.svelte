@@ -266,12 +266,16 @@
 		font: inherit;
 	}
 
-	/* The two actions (log out, language) are chips, not nav links. */
+	/* The two actions (log out, language) are chips, not nav links - same
+	   type as the nav, just framed. */
 	nav form button {
 		border: 1px solid var(--slate-300);
 		border-radius: 9999px;
 		background: white;
-		padding: 0.25rem 0.75rem;
+		padding: 0.125rem 0.625rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 500;
 		transition:
 			border-color 0.15s,
 			color 0.15s;
