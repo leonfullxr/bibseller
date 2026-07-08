@@ -54,6 +54,12 @@ type markerQuerier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
+// devMarkerStampSQL is the copy-pasteable escape hatch for a local
+// (non-compose) dev server, where `make infra` cannot help - its stamp runs
+// inside the compose container (#185). Keep it byte-identical to the
+// `make infra` stamp in the Makefile so the two paths stay interchangeable.
+const devMarkerStampSQL = "CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())"
+
 // ensureDevMarker refuses to wipe any database that is not provably dev
 // infrastructure (#159). The ENV check above cannot catch the real accident -
 // a host shell has no ENV set - so the guard checks the SERVER: `make infra`
@@ -67,8 +73,12 @@ func ensureDevMarker(ctx context.Context, db markerQuerier) error {
 		return err
 	}
 	if !stamped {
-		return fmt.Errorf("target database has no dev_marker stamp - refusing to wipe it; " +
-			"if this really is dev infrastructure, run `make infra` (it stamps the marker)")
+		// One canonical stamp, no trailing punctuation, byte-identical to the
+		// Makefile stamp - run it with `psql -c` (the same form make infra uses).
+		return fmt.Errorf("target database has no dev_marker stamp - refusing to wipe it.\n"+
+			"compose dev DB: run `make infra` (it stamps the marker).\n"+
+			"local/non-compose dev DB: run against it:\n"+
+			"  %s", devMarkerStampSQL)
 	}
 	return nil
 }
