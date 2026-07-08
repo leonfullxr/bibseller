@@ -286,6 +286,7 @@
 		display: flex;
 		gap: 0.5rem;
 		overflow-x: auto;
+		scrollbar-width: none; /* pills scroll by touch/wheel; the bar is noise */
 		padding-bottom: 0.375rem; /* room so the h-scrollbar never overlaps the pills */
 	}
 
