@@ -60,14 +60,33 @@ func TestEnsureDevMarkerIsReadOnly(t *testing.T) {
 	if _, err := tx.Exec(ctx, `CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())`); err != nil {
 		t.Fatalf("stamp: %v", err)
 	}
+	// Seed a row so the assertion is "row count unchanged", not "empty" - the
+	// latter would pass even if the marker table legitimately held rows.
+	if _, err := tx.Exec(ctx, `INSERT INTO dev_marker DEFAULT VALUES`); err != nil {
+		t.Fatalf("seed row: %v", err)
+	}
+	countRows := func() int {
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM dev_marker`).Scan(&n); err != nil {
+			t.Fatalf("count: %v", err)
+		}
+		return n
+	}
+	before := countRows()
 	if err := ensureDevMarker(ctx, tx); err != nil {
 		t.Fatalf("stamped database refused: %v", err)
 	}
-	var rows int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM dev_marker`).Scan(&rows); err != nil {
-		t.Fatalf("count: %v", err)
+	if after := countRows(); after != before {
+		t.Errorf("ensureDevMarker mutated the target: dev_marker rows %d -> %d, want unchanged", before, after)
 	}
-	if rows != 0 {
-		t.Errorf("ensureDevMarker wrote to the target: dev_marker rows = %d, want 0", rows)
+}
+
+// The -guard-only path (make guard-dev-db) must fail closed: if it cannot
+// reach and verify the target, migrate/migrate-down must abort rather than run
+// blind. An unreachable DB is the cheap, deterministic proxy for "cannot
+// verify" (#184).
+func TestRunGuardOnlyFailsClosed(t *testing.T) {
+	if err := runGuardOnly("postgres://nope:nope@127.0.0.1:1/nope?sslmode=disable"); err == nil {
+		t.Error("runGuardOnly against an unreachable DB = nil, want an error so migrate aborts")
 	}
 }

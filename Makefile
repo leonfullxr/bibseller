@@ -37,9 +37,9 @@ dev: infra ## full dev loop: infra + Go API (:8080) + SvelteKit (:5173)
 guard-dev-db: ## refuse to touch a DB not stamped as dev infrastructure (dev_marker); gates migrate
 	@# Same server-side check as `make seed` (#159), extended to the goose
 	@# targets so a stale .env on :5432 cannot roll back the live prod DB (#184).
-	@# When it fires: `make infra` stamps a compose DB; for a local server run
-	@# the CREATE TABLE the error prints. Prod/staging migrate via the compose
-	@# `migrate` service and CI via goose directly, so neither hits this target.
+	@# When it fires: `make infra` stamps a compose DB; a local server must be
+	@# stamped by hand (see the seed error / #185). Prod/staging migrate via the
+	@# compose `migrate` service and CI via goose directly, so neither hits this.
 	cd backend && go run ./cmd/seed -guard-only
 
 migrate: guard-dev-db ## apply goose migrations
