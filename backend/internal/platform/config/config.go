@@ -23,6 +23,12 @@ type Config struct {
 	S3AccessKey string
 	S3SecretKey string
 	S3Bucket    string
+
+	// TrustProxyHeader: trust CF-Connecting-IP as the client address (#182).
+	// Set "1" only where every request provably traverses the Cloudflare edge
+	// (the prod compose stack); default off keys rate limits and session audit
+	// on the unforgeable RemoteAddr.
+	TrustProxyHeader bool
 }
 
 func Load() Config {
@@ -39,6 +45,8 @@ func Load() Config {
 		S3AccessKey: cmp.Or(os.Getenv("S3_ACCESS_KEY"), "minioadmin"),
 		S3SecretKey: cmp.Or(os.Getenv("S3_SECRET_KEY"), "minioadmin"),
 		S3Bucket:    cmp.Or(os.Getenv("S3_BUCKET"), "bibseller-dev"),
+
+		TrustProxyHeader: os.Getenv("TRUST_PROXY_HEADER") == "1",
 	}
 }
 
