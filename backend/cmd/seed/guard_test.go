@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/leonfullxr/bibseller/backend/internal/platform/db/testdb"
@@ -31,7 +32,14 @@ func TestEnsureDevMarker(t *testing.T) {
 
 	inTx(t, `DROP TABLE IF EXISTS dev_marker`, func(err error) {
 		if err == nil {
-			t.Error("unstamped database accepted: ensureDevMarker = nil, want an error")
+			t.Fatal("unstamped database accepted: ensureDevMarker = nil, want an error")
+		}
+		// The refusal must carry the copy-pasteable stamp for local/non-compose
+		// servers, byte-identical to the `make infra` stamp (#185). Spelled out
+		// literally so a drifted constant cannot hide the regression.
+		const stamp = "CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())"
+		if !strings.Contains(err.Error(), stamp) {
+			t.Errorf("refusal message is missing the stamp SQL:\n%v", err)
 		}
 	})
 
