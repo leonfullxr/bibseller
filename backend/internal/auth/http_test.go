@@ -83,9 +83,21 @@ func register(t *testing.T, h http.Handler, pool *pgxpool.Pool, password string)
 	return resp
 }
 
-// Behind the prod proxy chain RemoteAddr is Caddy's address; the sessions.ip
-// audit column must record the Cloudflare-provided client address (#133).
+// trustProxyHeader enables CF-Connecting-IP trust for one test, restoring the
+// default-off state afterwards (#182). This external test package has its own
+// copy (the internal-package helper in ratelimit_test.go is not visible here).
+// Callers must not use t.Parallel: the switch is package-global.
+func trustProxyHeader(t *testing.T) {
+	t.Helper()
+	httpx.SetTrustProxyHeader(true)
+	t.Cleanup(func() { httpx.SetTrustProxyHeader(false) })
+}
+
+// Behind the prod proxy chain RemoteAddr is Caddy's address; with header
+// trust enabled the sessions.ip audit column must record the
+// Cloudflare-provided client address (#133).
 func TestSessionRecordsHeaderClientIP(t *testing.T) {
+	trustProxyHeader(t)
 	pool := testdb.Pool(t)
 	h := handler(pool)
 

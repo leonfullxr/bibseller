@@ -6,6 +6,14 @@ import (
 	"testing"
 )
 
+// trustHeader enables CF-Connecting-IP trust for one test, restoring the
+// default-off state afterwards (#182).
+func trustHeader(t *testing.T) {
+	t.Helper()
+	SetTrustProxyHeader(true)
+	t.Cleanup(func() { SetTrustProxyHeader(false) })
+}
+
 func TestClientIP(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.RemoteAddr = "10.0.0.5:1234"
@@ -13,13 +21,20 @@ func TestClientIP(t *testing.T) {
 		t.Errorf("header absent: ClientIP = %q, want %q", got, "10.0.0.5")
 	}
 
+	// Default: no trust, the client-forgeable header is ignored (#182).
 	r.Header.Set("CF-Connecting-IP", "203.0.113.7")
+	if got := ClientIP(r); got != "10.0.0.5" {
+		t.Errorf("header present without trust: ClientIP = %q, want %q", got, "10.0.0.5")
+	}
+
+	trustHeader(t)
 	if got := ClientIP(r); got != "203.0.113.7" {
-		t.Errorf("header present: ClientIP = %q, want %q", got, "203.0.113.7")
+		t.Errorf("header present with trust: ClientIP = %q, want %q", got, "203.0.113.7")
 	}
 }
 
 func TestClientIPKey(t *testing.T) {
+	trustHeader(t)
 	key := func(ip string) string {
 		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		r.RemoteAddr = "10.0.0.5:1234"
