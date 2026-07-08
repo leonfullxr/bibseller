@@ -41,3 +41,33 @@ func TestEnsureDevMarker(t *testing.T) {
 		}
 	})
 }
+
+// The -guard-only path (make guard-dev-db) gates migrate/migrate-down (#184),
+// so the check itself must never write: it runs before goose against a target
+// that might be prod. Prove ensureDevMarker leaves the marker table's rows
+// untouched (it only reads via to_regclass). Rolled back, so the shared test
+// DB is never mutated.
+func TestEnsureDevMarkerIsReadOnly(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `CREATE TABLE IF NOT EXISTS dev_marker (stamped_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+		t.Fatalf("stamp: %v", err)
+	}
+	if err := ensureDevMarker(ctx, tx); err != nil {
+		t.Fatalf("stamped database refused: %v", err)
+	}
+	var rows int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM dev_marker`).Scan(&rows); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if rows != 0 {
+		t.Errorf("ensureDevMarker wrote to the target: dev_marker rows = %d, want 0", rows)
+	}
+}

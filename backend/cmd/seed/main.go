@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -19,7 +20,29 @@ import (
 )
 
 func main() {
+	// -guard-only runs the SERVER-side dev_marker check and exits without
+	// touching data, so `make migrate`/`migrate-down` can refuse a non-dev
+	// target (a stale .env pointing at prod) the same way seed does (#184).
+	guardOnly := flag.Bool("guard-only", false,
+		"verify the target DB is dev infrastructure (dev_marker), then exit without seeding")
+	flag.Parse()
+
 	cfg := config.Load()
+
+	if *guardOnly {
+		// No ENV/IsDev gate here: the guard's whole point is that a host shell
+		// has no ENV set (#159); it checks the SERVER, not the environment, and
+		// runs only a read (ensureDevMarker's to_regclass SELECT) - no writes.
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+		must(err)
+		defer pool.Close()
+		must(pool.Ping(ctx))
+		must(ensureDevMarker(ctx, pool))
+		return
+	}
+
 	if !cfg.IsDev() {
 		log.Fatal("seed is dev-only: refusing to run with ENV != development")
 	}
