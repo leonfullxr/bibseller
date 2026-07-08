@@ -263,10 +263,23 @@
 
 	nav button {
 		cursor: pointer;
-		border: none;
-		background: none;
-		padding: 0;
 		font: inherit;
+	}
+
+	/* The two actions (log out, language) are chips, not nav links. */
+	nav form button {
+		border: 1px solid var(--slate-300);
+		border-radius: 9999px;
+		background: white;
+		padding: 0.25rem 0.75rem;
+		transition:
+			border-color 0.15s,
+			color 0.15s;
+	}
+
+	nav form button:hover {
+		border-color: var(--ink);
+		color: var(--ink);
 	}
 
 	.unread-pill {

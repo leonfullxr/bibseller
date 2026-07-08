@@ -93,23 +93,25 @@
 	<p class="how-note">{t('home.howNote')}</p>
 </section>
 
-<!-- The six-step handover as a race timing board: ink leaderboard rows,
-     orange positions, a lane tag naming whose move it is. -->
+<!-- The six-step handover as paired columns: the seller's moves on the
+     left, the buyer's on the right, read in numbered zigzag order. -->
 <section class="journey" aria-labelledby="journey-title">
 	<h2 id="journey-title">{t('home.journeyTitle')}</h2>
 	<p class="journey-lead">{t('home.journeyLead')}</p>
-	<ol class="board">
+	<div class="duet">
+		<span class="col-head">{t('home.journeySeller')}</span>
+		<span class="col-head">{t('home.journeyBuyer')}</span>
 		{#each journey as step (step.n)}
-			<li class="row {step.who}">
-				<span class="row-n" aria-hidden="true">{String(step.n).padStart(2, '0')}</span>
-				<span class="row-icon" aria-hidden="true"><Icon name={step.icon} /></span>
-				<span class="row-label">{step.label}</span>
-				<span class="row-who {step.who}"
+			<div class="move {step.who}">
+				<span class="move-n" aria-hidden="true">{step.n}</span>
+				<span class="move-icon" aria-hidden="true"><Icon name={step.icon} /></span>
+				<span class="move-label">{step.label}</span>
+				<span class="move-who"
 					>{step.who === 'seller' ? t('home.journeySeller') : t('home.journeyBuyer')}</span
 				>
-			</li>
+			</div>
 		{/each}
-	</ol>
+	</div>
 </section>
 
 <section class="modes">
@@ -414,10 +416,9 @@
 		font-weight: 550;
 	}
 
-	/* The last checkpoint is the finish: a filled bordeaux full stop. */
+	/* The last checkpoint is the finish: the checkered flag in a roundel. */
 	.marker.finish {
-		background: var(--brand-700);
-		border-color: var(--brand-700);
+		background: repeating-conic-gradient(var(--ink) 0% 25%, white 0% 50%) 50% / 0.625rem 0.625rem;
 	}
 
 	.checkpoint h3 {
@@ -483,84 +484,106 @@
 		color: var(--slate-600);
 	}
 
-	/* The ledger: a white plate with hairline rows; serif folio numbers in
-	   bordeaux for the seller's moves, charcoal for the buyer's. */
-	.board {
-		list-style: none;
+	/* The duet: seller column left, buyer column right; auto-placement puts
+	   odd steps (seller) left and even (buyer) right, so the numbered zigzag
+	   reads spatially. Mobile stacks 1-6 with the number carrying order. */
+	.duet {
 		margin: 2rem auto 0;
-		padding: 0;
-		max-width: 44rem;
-		background: white;
-		border: 1px solid var(--slate-200);
-		border-radius: 0.25rem;
-		box-shadow: var(--shadow-hard-sm);
+		max-width: 46rem;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.875rem 1.5rem;
 		text-align: left;
 	}
 
-	.row {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.5rem 1rem;
-		padding: 1.125rem 1.5rem;
-		color: var(--ink);
-	}
-
-	.row + .row {
-		border-top: 1px solid var(--slate-200);
-	}
-
-	.row-n {
-		min-width: 2.5ch;
-		font-family: var(--font-display);
-		font-size: 1.5rem;
-		line-height: 1.75rem;
-		font-weight: 550;
-	}
-
-	.row.seller .row-n {
-		color: var(--brand-600);
-	}
-
-	.row.buyer .row-n {
-		color: var(--slate-400);
-	}
-
-	.row-icon {
-		display: grid;
-		place-items: center;
-		width: 2.5rem;
-		height: 2.5rem;
-		flex-shrink: 0;
-		border-radius: 9999px;
-		background: var(--paper-2);
-		font-size: 1.25rem;
-		color: var(--slate-600);
-	}
-
-	.row-label {
-		flex: 1;
-		min-width: 0;
-		font-size: 1.0625rem;
-		line-height: 1.5rem;
-		font-weight: 500;
-	}
-
-	.row-who {
-		flex-shrink: 0;
+	.col-head {
 		font-size: 0.6875rem;
 		line-height: 1.25rem;
 		font-weight: 700;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-	}
-
-	.row-who.seller {
-		color: var(--brand-700);
-	}
-
-	.row-who.buyer {
+		text-align: center;
 		color: var(--slate-500);
+		border-bottom: 1px solid var(--ink);
+		padding-bottom: 0.375rem;
+	}
+
+	.move {
+		display: flex;
+		align-items: center;
+		gap: 0.875rem;
+		border: 1px solid var(--slate-200);
+		border-radius: 0.25rem;
+		background: white;
+		box-shadow: var(--shadow-hard-sm);
+		padding: 1rem 1.125rem;
+	}
+
+	.move.seller {
+		border-left: 2px solid var(--brand-700);
+	}
+
+	.move.buyer {
+		border-left: 2px solid var(--slate-400);
+	}
+
+	.move-n {
+		font-family: var(--font-display);
+		font-size: 1.5rem;
+		line-height: 1.75rem;
+		font-weight: 550;
+		color: var(--brand-600);
+		min-width: 1.25ch;
+	}
+
+	.move.buyer .move-n {
+		color: var(--slate-400);
+	}
+
+	.move-icon {
+		display: grid;
+		place-items: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		flex-shrink: 0;
+		border-radius: 9999px;
+		background: var(--paper-2);
+		font-size: 1.125rem;
+		color: var(--slate-600);
+	}
+
+	.move-label {
+		min-width: 0;
+		font-size: 1rem;
+		line-height: 1.375rem;
+		font-weight: 500;
+	}
+
+	/* The columns already name the lane on wide screens. */
+	.move-who {
+		display: none;
+		margin-left: auto;
+		font-size: 0.6875rem;
+		line-height: 1.25rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--slate-500);
+	}
+
+	@media (max-width: 39.9375rem) {
+		.duet {
+			grid-template-columns: 1fr;
+		}
+
+		.col-head {
+			display: none;
+		}
+
+		/* Single column: name the lane on each card instead. */
+		.move-who {
+			display: inline;
+		}
 	}
 
 	.modes {
