@@ -23,16 +23,16 @@
 	--brand-700: #1d4ed8;
 	--brand-800: #1e40af;
 
-	/* Neutrals: historical slate-* names, warm stone values. */
-	--slate-50: #faf9f7;
-	--slate-100: #f3f1ee;
-	--slate-200: #e7e4df;
-	--slate-300: #d6d2cb;
-	--slate-400: #a8a29a;
-	--slate-500: #79736b;
-	--slate-600: #57524b;
-	--slate-700: #44403a;
-	--slate-900: #1c1a17;
+	/* Neutrals: true cool slate on this design. */
+	--slate-50: #f8fafc;
+	--slate-100: #f1f5f9;
+	--slate-200: #e2e8f0;
+	--slate-300: #cbd5e1;
+	--slate-400: #94a3b8;
+	--slate-500: #64748b;
+	--slate-600: #475569;
+	--slate-700: #334155;
+	--slate-900: #0f172a;
 
 	/* Semantic greens (resale allowed / success). */
 	--emerald-50: #ecfdf5;
@@ -60,8 +60,8 @@
 	--amber-800: #92400e;
 	--amber-900: #78350f;
 
-	/* Type: Fraunces carries the display voice; Barlow stays the workhorse.
-	   Self-hosted fontsource imports in +layout.svelte (strict CSP). */
+	/* Type: Barlow everywhere; weight carries hierarchy. Self-hosted
+	   fontsource imports in +layout.svelte (strict CSP). */
 	--font-body:
 		'Barlow', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
 		sans-serif;
@@ -196,7 +196,7 @@ code {
 	border-color: var(--brand-600);
 }
 
-/* Plates: white on ivory with a hairline frame and a soft shadow. */
+/* Cards: white on the cool ground, rounded, softly elevated. */
 .panel {
 	border-radius: 0.75rem;
 	border: 1px solid var(--slate-200);
