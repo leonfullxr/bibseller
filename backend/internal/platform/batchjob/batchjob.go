@@ -34,7 +34,16 @@ type Del func(ctx context.Context, q *sqlcgen.Queries) (int64, error)
 // except while shutting down: cancellation mid-batch surfaces as a batch
 // error on an otherwise clean shutdown, not a failure worth an operator's
 // attention (#186). Ticks that did work log at INFO under doneMsg.
+//
+// A non-positive `every` is a caller misconfiguration: rather than let
+// time.NewTicker panic, log it and decline to start (the mirror of Drain's
+// batchSize guard). All current callers pass fixed constants, so this only
+// guards future reuse.
 func Run(ctx context.Context, logger *slog.Logger, failMsg, doneMsg string, every time.Duration, tick Step) {
+	if every <= 0 {
+		logger.Error("batchjob: tick interval must be positive; job not started", "every", every)
+		return
+	}
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {

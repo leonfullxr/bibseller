@@ -76,6 +76,24 @@ func TestRunLogsRealFailure(t *testing.T) {
 	}
 }
 
+// A non-positive tick interval is a caller misconfiguration: Run must decline
+// to start (logging at ERROR) rather than let time.NewTicker panic.
+func TestRunRejectsNonPositiveInterval(t *testing.T) {
+	h := newCountHandler()
+	called := false
+	Run(context.Background(), slog.New(h), "job failed", "job ran", 0,
+		func(context.Context) (int64, bool, error) {
+			called = true
+			return 0, false, nil
+		})
+	if called {
+		t.Error("Run ran the tick with every=0, want it declined to start")
+	}
+	if got := h.count(slog.LevelError); got != 1 {
+		t.Errorf("every=0: ERROR records = %d, want 1", got)
+	}
+}
+
 // Drain refuses a non-positive batch size rather than spinning forever
 // re-acquiring the lock on a step that can never satisfy the "< a full batch"
 // exit.
