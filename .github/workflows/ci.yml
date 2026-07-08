@@ -67,15 +67,17 @@ jobs:
         # GITHUB_ENV (overriding job env): sqlc v1.31.1 needs go >= 1.26,
         # newer than go.mod's toolchain. Pinned (not auto): a brand-new point
         # release can 404 at sum.golang.org for hours before it propagates
-        # (bit us with go1.26.5 on 2026-07-07); bump deliberately.
+        # (bit us with go1.26.5 on 2026-07-07); bump deliberately. go1.26.5
+        # also fixes GO-2026-5856 (crypto/tls), which govulncheck flags below.
         env:
-          GOTOOLCHAIN: go1.26.4
+          GOTOOLCHAIN: go1.26.5
         run: make sqlc-check
       - name: govulncheck (known vulnerabilities in called code)
         # Pinned like the repo's other `go run` tools (goose/sqlc in the
-        # Makefile); bump deliberately, not @latest.
+        # Makefile); bump deliberately, not @latest. go1.26.5 carries the
+        # crypto/tls fix for GO-2026-5856 (Found in go1.26.4).
         env:
-          GOTOOLCHAIN: go1.26.4 # same setup-go@v6 + propagation note as the sqlc step
+          GOTOOLCHAIN: go1.26.5 # same setup-go@v6 + propagation note as the sqlc step
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.5.0 ./...
 
   frontend:
