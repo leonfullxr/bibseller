@@ -45,6 +45,8 @@
 		transferPolicies.map((value) => ({ value, label: t(`policy.label.${value}`) }))
 	);
 
+	const hasMap = $derived(Object.keys(data.countryCounts).length > 0);
+
 	// Active filters as removable chips; each chip links to the same URL minus
 	// its own param (and minus the cursor - removing a filter restarts paging).
 	const chips = $derived.by(() => {
@@ -93,12 +95,12 @@
 		}
 	}
 
-	// SSR renders the filters open so no-JS readers always see them (and the
-	// summary toggle is hidden on wide screens, where the rail is permanent).
-	// On mount, small screens collapse to the summary toggle.
-	let filtersOpen = $state(true);
+	// SSR renders the map open so no-JS readers always see it (the summary
+	// toggle is hidden from 48rem up, where the map pane is permanent). On
+	// mount, small screens collapse it to the summary toggle.
+	let mapOpen = $state(true);
 	onMount(() => {
-		if (!matchMedia('(min-width: 48rem)').matches) filtersOpen = false;
+		if (!matchMedia('(min-width: 48rem)').matches) mapOpen = false;
 	});
 
 	const nextQuery = $derived.by(() => {
@@ -116,11 +118,29 @@
 
 <h1>{t('races.heading')}</h1>
 
-<div class="layout">
-	<details class="frail" bind:open={filtersOpen}>
-		<summary>{t('races.filtersSummary')}</summary>
-		<form method="GET" action={link(resolve('/races'))} class="filters" onchange={autoSubmit}>
-			<label>
+<div class="layout" class:has-map={hasMap}>
+	{#if hasMap}
+		<details class="map-pane" bind:open={mapOpen}>
+			<summary>{t('races.mapSummary')}</summary>
+			<div class="panel map-panel">
+				<RaceMap
+					counts={data.countryCounts}
+					cities={data.cities}
+					country={data.filters.country}
+					filters={data.filters}
+				/>
+			</div>
+		</details>
+	{/if}
+
+	<div class="results">
+		<form
+			method="GET"
+			action={link(resolve('/races'))}
+			class="panel filterbar"
+			onchange={autoSubmit}
+		>
+			<label class="search">
 				{t('races.filter.search')}
 				<input
 					type="search"
@@ -171,17 +191,6 @@
 				<a class="clear" href={link(resolve('/races'))}>{t('races.clearFilters')}</a>
 			{/if}
 		</form>
-	</details>
-
-	<div class="results">
-		{#if Object.keys(data.countryCounts).length > 0}
-			<RaceMap
-				counts={data.countryCounts}
-				cities={data.cities}
-				country={data.filters.country}
-				filters={data.filters}
-			/>
-		{/if}
 
 		<div class="meta">
 			<p class="count" role="status">
@@ -247,39 +256,53 @@
 		font-weight: 700;
 	}
 
+	/* Stacked by default (mobile); the desktop split grid is below. */
 	.layout {
 		margin-top: 1rem;
-		display: grid;
-		grid-template-columns: 16rem minmax(0, 1fr);
-		gap: 1.5rem;
-		align-items: start;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
 	}
 
-	/* Filter rail: a panel that is permanent on wide screens (summary hidden)
-	   and a collapsible <details> below 48rem. */
-	.frail {
-		position: sticky;
-		top: 1rem;
-		max-height: calc(100dvh - 2rem);
-		overflow-y: auto;
-		border: 1px solid var(--slate-200);
-		border-radius: 0.5rem;
-		background: white;
+	/* Map pane: a collapsible <details> below 48rem, a permanent panel above
+	   (summary hidden), the sticky left pane of the split view from 64rem up. */
+	.map-pane summary {
+		cursor: pointer;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 600;
+		color: var(--slate-700);
+	}
+
+	.map-pane[open] summary {
+		margin-bottom: 0.75rem;
+	}
+
+	.map-panel {
 		padding: 1rem;
 	}
 
-	.frail summary {
-		display: none;
+	.map-panel :global(.race-map) {
+		margin-top: 0;
 	}
 
-	.filters {
+	.results {
+		min-width: 0;
+	}
+
+	/* Horizontal filter bar: compact fields in a wrapping row; the Apply
+	   button bottom-aligns with the fields (labels sit above each field). */
+	.filterbar {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
+		align-items: end;
 		gap: 0.75rem;
+		padding: 1rem;
 	}
 
-	.filters label {
+	.filterbar label {
 		display: flex;
+		min-width: 0;
 		flex-direction: column;
 		gap: 0.25rem;
 		font-size: 0.75rem;
@@ -290,20 +313,28 @@
 		color: var(--slate-500);
 	}
 
-	.filters .field {
-		width: 100%;
+	.search {
+		flex: 1 1 11rem;
+	}
+
+	.filterbar .field {
+		max-width: 100%;
 		padding: 0.375rem 0.625rem;
 		font-weight: 400;
 		text-transform: none;
 		letter-spacing: normal;
 	}
 
+	.search .field {
+		width: 100%;
+	}
+
 	.sport {
 		text-transform: capitalize;
 	}
 
-	.filters button {
-		width: 100%;
+	.filterbar button {
+		padding-block: 0.4375rem;
 	}
 
 	.clear {
@@ -316,10 +347,6 @@
 
 	.clear:hover {
 		color: var(--slate-900);
-	}
-
-	.results {
-		min-width: 0;
 	}
 
 	.meta {
@@ -383,45 +410,59 @@
 		gap: 1rem;
 	}
 
-	@media (min-width: 640px) {
-		.grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-	}
-
-	@media (min-width: 1200px) {
-		.grid {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-	}
-
 	.more {
 		margin-top: 2rem;
 		text-align: center;
 	}
 
-	@media (max-width: 47.9375rem) {
-		.layout {
-			grid-template-columns: 1fr;
-			gap: 1rem;
+	/* 48rem-64rem: map permanent on top, shorter (~18rem tall); grid 2-3 cols. */
+	@media (min-width: 48rem) {
+		.map-pane summary {
+			display: none;
 		}
 
-		.frail {
-			position: static;
-			max-height: none;
+		.map-panel {
+			/* RaceMap caps its width from this height budget. */
+			--map-max-h: 18rem;
 		}
 
-		.frail summary {
-			display: list-item;
-			cursor: pointer;
-			font-size: 0.875rem;
-			line-height: 1.25rem;
-			font-weight: 600;
-			color: var(--slate-700);
+		.grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (min-width: 56rem) and (max-width: 63.9375rem) {
+		.grid {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
+	/* Desktop split view: sticky map pane left (~45%), scrolling results right. */
+	@media (min-width: 64rem) {
+		.layout.has-map {
+			display: grid;
+			grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+			gap: 1.5rem;
+			align-items: start;
 		}
 
-		.frail[open] summary {
-			margin-bottom: 0.75rem;
+		.map-pane {
+			/* 4.5rem = sticky app bar (3.5rem) + breathing room. */
+			position: sticky;
+			top: 4.5rem;
+		}
+
+		.map-panel {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			height: calc(100dvh - 5.5rem);
+			/* Panel height minus its padding and the map-hint line. */
+			--map-max-h: max(14rem, calc(100dvh - 10.5rem));
+		}
+
+		.map-panel :global(.race-map) {
+			width: 100%;
 		}
 	}
 </style>

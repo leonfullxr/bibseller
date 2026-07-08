@@ -190,7 +190,10 @@
 	   country never grows the page or forces scrolling. */
 	.map-wrap {
 		position: relative;
-		max-width: 46rem;
+		/* Containers can cap the map's height via --map-max-h (the split /races
+		   pane); the width follows from the fixed aspect ratio. Falls back to
+		   the old width-driven sizing when unset. */
+		max-width: min(46rem, calc(var(--map-max-h, 999rem) * 105 / 87));
 		margin-inline: auto;
 		aspect-ratio: 105 / 87;
 	}

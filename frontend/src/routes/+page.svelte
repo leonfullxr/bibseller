@@ -1,35 +1,83 @@
 <script lang="ts">
+	import { afterNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { getI18n } from '$lib/i18n';
-	import RaceCard from '$lib/components/RaceCard.svelte';
+	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import Icon from '$lib/components/Icon.svelte';
+	import RaceCard from '$lib/components/RaceCard.svelte';
+	import type { Page, RaceSummary } from '$lib/api/types';
+	import { todayISO } from '$lib/format';
+	import { getI18n } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	const { t, link } = getI18n();
+	const { t, plural, locale, link } = getI18n();
+
+	// Instant search (progressive enhancement): typing fetches results directly
+	// and overrides the grid; null means "show the server-loaded results". The
+	// no-JS path is the plain GET form. Navigations (pill clicks, form submits)
+	// hand authority back to the server data.
+	let live: RaceSummary[] | null = $state(null);
+	const races = $derived(live ?? data.races);
+	afterNavigate(() => (live = null));
+
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	let ctrl: AbortController | undefined;
+	function instantSearch(e: Event) {
+		const q = (e.currentTarget as HTMLInputElement).value.trim();
+		clearTimeout(timer);
+		timer = setTimeout(async () => {
+			ctrl?.abort();
+			ctrl = new AbortController();
+			const params = new SvelteURLSearchParams();
+			if (q) params.set('q', q);
+			if (data.filters.country) params.set('country', data.filters.country);
+			if (data.filters.sport) params.set('sport', data.filters.sport);
+			params.set('date_from', todayISO());
+			params.set('limit', '12');
+			try {
+				const res = await fetch(`/api/v1/races?${params}`, { signal: ctrl.signal });
+				if (res.ok) live = ((await res.json()) as Page<RaceSummary>).items;
+			} catch {
+				// Aborted or offline: keep whatever is on screen.
+			}
+		}, 300);
+	}
+
+	// Country pills come from the live per-country counts (empty when that
+	// fetch degraded); keep an active filter visible so it can be toggled off.
+	const countries = $derived.by(() => {
+		const list = Object.keys(data.countryCounts).sort();
+		if (data.filters.country && !list.includes(data.filters.country)) {
+			list.push(data.filters.country);
+			list.sort();
+		}
+		return list;
+	});
+	const countryNames = $derived(new Intl.DisplayNames([locale], { type: 'region' }));
+	const sports = ['running', 'trail', 'triathlon', 'cycling', 'obstacle', 'other'] as const;
+
+	// Query string for the current URL with one pill's param toggled; the caller
+	// prefixes link(resolve('/')) inline so the lint rule can see the resolve().
+	function toggled(key: 'country' | 'sport', value: string): string {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		if (params.get(key) === value) params.delete(key);
+		else params.set(key, value);
+		const qs = params.toString();
+		return qs ? `?${qs}` : '';
+	}
+
+	// Carry the quick filters into the full catalog.
+	const catalogQuery = $derived.by(() => {
+		const qs = page.url.searchParams.toString();
+		return qs ? `?${qs}` : '';
+	});
 
 	const steps = $derived([
 		{ icon: 'list', title: t('home.step1Title'), desc: t('home.step1Desc') },
 		{ icon: 'chat', title: t('home.step2Title'), desc: t('home.step2Desc') },
 		{ icon: 'transfer', title: t('home.step3Title'), desc: t('home.step3Desc') },
 		{ icon: 'check', title: t('home.step4Title'), desc: t('home.step4Desc') }
-	]);
-
-	// Ordered 1-6, alternating seller/buyer; the layout reads the `who` to place
-	// each step on its side of the centre flow line.
-	const journey = $derived([
-		{ n: 1, who: 'seller', icon: 'list', label: t('home.j1Title') },
-		{ n: 2, who: 'buyer', icon: 'search', label: t('home.j2Title') },
-		{ n: 3, who: 'seller', icon: 'chat', label: t('home.j3Title') },
-		{ n: 4, who: 'buyer', icon: 'transfer', label: t('home.j4Title') },
-		{ n: 5, who: 'seller', icon: 'handover', label: t('home.j5Title') },
-		{ n: 6, who: 'buyer', icon: 'medal', label: t('home.j6Title') }
-	]);
-
-	const modes = $derived([
-		{ name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
-		{ name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
-		{ name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
 	]);
 </script>
 
@@ -38,15 +86,28 @@
 	<meta name="description" content={t('home.metaDescription')} />
 </svelte:head>
 
-<section class="hero">
+<section class="intro">
 	<h1>{t('home.heroTitle')} <span>{t('home.heroTitleHighlight')}</span></h1>
 	<p class="tagline">{t('home.tagline')}</p>
 
-	<form method="GET" action={link(resolve('/races'))} class="search">
-		<input type="search" name="q" placeholder={t('home.searchPlaceholder')} />
-		<button type="submit">{t('home.search')}</button>
+	<form method="GET" action={link(resolve('/'))} class="search" role="search">
+		{#if data.filters.country}
+			<input type="hidden" name="country" value={data.filters.country} />
+		{/if}
+		{#if data.filters.sport}
+			<input type="hidden" name="sport" value={data.filters.sport} />
+		{/if}
+		<input
+			type="search"
+			name="q"
+			class="search-input"
+			value={data.filters.q}
+			placeholder={t('home.searchPlaceholder')}
+			aria-label={t('races.filter.search')}
+			oninput={instantSearch}
+		/>
+		<button type="submit" class="btn btn-primary">{t('home.search')}</button>
 	</form>
-	<a href={link(resolve('/races'))} class="browse-all">{t('home.browseAll')}</a>
 
 	{#if data.apiStatus !== 'ok'}
 		<div class="api-status">
@@ -58,73 +119,66 @@
 	{/if}
 </section>
 
-{#if data.upcoming.length > 0}
-	<section class="upcoming">
-		<h2 class="upcoming-title">{t('home.upcoming')}</h2>
-		<div class="marquee">
-			<div class="marquee-track" style="--marquee-duration: {data.upcoming.length * 6}s">
-				{#each data.upcoming as race (race.id)}
-					<div class="marquee-item"><RaceCard {race} /></div>
-				{/each}
-				{#each data.upcoming as race (race.id + '-dup')}
-					<div class="marquee-item dup" inert aria-hidden="true"><RaceCard {race} /></div>
-				{/each}
-			</div>
-		</div>
-		<a class="browse-btn" href={link(resolve('/races'))}>{t('home.browseAllRaces')}</a>
-	</section>
-{/if}
-
-<!-- The four steps as checkpoints along a race course: a track line with
-     numbered markers, checkered flag at the finish. -->
-<section class="how" aria-labelledby="how-title">
-	<h2 id="how-title">{t('home.howTitle')}</h2>
-	<ol class="course">
-		{#each steps as step, i (step.icon)}
-			<li class="checkpoint">
-				<span class="marker" class:finish={i === steps.length - 1} aria-hidden="true"
-					>{#if i < steps.length - 1}{i + 1}{/if}</span
-				>
-				<h3>{step.title}</h3>
-				<p>{step.desc}</p>
-			</li>
-		{/each}
-	</ol>
-	<p class="how-note">{t('home.howNote')}</p>
-</section>
-
-<!-- The six-step handover as a race timing board: ink leaderboard rows,
-     orange positions, a lane tag naming whose move it is. -->
-<section class="journey" aria-labelledby="journey-title">
-	<h2 id="journey-title">{t('home.journeyTitle')}</h2>
-	<p class="journey-lead">{t('home.journeyLead')}</p>
-	<ol class="board">
-		{#each journey as step (step.n)}
-			<li class="row {step.who}">
-				<span class="row-n" aria-hidden="true">{String(step.n).padStart(2, '0')}</span>
-				<span class="row-icon" aria-hidden="true"><Icon name={step.icon} /></span>
-				<span class="row-label">{step.label}</span>
-				<span class="row-who {step.who}"
-					>{step.who === 'seller' ? t('home.journeySeller') : t('home.journeyBuyer')}</span
-				>
-			</li>
-		{/each}
-	</ol>
-</section>
-
-<section class="modes">
-	{#each modes as mode (mode.name)}
-		<div class="mode">
-			<h2>{mode.name}</h2>
-			<p>{mode.desc}</p>
-		</div>
+<nav class="pills" aria-label={t('races.filtersSummary')}>
+	{#each countries as c (c)}
+		<a
+			class="qpill"
+			class:active={data.filters.country === c}
+			href="{link(resolve('/'))}{toggled('country', c)}"
+		>
+			{countryNames.of(c) ?? c}
+		</a>
 	{/each}
+	{#each sports as s (s)}
+		<a
+			class="qpill"
+			class:active={data.filters.sport === s}
+			href="{link(resolve('/'))}{toggled('sport', s)}"
+		>
+			{t(`sport.${s}`)}
+		</a>
+	{/each}
+</nav>
+
+<section class="results">
+	<div class="meta">
+		<p class="count" role="status">{plural('races.resultCount', races.length)}</p>
+		<a class="more-filters" href="{link(resolve('/races'))}{catalogQuery}"
+			>{t('home.moreFilters')}</a
+		>
+	</div>
+
+	{#if races.length === 0}
+		<div class="empty">
+			<p>{t('races.empty')}</p>
+			<a href={link(resolve('/'))}>{t('races.clearFilters')}</a>
+		</div>
+	{:else}
+		<div class="grid">
+			{#each races as race (race.id)}
+				<RaceCard {race} />
+			{/each}
+		</div>
+	{/if}
 </section>
 
-<section class="contact" aria-labelledby="contact-title">
-	<h2 id="contact-title">{t('home.contactTitle')}</h2>
-	<p class="contact-lead">{t('home.contactLead')}</p>
-	<a class="contact-cta" href={link(resolve('/contact'))}>{t('home.contactCta')}</a>
+<section class="how panel" aria-labelledby="how-title">
+	<h2 id="how-title">{t('home.howTitle')}</h2>
+	<ol class="steps">
+		{#each steps as step (step.icon)}
+			<li>
+				<span class="step-icon" aria-hidden="true"><Icon name={step.icon} /></span>
+				<div>
+					<h3>{step.title}</h3>
+					<p>{step.desc}</p>
+				</div>
+			</li>
+		{/each}
+	</ol>
+	<p class="contact-line">
+		{t('home.contactLead')}
+		<a href={link(resolve('/contact'))}>{t('home.contactCta')}</a>
+	</p>
 </section>
 
 <p class="construction">
@@ -134,98 +188,72 @@
 </p>
 
 <style>
-	/* Masthead hero: a quiet ivory opening framed by a hairline below, the
-	   headline in the journal's serif with an italic bordeaux accent. */
-	.hero {
-		padding: 3rem 0 3.5rem;
+	/* Compact intro: the page is an app surface, the search is the hero. */
+	.intro {
+		padding: 2rem 0 0.5rem;
 		text-align: center;
-		border-bottom: 1px solid var(--ink);
 	}
 
-	.hero h1 {
+	.intro h1 {
 		margin-inline: auto;
-		max-width: 52rem;
-		font-size: 3rem;
-		line-height: 1.05;
-		font-weight: 550;
+		max-width: 40rem;
+		font-size: 1.875rem;
+		line-height: 1.15;
 	}
 
 	@media (min-width: 640px) {
-		.hero h1 {
-			font-size: 4.25rem;
+		.intro h1 {
+			font-size: 2.25rem;
 		}
 	}
 
-	.hero h1 span {
+	.intro h1 span {
 		color: var(--brand-600);
-		font-style: italic;
 	}
 
 	.tagline {
-		margin: 1.5rem auto 0;
-		max-width: 40rem;
-		font-size: 1.0625rem;
-		line-height: 1.75rem;
+		margin: 0.625rem auto 0;
+		max-width: 36rem;
+		font-size: 0.9375rem;
+		line-height: 1.5rem;
 		color: var(--slate-600);
 	}
 
+	/* The large search field. */
 	.search {
-		margin: 2.25rem auto 0;
+		margin: 1.5rem auto 0;
 		display: flex;
-		max-width: 30rem;
+		max-width: 36rem;
 		align-items: stretch;
 		gap: 0.5rem;
 	}
 
-	.search input {
+	.search-input {
 		width: 100%;
-		border-radius: 0.125rem;
-		border: 1px solid var(--slate-400);
+		border-radius: 0.75rem;
+		border: 1px solid var(--slate-300);
 		background: white;
 		color: var(--ink);
-		padding: 0.6875rem 1rem;
-		font-size: 1rem;
+		padding: 0.8125rem 1.125rem;
+		font-size: 1.0625rem;
 		line-height: 1.5rem;
+		box-shadow: var(--shadow-hard-sm);
 	}
 
 	/* Border swap for any focus; the global :focus-visible ring still applies
 	   for keyboard users. */
-	.search input:focus {
+	.search-input:focus {
 		border-color: var(--brand-600);
 	}
 
-	.search button {
-		border-radius: 0.125rem;
-		background: var(--brand-700);
-		padding: 0.6875rem 1.5rem;
-		font-size: 0.9375rem;
-		line-height: 1.5rem;
-		font-weight: 600;
-		letter-spacing: 0.01em;
+	.search .btn {
+		border-radius: 0.75rem;
+		padding-inline: 1.5rem;
 		white-space: nowrap;
-		color: white;
-		transition: background-color 0.15s;
-	}
-
-	.search button:hover {
-		background: var(--brand-800);
-	}
-
-	.browse-all {
-		margin-top: 1rem;
-		display: inline-block;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		color: var(--brand-700);
-		text-decoration: underline;
-	}
-
-	.browse-all:hover {
-		color: var(--brand-800);
 	}
 
 	.api-status {
-		margin-top: 1.5rem;
+		margin-top: 1rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -252,386 +280,183 @@
 		padding: 0.125rem 0.25rem;
 	}
 
-	.upcoming {
-		padding-block: 2.5rem 2rem;
-		text-align: center;
-	}
-
-	/* Section headings share one device: the journal serif over a short
-	   hairline rule. */
-	.upcoming-title,
-	.how h2,
-	.journey h2,
-	.contact h2 {
-		font-size: 1.875rem;
-		line-height: 2.375rem;
-		font-weight: 550;
-	}
-
-	.upcoming-title::after,
-	.how h2::after,
-	.journey h2::after {
-		content: '';
-		display: block;
-		margin: 0.75rem auto 0;
-		width: 4rem;
-		height: 1px;
-		background: var(--ink);
-	}
-
-	/* Auto-scrolling "roulette" of a few races. The list is rendered twice (the
-	   copy is inert + aria-hidden) so the translateX(-50%) loop is seamless. */
-	.marquee {
-		margin-top: 1.5rem;
-		overflow: hidden;
-		-webkit-mask-image: linear-gradient(
-			to right,
-			transparent,
-			#000 3rem,
-			#000 calc(100% - 3rem),
-			transparent
-		);
-		mask-image: linear-gradient(
-			to right,
-			transparent,
-			#000 3rem,
-			#000 calc(100% - 3rem),
-			transparent
-		);
-	}
-
-	.marquee-track {
+	/* Quick filter pills: one horizontally scrollable row. */
+	.pills {
+		margin-top: 1.25rem;
 		display: flex;
-		align-items: stretch;
-		width: max-content;
-		animation: marquee var(--marquee-duration, 36s) linear infinite;
+		gap: 0.5rem;
+		overflow-x: auto;
+		padding-bottom: 0.375rem; /* room so the h-scrollbar never overlaps the pills */
 	}
 
-	.marquee:hover .marquee-track,
-	.marquee:focus-within .marquee-track {
-		animation-play-state: paused;
-	}
-
-	.marquee-item {
-		flex: 0 0 17rem;
-		max-width: 80vw;
-		margin-right: 1.25rem;
-		/* room for the bib cards' hard shadows inside the overflow clip */
-		padding: 2px 6px 6px 2px;
-		text-align: left;
-	}
-
-	@keyframes marquee {
-		from {
-			transform: translateX(0);
-		}
-		to {
-			transform: translateX(-50%);
-		}
-	}
-
-	/* No auto-motion when the user prefers reduced motion; allow manual scroll. */
-	@media (prefers-reduced-motion: reduce) {
-		.marquee {
-			overflow-x: auto;
-		}
-
-		.marquee-track {
-			animation: none;
-		}
-
-		/* The duplicate half exists only to loop the animation seamlessly. With the
-		   animation stopped it would just be inert, unclickable copies that a manual
-		   scroll could reach (reads as broken links), so drop it from layout (#92). */
-		.marquee-item.dup {
-			display: none;
-		}
-	}
-
-	.browse-btn {
-		margin-top: 1.75rem;
-		display: inline-block;
-		border-radius: 0.125rem;
-		border: 1px solid var(--ink);
-		padding: 0.5625rem 1.5rem;
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: var(--ink);
-		transition: background-color 0.15s;
-	}
-
-	.browse-btn:hover {
-		background: var(--paper-2);
-	}
-
-	/* How it works: icon cards joined by arrows that scale with the viewport. */
-	.how {
-		padding-block: 2rem;
-		text-align: center;
-	}
-
-	/* The course: a track line through numbered checkpoint markers. */
-	.course {
-		list-style: none;
-		margin: 2.25rem 0 0;
-		padding: 0;
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		gap: 1.75rem;
-		text-align: left;
-	}
-
-	.course::before {
-		content: '';
-		position: absolute;
-		left: 1.25rem;
-		top: 1rem;
-		bottom: 1rem;
-		width: 1px;
-		background: var(--ink);
-	}
-
-	.checkpoint {
-		position: relative;
-		padding-left: 3.75rem;
-	}
-
-	.marker {
-		position: absolute;
-		left: 0;
-		top: 0;
-		display: grid;
-		place-items: center;
-		width: 2.5rem;
-		height: 2.5rem;
+	.qpill {
+		flex-shrink: 0;
 		border-radius: 9999px;
-		background: var(--paper);
-		border: 1px solid var(--ink);
-		color: var(--ink);
-		font-family: var(--font-display);
-		font-size: 1.25rem;
-		font-weight: 550;
-	}
-
-	/* The last checkpoint is the finish: a filled bordeaux full stop. */
-	.marker.finish {
-		background: var(--brand-700);
-		border-color: var(--brand-700);
-	}
-
-	.checkpoint h3 {
-		font-size: 1.375rem;
-		line-height: 1.75rem;
-		font-weight: 600;
-	}
-
-	.checkpoint p {
-		margin-top: 0.25rem;
-		max-width: 34rem;
-		font-size: 0.9rem;
-		line-height: 1.4rem;
-		color: var(--slate-600);
-	}
-
-	@media (min-width: 720px) {
-		.course {
-			flex-direction: row;
-			gap: 1.5rem;
-			text-align: center;
-		}
-
-		.course::before {
-			left: 3rem;
-			right: 3rem;
-			top: 1.25rem;
-			bottom: auto;
-			width: auto;
-			height: 1px;
-		}
-
-		.checkpoint {
-			flex: 1 1 0;
-			padding-left: 0;
-			padding-top: 3.5rem;
-		}
-
-		.marker {
-			left: 50%;
-			translate: -50%;
-		}
-	}
-
-	.how-note {
-		margin: 1.5rem auto 0;
-		max-width: 32rem;
+		border: 1px solid var(--slate-300);
+		background: white;
+		color: var(--slate-700);
+		padding: 0.3125rem 0.875rem;
 		font-size: 0.8125rem;
 		line-height: 1.25rem;
-		color: var(--slate-500);
+		font-weight: 600;
+		white-space: nowrap;
+		transition:
+			background-color 0.15s,
+			border-color 0.15s,
+			color 0.15s;
 	}
 
-	.journey {
-		padding-block: 2rem;
-		text-align: center;
+	.qpill:hover {
+		border-color: var(--slate-400);
+		background: var(--slate-50);
 	}
 
-	.journey-lead {
-		margin: 0.5rem auto 0;
-		max-width: 34rem;
-		font-size: 0.95rem;
-		line-height: 1.5rem;
-		color: var(--slate-600);
+	.qpill.active {
+		border-color: var(--brand-600);
+		background: var(--brand-600);
+		color: white;
 	}
 
-	/* The ledger: a white plate with hairline rows; serif folio numbers in
-	   bordeaux for the seller's moves, charcoal for the buyer's. */
-	.board {
-		list-style: none;
-		margin: 2rem auto 0;
-		padding: 0;
-		max-width: 44rem;
-		background: white;
-		border: 1px solid var(--slate-200);
-		border-radius: 0.25rem;
-		box-shadow: var(--shadow-hard-sm);
-		text-align: left;
+	.qpill.active:hover {
+		border-color: var(--brand-700);
+		background: var(--brand-700);
 	}
 
-	.row {
+	/* Live results. */
+	.results {
+		margin-top: 0.75rem;
+	}
+
+	.meta {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.5rem 1rem;
-		padding: 1.125rem 1.5rem;
-		color: var(--ink);
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem 0.75rem;
 	}
 
-	.row + .row {
-		border-top: 1px solid var(--slate-200);
-	}
-
-	.row-n {
-		min-width: 2.5ch;
-		font-family: var(--font-display);
-		font-size: 1.5rem;
-		line-height: 1.75rem;
-		font-weight: 550;
-	}
-
-	.row.seller .row-n {
-		color: var(--brand-600);
-	}
-
-	.row.buyer .row-n {
-		color: var(--slate-400);
-	}
-
-	.row-icon {
-		display: grid;
-		place-items: center;
-		width: 2.5rem;
-		height: 2.5rem;
-		flex-shrink: 0;
-		border-radius: 9999px;
-		background: var(--paper-2);
-		font-size: 1.25rem;
-		color: var(--slate-600);
-	}
-
-	.row-label {
-		flex: 1;
-		min-width: 0;
-		font-size: 1.0625rem;
-		line-height: 1.5rem;
-		font-weight: 500;
-	}
-
-	.row-who {
-		flex-shrink: 0;
-		font-size: 0.6875rem;
-		line-height: 1.25rem;
-		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-	}
-
-	.row-who.seller {
-		color: var(--brand-700);
-	}
-
-	.row-who.buyer {
-		color: var(--slate-500);
-	}
-
-	.modes {
-		display: grid;
-		gap: 1rem;
-		padding-block: 2rem;
-	}
-
-	@media (min-width: 640px) {
-		.modes {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-	}
-
-	.mode {
-		border-radius: 0.25rem;
-		border: 1px solid var(--slate-200);
-		border-top: 2px solid var(--ink);
-		background: white;
-		padding: 1.25rem;
-		box-shadow: var(--shadow-hard-sm);
-	}
-
-	.mode h2 {
-		font-size: 1.25rem;
-		font-weight: 600;
-	}
-
-	.mode p {
-		margin-top: 0.5rem;
+	.count {
 		font-size: 0.875rem;
 		line-height: 1.25rem;
 		color: var(--slate-600);
 	}
 
-	/* The closing note: a mat panel with a bordeaux invitation. */
-	.contact {
-		margin-top: 1rem;
-		border-radius: 0.25rem;
-		border: 1px solid var(--slate-200);
-		background: var(--paper-2);
-		padding: 2.5rem 1.5rem;
-		text-align: center;
+	.more-filters {
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 600;
+		color: var(--brand-700);
 	}
 
-	.contact-lead {
-		margin: 0.5rem auto 0;
-		max-width: 32rem;
-		font-size: 0.95rem;
+	.more-filters:hover {
+		color: var(--brand-800);
+		text-decoration: underline;
+	}
+
+	.empty {
+		margin-top: 1rem;
+	}
+
+	.empty a {
+		margin-top: 0.5rem;
+		display: inline-block;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+	}
+
+	.grid {
+		margin-top: 1rem;
+		display: grid;
+		gap: 1rem;
+	}
+
+	@media (min-width: 640px) {
+		.grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.grid {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
+	/* Marketing strip: the four steps condensed to one compact row. */
+	.how {
+		margin-top: 2.5rem;
+	}
+
+	.how h2 {
+		font-size: 1.125rem;
 		line-height: 1.5rem;
+	}
+
+	.steps {
+		list-style: none;
+		margin: 1rem 0 0;
+		padding: 0;
+		display: grid;
+		gap: 1rem;
+	}
+
+	@media (min-width: 720px) {
+		.steps {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+
+	.steps li {
+		display: flex;
+		gap: 0.625rem;
+	}
+
+	.step-icon {
+		display: grid;
+		place-items: center;
+		flex-shrink: 0;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 9999px;
+		background: var(--brand-50);
+		color: var(--brand-700);
+		font-size: 1rem;
+	}
+
+	.steps h3 {
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-weight: 600;
+	}
+
+	.steps p {
+		margin-top: 0.125rem;
+		font-size: 0.8125rem;
+		line-height: 1.25rem;
 		color: var(--slate-600);
 	}
 
-	.contact-cta {
+	.contact-line {
 		margin-top: 1.25rem;
-		display: inline-block;
-		border-radius: 0.125rem;
-		background: var(--brand-700);
-		padding: 0.5625rem 1.5rem;
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: white;
-		transition: background-color 0.15s;
+		border-top: 1px solid var(--slate-200);
+		padding-top: 1rem;
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		color: var(--slate-600);
 	}
 
-	.contact-cta:hover {
-		background: var(--brand-800);
+	.contact-line a {
+		font-weight: 600;
+		color: var(--brand-700);
+		text-decoration: underline;
+	}
+
+	.contact-line a:hover {
+		color: var(--brand-800);
 	}
 
 	.construction {
-		padding-block: 1rem;
+		padding-block: 1.5rem 1rem;
 		text-align: center;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
