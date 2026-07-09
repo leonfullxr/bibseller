@@ -129,6 +129,9 @@ promote: ## fast-forward production to the tested origin/main and push (run from
 	@test "$$(git branch --show-current)" = production || { echo "ERROR: run from the prod clone, on the production branch"; exit 1; }
 	git fetch origin
 	@git merge-base --is-ancestor HEAD origin/main || { echo "ERROR: production is not behind origin/main - nothing to promote, or it diverged"; exit 1; }
+	@# The production ref is check-protected; wait for main's tip to go green so
+	@# the push below is not rejected mid-CI (#213). PROMOTE_SKIP_CHECKS=1 skips.
+	./scripts/wait-for-checks.sh "$$(git rev-parse origin/main)"
 	git merge --ff-only origin/main
 	git push
 	@echo "Promoted production -> $$(git rev-parse --short HEAD). Deploy in the order the release's migrations require: docs/DEPLOYMENT.md 'Migration ordering: expand/contract'."
