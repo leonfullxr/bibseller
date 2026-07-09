@@ -1,0 +1,68 @@
+name: govulncheck (nightly)
+
+# The per-PR backend job also runs govulncheck, but that makes an unrelated
+# PR the discovery point for a freshly-published stdlib/dep CVE (GO-2026-5856
+# blocked a whole batch on 2026-07-08, #215). This scheduled scan surfaces new
+# findings against the shipped toolchain + deps on their own, as a tracking
+# issue, so the per-PR gate is not how we first hear about them.
+
+on:
+  schedule:
+    - cron: '17 6 * * *' # 06:17 UTC daily (off the hour to avoid GitHub's cron rush)
+  workflow_dispatch: # allow a manual run
+
+permissions:
+  contents: read
+  issues: write # create/find the tracking issue on findings
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: govulncheck
+        id: vuln
+        # Pinned to match ci.yml's backend job (keep in sync when bumping): the
+        # scan must run against the toolchain we actually ship. A finding is
+        # reported via the issue below, not by failing the run - a red
+        # scheduled workflow is noise and would double-notify.
+        env:
+          GOTOOLCHAIN: go1.26.5
+        continue-on-error: true
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@v1.5.0 ./... 2>&1 | tee /tmp/govulncheck.txt
+      - name: open a tracking issue on findings
+        if: steps.vuln.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # One open issue at a time: if it is already tracked, do not open a
+          # fresh one every night. Create it (labelled + assigned per house
+          # style) only when none is open.
+          existing=$(gh issue list --state open --search "in:title govulncheck nightly" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "already tracked in #$existing - no new issue"
+            exit 0
+          fi
+          {
+            echo "The nightly govulncheck scan reported vulnerabilities against the shipped toolchain (GOTOOLCHAIN in ci.yml) and dependencies. Triage: bump the toolchain or the affected module, or dismiss with a reason."
+            echo
+            echo '```'
+            tail -c 60000 /tmp/govulncheck.txt
+            echo '```'
+            echo
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > /tmp/issue-body.txt
+          # gh issue create prints the new issue URL; derive its number to assign.
+          url=$(gh issue create --title "govulncheck nightly: vulnerabilities found" \
+            --label security --body-file /tmp/issue-body.txt)
+          gh api "repos/${{ github.repository }}/issues/${url##*/}/assignees" \
+            -X POST -f 'assignees[]=leonfullxr'
