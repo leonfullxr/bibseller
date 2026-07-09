@@ -367,9 +367,60 @@ type ListMessagesParams struct {
 }
 
 // Cursor-poll: ascending by id (UUIDv7, time-ordered), only newer than the
-// caller's cursor. Covered by messages_thread_idx (thread_id, id).
+// caller's cursor. Covered by messages_thread_idx (thread_id, id). Used for
+// forward polling (since=): fetch messages newer than the newest one held.
 func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]Message, error) {
 	rows, err := q.db.Query(ctx, listMessages, arg.ThreadID, arg.Cursor, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThreadID,
+			&i.SenderID,
+			&i.Body,
+			&i.CreatedAt,
+			&i.ImageKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMessagesTail = `-- name: ListMessagesTail :many
+SELECT id, thread_id, sender_id, body, created_at, image_key FROM (
+    SELECT id, thread_id, sender_id, body, created_at, image_key FROM messages
+    WHERE thread_id = $1
+      AND ($2::uuid IS NULL OR id < $2)
+    ORDER BY id DESC
+    LIMIT $3
+) m
+ORDER BY id
+`
+
+type ListMessagesTailParams struct {
+	ThreadID uuid.UUID  `json:"thread_id"`
+	Before   *uuid.UUID `json:"before"`
+	PageSize int32      `json:"page_size"`
+}
+
+// The newest page_size messages (before= NULL) or the newest page_size older
+// than a cursor (before=<id>, the "load earlier" reverse page). The inner
+// query walks backward by id DESC so the LIMIT keeps the *newest* matching
+// rows (covered by messages_thread_idx); the outer sort re-ascends so the
+// caller always renders chronologically. Fixes long threads opening on the
+// oldest messages instead of the newest (#154).
+func (q *Queries) ListMessagesTail(ctx context.Context, arg ListMessagesTailParams) ([]Message, error) {
+	rows, err := q.db.Query(ctx, listMessagesTail, arg.ThreadID, arg.Before, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}

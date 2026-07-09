@@ -326,8 +326,13 @@ func (h *Handler) postMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 type messageListResponse struct {
-	Items      []messageDTO `json:"items"`
-	NextCursor *string      `json:"next_cursor"`
+	Items []messageDTO `json:"items"`
+	// NextCursor: forward-poll cursor, set on a full since= page (more newer
+	// messages may exist). PrevCursor: "load earlier" cursor, set only when
+	// older messages provably exist (the tail/before= query fetches one extra
+	// row as an existence probe). Items are always ascending.
+	NextCursor *string `json:"next_cursor"`
+	PrevCursor *string `json:"prev_cursor"`
 }
 
 // listMessages returns a thread's messages in id order, optionally only those
@@ -362,19 +367,52 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := sqlcgen.ListMessagesParams{ThreadID: threadID, PageSize: messagePageSize}
-	if v := r.URL.Query().Get("since"); v != "" {
-		id, err := uuid.Parse(v)
+	q := r.URL.Query()
+	// Two directions, both returning ascending rows. since= polls forward
+	// (messages newer than the newest held); its absence (or before=) fetches
+	// the tail - the newest page - so a long thread opens on its latest
+	// messages, and before=<id> walks backward for "load earlier" (#154).
+	// since wins if both are somehow present (the client never sends both).
+	polling := q.Get("since") != ""
+	var rows []sqlcgen.Message
+	var hasOlder bool // tail path: an extra probe row proved older messages exist
+	if polling {
+		id, err := uuid.Parse(q.Get("since"))
 		if err != nil {
 			httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "malformed cursor")
 			return
 		}
-		params.Cursor = &id
-	}
-	rows, err := h.q.ListMessages(r.Context(), params)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load messages")
-		return
+		rows, err = h.q.ListMessages(r.Context(), sqlcgen.ListMessagesParams{
+			ThreadID: threadID, Cursor: &id, PageSize: messagePageSize,
+		})
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "internal", "could not load messages")
+			return
+		}
+	} else {
+		// Fetch one extra row so a full page can be told apart from "exactly a
+		// page, nothing older" - the difference between showing the load-earlier
+		// control and not (a thread of exactly messagePageSize must not offer a
+		// dead one). The probe row (the oldest of page_size+1) is dropped below.
+		tail := sqlcgen.ListMessagesTailParams{ThreadID: threadID, PageSize: messagePageSize + 1}
+		if v := q.Get("before"); v != "" {
+			id, err := uuid.Parse(v)
+			if err != nil {
+				httpx.Error(w, http.StatusBadRequest, "invalid_parameter", "malformed cursor")
+				return
+			}
+			tail.Before = &id
+		}
+		var err error
+		rows, err = h.q.ListMessagesTail(r.Context(), tail)
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "internal", "could not load messages")
+			return
+		}
+		if len(rows) > messagePageSize {
+			hasOlder = true
+			rows = rows[1:] // rows are ascending; drop the oldest (the probe)
+		}
 	}
 
 	items := make([]messageDTO, len(rows))
@@ -382,7 +420,9 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 		items[i] = toMessageDTO(row)
 	}
 	// Reading advances the caller's last-read to the newest message fetched, so
-	// the inbox unread count reflects what they have actually seen.
+	// the inbox unread count reflects what they have actually seen. MarkThreadRead
+	// only moves the marker forward, so a load-earlier (before=) fetch of older
+	// messages is a no-op here.
 	if len(rows) > 0 {
 		newest := rows[len(rows)-1].CreatedAt
 		if _, err := h.q.MarkThreadRead(r.Context(), sqlcgen.MarkThreadReadParams{
@@ -393,9 +433,18 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := messageListResponse{Items: items}
-	if len(rows) == messagePageSize {
-		c := rows[len(rows)-1].ID.String()
-		resp.NextCursor = &c
+	if polling {
+		// A full forward page: more newer messages may exist (self-corrects on
+		// the next poll if not).
+		if len(rows) == messagePageSize {
+			c := rows[len(rows)-1].ID.String()
+			resp.NextCursor = &c
+		}
+	} else if hasOlder {
+		// The probe row proved older messages exist - hand back the oldest
+		// displayed id as the "load earlier" cursor.
+		c := rows[0].ID.String()
+		resp.PrevCursor = &c
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	httpx.JSON(w, http.StatusOK, resp)

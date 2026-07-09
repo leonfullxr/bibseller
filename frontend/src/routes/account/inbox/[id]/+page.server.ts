@@ -24,33 +24,20 @@ export const load: PageServerLoad = async ({ params, locals, cookies, fetch }) =
 		error(502, { message: 'Could not load the conversation.', key: 'apiError.loadFailed' });
 	const thread = (await threadRes.json()) as ChatThreadSummary;
 
-	const msgs = await apiGet<{ items: ChatMessage[]; next_cursor: string | null }>(
+	// The default page is now the thread's tail - the newest messages, ascending
+	// (#154). prev_cursor, when set, is the "load earlier" cursor the page uses
+	// to walk backward on demand; the old forward-backfill loop (which opened
+	// long threads on their oldest messages) is gone.
+	const msgs = await apiGet<{ items: ChatMessage[]; prev_cursor: string | null }>(
 		`/api/v1/threads/${params.id}/messages`,
 		fetch,
 		{ headers: sessionHeader(cookies) }
 	);
 
-	// ponytail: ListMessages pages oldest-first (id ASC), so this walks forward
-	// from the start of the thread, capped at 5 extra pages (~600 messages
-	// total). On threads longer than that, the newest messages - not older
-	// ones - are what stays unloaded, until a proper tail/reverse-cursor
-	// fetch exists (#154).
-	const items = msgs.items;
-	let cursor = msgs.next_cursor;
-	for (let i = 0; i < 5 && cursor; i++) {
-		let res: Response;
-		try {
-			res = await apiFetch(`/api/v1/threads/${params.id}/messages?since=${cursor}`, {
-				headers: sessionHeader(cookies)
-			});
-		} catch {
-			break; // transient network error mid-backfill - keep what we already have
-		}
-		if (!res.ok) break;
-		const page = (await res.json()) as { items: ChatMessage[]; next_cursor: string | null };
-		items.push(...page.items);
-		cursor = page.next_cursor;
-	}
-
-	return { thread, messages: items, meId: locals.user.id };
+	return {
+		thread,
+		messages: msgs.items,
+		earlierCursor: msgs.prev_cursor,
+		meId: locals.user.id
+	};
 };

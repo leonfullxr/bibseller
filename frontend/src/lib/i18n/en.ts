@@ -242,6 +242,7 @@ export const en = {
 	'chat.unsupportedImage': 'Only JPEG and PNG images are allowed.',
 	'chat.blockedSend': 'You cannot send messages in this conversation.',
 	'chat.logAria': 'Conversation messages',
+	'chat.loadEarlier': 'Load earlier messages',
 	'chat.previewAlt': 'Preview of the attached image',
 	'chat.clearImage': 'Remove the attached image',
 

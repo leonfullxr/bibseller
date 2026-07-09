@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"log/slog"
@@ -221,6 +222,130 @@ func messages(t *testing.T, h http.Handler, threadID, since, token string) []mes
 		t.Fatalf("messages: bad JSON: %v", err)
 	}
 	return resp.Items
+}
+
+// listMsgs fetches a message page with an optional query (since=/before=) and
+// returns the items plus the forward/backward cursors.
+func listMsgs(t *testing.T, h http.Handler, threadID, query, token string) (items []message, prev, next *string) {
+	t.Helper()
+	path := "/api/v1/threads/" + threadID + "/messages"
+	if query != "" {
+		path += "?" + query
+	}
+	rec := doJSON(t, h, http.MethodGet, path, "", token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("listMsgs %q: status = %d, body = %s", query, rec.Code, rec.Body)
+	}
+	var resp struct {
+		Items      []message `json:"items"`
+		PrevCursor *string   `json:"prev_cursor"`
+		NextCursor *string   `json:"next_cursor"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("listMsgs: bad JSON: %v", err)
+	}
+	return resp.Items, resp.PrevCursor, resp.NextCursor
+}
+
+// A thread longer than one page must open on its NEWEST messages, with a
+// reverse cursor to walk backward ("load earlier") - not open on the oldest
+// page and leave the newest unreachable (#154). Fails on the pre-#154 handler,
+// which returned the oldest page and had no before= cursor.
+func TestListMessagesTailAndLoadEarlier(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, buyerID := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "m000")
+
+	// 250 messages total (m000 from startThread + m001..m249), inserted with
+	// ascending UUIDv7 ids so ORDER BY id is chronological: 3 tail pages of
+	// 100/100/50.
+	ctx := context.Background()
+	tid := uuid.MustParse(threadID)
+	for i := 1; i < 250; i++ {
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO messages (id, thread_id, sender_id, body) VALUES ($1, $2, $3, $4)`,
+			ids.New(), tid, buyerID, fmt.Sprintf("m%03d", i)); err != nil {
+			t.Fatalf("seed message %d: %v", i, err)
+		}
+	}
+
+	// Initial fetch (no cursor) = the tail: the newest 100, ascending.
+	items, prev, next := listMsgs(t, h, threadID, "", sellerTok)
+	if len(items) != 100 {
+		t.Fatalf("tail: got %d items, want 100", len(items))
+	}
+	if got := items[len(items)-1].Body; got != "m249" {
+		t.Errorf("tail newest = %q, want m249 (long thread opened on the wrong end)", got)
+	}
+	if got := items[0].Body; got != "m150" {
+		t.Errorf("tail oldest = %q, want m150", got)
+	}
+	if next != nil {
+		t.Errorf("tail next_cursor = %q, want nil", *next)
+	}
+	if prev == nil {
+		t.Fatal("tail prev_cursor = nil, want a load-earlier cursor")
+	}
+
+	// Load earlier: the previous 100, still ascending.
+	items2, prev2, _ := listMsgs(t, h, threadID, "before="+*prev, sellerTok)
+	if len(items2) != 100 || items2[0].Body != "m050" || items2[len(items2)-1].Body != "m149" {
+		t.Fatalf("page 2: n=%d first=%q last=%q, want 100 / m050 / m149",
+			len(items2), items2[0].Body, items2[len(items2)-1].Body)
+	}
+	if prev2 == nil {
+		t.Fatal("page 2 prev_cursor = nil, want another load-earlier cursor")
+	}
+
+	// Final earlier page: the remaining 50, back to the start; nothing before.
+	items3, prev3, _ := listMsgs(t, h, threadID, "before="+*prev2, sellerTok)
+	if len(items3) != 50 || items3[0].Body != "m000" || items3[len(items3)-1].Body != "m049" {
+		t.Fatalf("page 3: n=%d first=%q last=%q, want 50 / m000 / m049",
+			len(items3), items3[0].Body, items3[len(items3)-1].Body)
+	}
+	if prev3 != nil {
+		t.Errorf("final page prev_cursor = %q, want nil (start of thread reached)", *prev3)
+	}
+
+	// Polling forward from the newest held id returns nothing new.
+	if got, _, _ := listMsgs(t, h, threadID, "since="+items[len(items)-1].ID, sellerTok); len(got) != 0 {
+		t.Errorf("poll after tail: got %d new, want 0", len(got))
+	}
+}
+
+// A thread of exactly one page must NOT advertise a load-earlier cursor -
+// there is nothing older. Guards the N+1 existence probe against the naive
+// "page is full, so assume older exist" (#154 review). 100 == messagePageSize.
+func TestListMessagesTailNoDeadCursorAtPageBoundary(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, buyerID := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "m000")
+
+	ctx := context.Background()
+	tid := uuid.MustParse(threadID)
+	for i := 1; i < 100; i++ { // m000 (startThread) + m001..m099 = exactly 100
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO messages (id, thread_id, sender_id, body) VALUES ($1, $2, $3, $4)`,
+			ids.New(), tid, buyerID, fmt.Sprintf("m%03d", i)); err != nil {
+			t.Fatalf("seed message %d: %v", i, err)
+		}
+	}
+
+	items, prev, _ := listMsgs(t, h, threadID, "", sellerTok)
+	if len(items) != 100 {
+		t.Fatalf("tail: got %d items, want 100", len(items))
+	}
+	if prev != nil {
+		t.Errorf("exactly-one-page thread offered a load-earlier cursor %q, want nil", *prev)
+	}
 }
 
 // TestStartThreadAckGate proves the #8 acceptance: in a gated mode the first
