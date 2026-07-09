@@ -31,14 +31,49 @@
 	let stale = $state(false); // true after 3 consecutive poll failures
 	let pollFails = 0;
 	let preview = $state(''); // data-URL thumbnail of the attached image
+	// "Load earlier": the cursor for the page just before the oldest message we
+	// hold (null = start of thread reached). Seeded from the tail load (#154).
+	let earlierCursor = $state<string | null>(untrack(() => data.earlierCursor));
+	let loadingEarlier = false; // in-flight guard for the load-earlier fetch
 
 	// Re-seed and jump to the latest when navigating to a different thread.
 	$effect(() => {
 		if (threadId) {
 			messages = data.messages;
+			earlierCursor = data.earlierCursor;
 			tick().then(() => list?.scrollTo({ top: list.scrollHeight }));
 		}
 	});
+
+	// Prepend the previous page, holding the reader's scroll position steady
+	// (the viewport keeps the same message under the cursor as content grows
+	// above it). Guarded so a double-click cannot double-fetch.
+	async function loadEarlier() {
+		if (loadingEarlier || !earlierCursor) return;
+		loadingEarlier = true;
+		try {
+			const res = await fetch(`/api/v1/threads/${threadId}/messages?before=${earlierCursor}`, {
+				credentials: 'same-origin'
+			});
+			if (!res.ok) return;
+			const page = (await res.json()) as { items: ChatMessage[]; prev_cursor: string | null };
+			const seen = new Set(messages.map((m) => m.id));
+			const older = page.items.filter((m) => !seen.has(m.id));
+			if (!older.length) {
+				earlierCursor = page.prev_cursor;
+				return;
+			}
+			const before = list?.scrollHeight ?? 0;
+			messages = [...older, ...messages];
+			earlierCursor = page.prev_cursor;
+			await tick();
+			if (list) list.scrollTop += list.scrollHeight - before;
+		} catch {
+			/* transient; the button stays and the reader can retry */
+		} finally {
+			loadingEarlier = false;
+		}
+	}
 
 	// The poll cursor is the newest id we hold (UUIDv7 -> time-ordered).
 	function cursor(): string {
@@ -299,6 +334,11 @@
 	     role="log" is not interactive, but a scrollable region needs focus. -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<div class="messages" bind:this={list} role="log" tabindex="0" aria-label={t('chat.logAria')}>
+		{#if earlierCursor}
+			<button type="button" class="load-earlier" onclick={loadEarlier}
+				>{t('chat.loadEarlier')}</button
+			>
+		{/if}
 		{#each messages as m, i (m.id)}
 			{#if i === 0 || dayOf(messages[i - 1].created_at) !== dayOf(m.created_at)}
 				<div class="day"><span>{formatDate(dayOf(m.created_at), locale)}</span></div>
@@ -565,6 +605,27 @@
 	.messages:focus-visible {
 		outline: 2px solid var(--brand-600);
 		outline-offset: -2px;
+	}
+
+	/* Centered pill button at the top of the log; walks the thread backward. */
+	.load-earlier {
+		align-self: center;
+		margin-bottom: 0.5rem;
+		border-radius: 9999px;
+		border: 1px solid var(--slate-300);
+		background: white;
+		padding: 0.25rem 0.875rem;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--slate-600);
+		transition:
+			border-color 0.15s,
+			color 0.15s;
+	}
+
+	.load-earlier:hover {
+		border-color: var(--ink);
+		color: var(--ink);
 	}
 
 	.day {

@@ -231,6 +231,7 @@ export const es: Record<MessageKey, string> = {
 	'chat.unsupportedImage': 'Solo se permiten imágenes JPEG y PNG.',
 	'chat.blockedSend': 'No puedes enviar mensajes en esta conversación.',
 	'chat.logAria': 'Mensajes de la conversación',
+	'chat.loadEarlier': 'Cargar mensajes anteriores',
 	'chat.previewAlt': 'Vista previa de la imagen adjunta',
 	'chat.clearImage': 'Quitar la imagen adjunta',
 

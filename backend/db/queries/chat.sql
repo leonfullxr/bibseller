@@ -69,12 +69,29 @@ WHERE id = sqlc.arg('id')
 
 -- name: ListMessages :many
 -- Cursor-poll: ascending by id (UUIDv7, time-ordered), only newer than the
--- caller's cursor. Covered by messages_thread_idx (thread_id, id).
+-- caller's cursor. Covered by messages_thread_idx (thread_id, id). Used for
+-- forward polling (since=): fetch messages newer than the newest one held.
 SELECT * FROM messages
 WHERE thread_id = $1
   AND (sqlc.narg('cursor')::uuid IS NULL OR id > sqlc.narg('cursor'))
 ORDER BY id
 LIMIT sqlc.arg('page_size');
+
+-- name: ListMessagesTail :many
+-- The newest page_size messages (before= NULL) or the newest page_size older
+-- than a cursor (before=<id>, the "load earlier" reverse page). The inner
+-- query walks backward by id DESC so the LIMIT keeps the *newest* matching
+-- rows (covered by messages_thread_idx); the outer sort re-ascends so the
+-- caller always renders chronologically. Fixes long threads opening on the
+-- oldest messages instead of the newest (#154).
+SELECT * FROM (
+    SELECT * FROM messages
+    WHERE thread_id = $1
+      AND (sqlc.narg('before')::uuid IS NULL OR id < sqlc.narg('before'))
+    ORDER BY id DESC
+    LIMIT sqlc.arg('page_size')
+) m
+ORDER BY id;
 
 -- name: ListExpiredMessageBatch :many
 -- One batch (up to batch_size, oldest id first) of messages whose race
