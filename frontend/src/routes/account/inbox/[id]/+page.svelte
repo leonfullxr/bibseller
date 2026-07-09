@@ -56,19 +56,24 @@
 		const forThread = threadId;
 		const before = earlierCursor;
 		try {
-			const res = await fetch(`/api/v1/threads/${forThread}/messages?before=${before}`, {
-				credentials: 'same-origin'
-			});
+			const res = await fetch(
+				`/api/v1/threads/${forThread}/messages?before=${encodeURIComponent(before)}`,
+				{ credentials: 'same-origin' }
+			);
 			if (!res.ok || threadId !== forThread) return;
 			const page = (await res.json()) as { items: ChatMessage[]; prev_cursor: string | null };
 			if (threadId !== forThread) return; // navigated during the await
 			// before=<id> returns messages strictly older than the oldest we hold
 			// (id < before), so they cannot overlap - prepend without a dedupe set.
-			const prevHeight = list?.scrollHeight ?? 0;
+			// Restore scroll by how far the previously-top message moved down, not
+			// the total height delta: a concurrent poll appending at the bottom
+			// must not be counted as content added above the viewport.
+			const anchor = list?.querySelector<HTMLElement>('.msg');
+			const anchorBefore = anchor?.getBoundingClientRect().top ?? 0;
 			messages = [...page.items, ...messages];
 			earlierCursor = page.prev_cursor;
 			await tick();
-			if (list) list.scrollTop += list.scrollHeight - prevHeight;
+			if (list && anchor) list.scrollTop += anchor.getBoundingClientRect().top - anchorBefore;
 		} catch {
 			/* transient; the button stays and the reader can retry */
 		} finally {

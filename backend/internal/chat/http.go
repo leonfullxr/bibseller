@@ -329,8 +329,8 @@ type messageListResponse struct {
 	Items []messageDTO `json:"items"`
 	// NextCursor: forward-poll cursor, set on a full since= page (more newer
 	// messages may exist). PrevCursor: "load earlier" cursor, set only when
-	// older messages provably exist (an N+1 probe on the tail/before= path).
-	// Items are always ascending.
+	// older messages provably exist (the tail/before= query fetches one extra
+	// row as an existence probe). Items are always ascending.
 	NextCursor *string `json:"next_cursor"`
 	PrevCursor *string `json:"prev_cursor"`
 }
@@ -375,7 +375,7 @@ func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 	// since wins if both are somehow present (the client never sends both).
 	polling := q.Get("since") != ""
 	var rows []sqlcgen.Message
-	var hasOlder bool // tail path: proven older messages exist (an N+1 probe row)
+	var hasOlder bool // tail path: an extra probe row proved older messages exist
 	if polling {
 		id, err := uuid.Parse(q.Get("since"))
 		if err != nil {
