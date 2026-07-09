@@ -115,6 +115,35 @@ make prod-migrate && make prod-up
 never a fresh merge. If you want a deploy record, open a PR from `main` into
 `production` instead of the fast-forward push: same commit, plus a CI run.
 
+### Trying a change on staging without merging
+
+To preview a branch on the real Cloudflare-fronted stack before (or instead of)
+merging it - a design A/B, a risky refactor, a "does this even look right"
+check - run it on staging in a detached checkout. Staging is a throwaway
+worktree (D25), and the exploration commits never land on `main` or
+`production` (you never merge the branch into them from here):
+
+```
+# in the staging worktree (../bibseller-staging):
+git fetch origin
+git checkout --detach origin/<branch>            # the branch to preview
+make staging-up && make staging-migrate          # + make staging-seed if wanted
+#    compare https://test.<domain> against prod, iterate on the branch by
+#    pushing more commits, then repeating:
+#      git fetch origin && git checkout --detach origin/<branch>
+#      make staging-up          # + make staging-migrate if the branch adds any
+
+# when done - always restore staging to the trunk and free the RAM:
+git fetch origin                                 # trunk may have moved meanwhile
+git checkout main && git merge --ff-only origin/main
+make staging-down
+```
+
+The detached checkout keeps the `main` worktree pointer clean, so a later
+`make staging-up` for a real release still starts from the tested trunk. Leave
+staging down when idle (Model A runs stacks manually, below). This is how the
+frontend design trials (race-day / journal / start-line) were compared live.
+
 ### Migration ordering: expand/contract
 
 A migration must be safe against the binary currently running in prod: the old
