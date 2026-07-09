@@ -317,6 +317,37 @@ func TestListMessagesTailAndLoadEarlier(t *testing.T) {
 	}
 }
 
+// A thread of exactly one page must NOT advertise a load-earlier cursor -
+// there is nothing older. Guards the N+1 existence probe against the naive
+// "page is full, so assume older exist" (#154 review). 100 == messagePageSize.
+func TestListMessagesTailNoDeadCursorAtPageBoundary(t *testing.T) {
+	pool := testdb.Pool(t)
+	h := authedHandler(pool)
+	sellerTok, _ := registerUser(t, h, pool, "Seller", true)
+	buyerTok, buyerID := registerUser(t, h, pool, "Buyer", true)
+	race := seedRace(t, pool, "platform_sale")
+	listingID := createListing(t, h, race.ID, sellerTok)
+	threadID := startThread(t, h, listingID, buyerTok, "m000")
+
+	ctx := context.Background()
+	tid := uuid.MustParse(threadID)
+	for i := 1; i < 100; i++ { // m000 (startThread) + m001..m099 = exactly 100
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO messages (id, thread_id, sender_id, body) VALUES ($1, $2, $3, $4)`,
+			ids.New(), tid, buyerID, fmt.Sprintf("m%03d", i)); err != nil {
+			t.Fatalf("seed message %d: %v", i, err)
+		}
+	}
+
+	items, prev, _ := listMsgs(t, h, threadID, "", sellerTok)
+	if len(items) != 100 {
+		t.Fatalf("tail: got %d items, want 100", len(items))
+	}
+	if prev != nil {
+		t.Errorf("exactly-one-page thread offered a load-earlier cursor %q, want nil", *prev)
+	}
+}
+
 // TestStartThreadAckGate proves the #8 acceptance: in a gated mode the first
 // message is impossible until the ack is stored, then succeeds.
 func TestStartThreadAckGate(t *testing.T) {

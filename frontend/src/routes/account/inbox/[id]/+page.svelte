@@ -51,23 +51,24 @@
 	async function loadEarlier() {
 		if (loadingEarlier || !earlierCursor) return;
 		loadingEarlier = true;
+		// Capture the thread this fetch belongs to: if the reader navigates away
+		// mid-flight, the stale response must not prepend into another thread.
+		const forThread = threadId;
+		const before = earlierCursor;
 		try {
-			const res = await fetch(`/api/v1/threads/${threadId}/messages?before=${earlierCursor}`, {
+			const res = await fetch(`/api/v1/threads/${forThread}/messages?before=${before}`, {
 				credentials: 'same-origin'
 			});
-			if (!res.ok) return;
+			if (!res.ok || threadId !== forThread) return;
 			const page = (await res.json()) as { items: ChatMessage[]; prev_cursor: string | null };
-			const seen = new Set(messages.map((m) => m.id));
-			const older = page.items.filter((m) => !seen.has(m.id));
-			if (!older.length) {
-				earlierCursor = page.prev_cursor;
-				return;
-			}
-			const before = list?.scrollHeight ?? 0;
-			messages = [...older, ...messages];
+			if (threadId !== forThread) return; // navigated during the await
+			// before=<id> returns messages strictly older than the oldest we hold
+			// (id < before), so they cannot overlap - prepend without a dedupe set.
+			const prevHeight = list?.scrollHeight ?? 0;
+			messages = [...page.items, ...messages];
 			earlierCursor = page.prev_cursor;
 			await tick();
-			if (list) list.scrollTop += list.scrollHeight - before;
+			if (list) list.scrollTop += list.scrollHeight - prevHeight;
 		} catch {
 			/* transient; the button stays and the reader can retry */
 		} finally {
