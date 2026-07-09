@@ -120,17 +120,21 @@ never a fresh merge. If you want a deploy record, open a PR from `main` into
 To preview a branch on the real Cloudflare-fronted stack before (or instead of)
 merging it - a design A/B, a risky refactor, a "does this even look right"
 check - run it on staging in a detached checkout. Staging is a throwaway
-worktree (D25), so this never touches `main` or `production`:
+worktree (D25), and the exploration commits never land on `main` or
+`production` (you never merge the branch into them from here):
 
 ```
 # in the staging worktree (../bibseller-staging):
 git fetch origin
 git checkout --detach origin/<branch>            # the branch to preview
 make staging-up && make staging-migrate          # + make staging-seed if wanted
-#    compare https://test.<domain> against prod, iterate on the branch
-#    (push more commits, then repeat the fetch + checkout + staging-up)
+#    compare https://test.<domain> against prod, iterate on the branch by
+#    pushing more commits, then repeating:
+#      git fetch origin && git checkout --detach origin/<branch>
+#      make staging-up          # + make staging-migrate if the branch adds any
 
 # when done - always restore staging to the trunk and free the RAM:
+git fetch origin                                 # trunk may have moved meanwhile
 git checkout main && git merge --ff-only origin/main
 make staging-down
 ```
