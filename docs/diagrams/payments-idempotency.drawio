@@ -1,0 +1,67 @@
+<mxfile host="app.diagrams.net" agent="bibseller-docs" version="24.7.8">
+  <diagram id="idem" name="Idempotency layers">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Payments idempotency - three layers + one reconciler (D32). No generic key table: the domain provides natural keys." style="text;html=1;fontSize=20;fontStyle=1;fontColor=#26221c;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="band1" value="LAYER 1 - Browser -&gt; API (double clicks, mobile network retries)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f3ea;strokeColor=#26221c;verticalAlign=top;fontSize=13;fontStyle=1;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="1320" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="b1a" value="POST /orders&#10;&#10;Natural key: the listing. The orders_one_live_per_listing partial unique index + create semantics: a repeat create returns the EXISTING live order to its buyer (safe), 409 to anyone else." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#57524b;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="70" y="120" width="400" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b1b" value="State transitions (mark transferred / confirm / cancel)&#10;&#10;Guarded update: UPDATE orders SET state=$to WHERE id=$1 AND state=$from. Replay whose target already holds -&gt; 200 with current state (&quot;already done&quot; is success). Conflicting state -&gt; 409." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#57524b;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="500" y="120" width="430" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b1c" value="Why no idempotency-key table&#10;&#10;Generic keys solve arbitrary APIs; ours has one creation endpoint with a natural key and transition endpoints that are replays-are-success by construction. Less machinery, same guarantee." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#57524b;fontSize=11;align=left;spacing=8;verticalAlign=top;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="120" width="370" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="band2" value="LAYER 2 - API -&gt; Stripe (the critical layer: real money moves here)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faf1f2;strokeColor=#93283b;verticalAlign=top;fontSize=13;fontStyle=1;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="1320" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="b2a" value="Deterministic keys per order&#10;&#10;pi:{order_id} - transfer:{order_id} - refund:{order_id}&#10;One PaymentIntent per order (Stripe retries card attempts on the same PI). Every object carries metadata.order_id + the transfer_group." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93283b;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="70" y="320" width="400" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="b2b" value="Ordering rule: state row commits FIRST, Stripe call second&#10;&#10;Crash after commit, before the call -&gt; reconciler retries, same key -&gt; created exactly once.&#10;Crash after the call, before storing the id -&gt; retry returns the SAME object -&gt; no double payout.&#10;Reverse order could move money with no state row demanding it - forbidden." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93283b;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="500" y="320" width="430" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="b2c" value="Caveat: Stripe keys expire after ~24h&#10;&#10;Keys are the fast path only. Reconciliation of older stragglers deduplicates by metadata.order_id lookup, never by key alone." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93283b;fontSize=11;align=left;spacing=8;verticalAlign=top;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="320" width="370" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="band3" value="LAYER 3 - Stripe -&gt; API (webhooks: at-least-once, unordered)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8e2f7;strokeColor=#5b21b6;verticalAlign=top;fontSize=13;fontStyle=1;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="1320" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="b3a" value="Insert-first dedup&#10;&#10;Handler's first statement: INSERT INTO stripe_events ... ON CONFLICT (id) DO NOTHING. Zero rows = replay -&gt; 200 immediately. Otherwise process IN THE SAME TRANSACTION - a failure rolls back the event row too, so Stripe's retry gets a clean second attempt. At-least-once delivery -&gt; exactly-once effect." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#5b21b6;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="70" y="570" width="560" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="b3b" value="Trust rules&#10;&#10;1. Verify the signature (proves the sender).&#10;2. Verify amount/currency against the ORDER ROW before honoring success (proves our expectations).&#10;3. Treat event ORDER as untrusted - the from-state guards make wrong-order events harmless no-ops." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#5b21b6;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="660" y="570" width="670 " height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="band4" value="THE RECONCILER - one batchjob backstops every crash window" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#047857;verticalAlign=top;fontSize=13;fontStyle=1;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="740" width="1320" height="200 " as="geometry" />
+        </mxCell>
+        <mxCell id="b4a" value="Sweep&#10;&#10;Every few minutes: orders in non-terminal states older than a threshold." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#047857;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="70" y="780" width="290" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="b4b" value="Cross-check&#10;&#10;Fetch the PaymentIntent / Transfer / Refund at Stripe by metadata.order_id + transfer_group; compare with our state." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#047857;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="390" y="780" width="300" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="b4c" value="Converge&#10;&#10;Drive the SAME guarded transitions as actor 'system:reconciler' - identical code path as webhooks, so reconciliation can never disagree with the live flow." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#047857;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="720" y="780" width="300" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="b4d" value="Deadlines ride along&#10;&#10;Reservation TTL (cancel the PI at Stripe BEFORE flipping state), 3-day auto-release, refund-if-race-date-passed. Alerts: repeated transfer failures, silent stripe_events while orders sit non-terminal, low platform balance." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#047857;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="780" width="280" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#047857;" edge="1" parent="1" source="b4a" target="b4b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#047857;" edge="1" parent="1" source="b4b" target="b4c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

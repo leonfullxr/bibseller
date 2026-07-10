@@ -1,0 +1,17 @@
+# Diagrams
+
+draw.io sources (open with [app.diagrams.net](https://app.diagrams.net) or the
+VS Code extension) + committed PNG exports in [`exports/`](exports/) so they
+render on GitHub and drop straight into decks. After editing a `.drawio`,
+re-export: `drawio -x -f png -s 2 -o exports/ <file>.drawio`.
+
+| Diagram | Shows |
+| --- | --- |
+| [architecture-overview](exports/architecture-overview.png) | The whole system: Cloudflare -> tunnel -> Caddy -> web/api, Postgres/MinIO, email relay, Stripe, the batchjob - and the transfer_policy gate that decides where money may flow |
+| [payments-money-flow](exports/payments-money-flow.png) | Checkout sequence (separate charges & transfers): reserve -> pay -> held -> transfer confirmed -> release, plus the failure overlays (declined card, TTL race, dispute, refund) |
+| [order-state-machine](exports/order-state-machine.png) | The seven order states, who moves them, and what each transition does with the money |
+| [payments-idempotency](exports/payments-idempotency.png) | The three idempotency layers (browser->API, API->Stripe, Stripe->API) and the reconciler that backstops every crash window (D32) |
+
+Design narrative: [PAYMENTS_AND_COMPLIANCE.md](../PAYMENTS_AND_COMPLIANCE.md)
+(money flow, idempotency & failure handling) and the order state machine in
+[DATA_MODEL.md](../DATA_MODEL.md#order-state-machine).

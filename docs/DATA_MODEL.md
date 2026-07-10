@@ -274,10 +274,10 @@ stateDiagram-v2
 |---|---|---|---|
 | - | `pending_payment` | buyer | race is `platform_sale`, seller onboarded, listing `active` -> `reserved`; PaymentIntent created |
 | `pending_payment` | `paid_held` | system (webhook) | signature-verified, idempotent via `stripe_events` |
-| `pending_payment` | `cancelled` | buyer / system | TTL (30 min) or failure -> listing back to `active` |
+| `pending_payment` | `cancelled` | buyer / system | TTL (30 min) or buyer abort; the job cancels the PaymentIntent at Stripe *before* flipping state (kills the late-success race) -> listing back to `active` |
 | `paid_held` | `seller_marked_transferred` | seller | sets `seller_marked_at` |
-| `paid_held` | `refunded` | buyer/seller/system | race date passed or mutual cancel -> Stripe Refund |
-| `seller_marked_transferred` | `completed` | buyer / system | buyer confirm or auto-release (N days, default 3) -> Stripe Transfer to seller, listing -> `sold` |
+| `paid_held` | `refunded` | buyer/seller/system | race date passed or mutual cancel -> Stripe Refund of the item amount (processing fee non-refundable - D31) |
+| `seller_marked_transferred` | `completed` | buyer / system | buyer confirm or auto-release after 3 days (D31) -> Stripe Transfer to seller, listing -> `sold` |
 | `seller_marked_transferred` | `disputed` | buyer | freezes auto-release |
 | `disputed` | `completed` / `refunded` | admin | manual; `audit_log` + `order_events` |
 
@@ -286,7 +286,7 @@ Invariants
 1. Transitions happen only in `internal/order`, as `UPDATE orders SET state = $to WHERE id = $1 AND state = $from` - a zero-rowcount update means a concurrent transition won; retry or fail, never overwrite.
 2. Every transition appends an `order_events` row in the same transaction.
 3. Terminal states (`completed`, `cancelled`, `refunded`) are frozen.
-4. Money side effects (Transfer, Refund) execute behind the `payment` interface after the state row commits, with reconciliation via webhooks.
+4. Money side effects (Transfer, Refund) execute behind the `payment` interface after the state row commits, always with a deterministic Stripe idempotency key (`transfer:{order_id}`, `refund:{order_id}`) and `metadata.order_id`; a reconciler batchjob backstops every crash window (D32 - [PAYMENTS_AND_COMPLIANCE.md](PAYMENTS_AND_COMPLIANCE.md#idempotency--failure-handling-m6-design)).
 
 ## Retention (GDPR minimization)
 
