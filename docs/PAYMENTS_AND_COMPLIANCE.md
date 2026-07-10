@@ -26,7 +26,7 @@ sequenceDiagram
     S-->>API: webhook payment_intent.succeeded
     API->>API: order -> paid_held  (funds on platform balance)
     SL->>API: mark bib transferred
-    B->>API: confirm received (or auto-release after N days)
+    B->>API: confirm received (or auto-release after 3 days - D31)
     API->>S: Create Transfer -> seller account
     S->>SL: payout (standard schedule)
 ```
