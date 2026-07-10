@@ -19,19 +19,19 @@ sequenceDiagram
     participant API as Go API
     participant S as Stripe
     participant SL as Seller
-    B->>API: POST /orders (Idempotency-Key)
+    B->>API: POST /orders (idempotent per listing - D32)
     API->>API: race=platform_sale? seller onboarded? listing->reserved (30min TTL)
     API->>S: Create PaymentIntent (transfer_group)
     B->>S: confirm card (Stripe.js, SCA)
     S-->>API: webhook payment_intent.succeeded
     API->>API: order -> paid_held  (funds on platform balance)
     SL->>API: mark bib transferred
-    B->>API: confirm received (or auto-release after N days)
+    B->>API: confirm received (or auto-release after 3 days - D31)
     API->>S: Create Transfer -> seller account
     S->>SL: payout (standard schedule)
 ```
 
-Failure paths: TTL/abort -> order `cancelled`, listing back to `active`. Problems before release -> `refunded` (full Stripe Refund - easy, funds never left the platform). Buyer dispute after seller marks transferred -> `disputed`, manual resolution. Chargebacks while funds are held are low-risk (nothing to claw back from the seller); post-release chargebacks -> transfer reversal attempt + ToS clause. Full state machine: [DATA_MODEL.md](DATA_MODEL.md#order-state-machine).
+Failure paths: TTL/abort -> order `cancelled`, listing back to `active`. Problems before release -> `refunded` (Stripe Refund of the item amount - easy, funds never left the platform; the processing fee is non-refundable, D31). Buyer dispute after seller marks transferred -> `disputed`, manual resolution. Chargebacks while funds are held are low-risk (nothing to claw back from the seller); post-release chargebacks -> transfer reversal attempt + ToS clause. Full state machine: [DATA_MODEL.md](DATA_MODEL.md#order-state-machine). Idempotency and every failure path in depth: [Idempotency & failure handling](#idempotency--failure-handling-m6-design) below + the diagrams in [`diagrams/`](diagrams/).
 
 ## Fee reality & pass-through
 
@@ -43,9 +43,205 @@ With pass-through ON (decided - D1), the buyer sees an itemized "payment process
 total = (item_price + fixed_fees) / (1 − percentage_fees)
 ```
 
-Example at 1.5% + €0.25: €50.00 bib -> buyer pays €51.02, seller receives €50.00, platform nets ~€0 (± cents; payout-leg fees either folded into the formula or absorbed - [Decisions 1 & 4](https://github.com/leonfullxr/bibseller/issues/3)). Note: Stripe does not return the original processing fee on refunds; Decision 4 covers who eats it (recommendation: the platform, at beta volumes).
+Example at 1.5% + €0.25: €50.00 bib -> buyer pays €51.02, seller receives €50.00, platform nets ~€0 (± cents; payout-leg fees either folded into the formula or absorbed - [Decision 1](https://github.com/leonfullxr/bibseller/issues/3)).
+
+Refunds (decided - D31, resolves issue #3's Decision 4): Stripe does not return
+the original processing fee on refunds, and the buyer bears that - a refund
+returns `item_amount_cents`, never `total_amount_cents`. Consequences we
+accept and handle explicitly:
+
+- Checkout must disclose it where the fee is itemized ("payment processing,
+  non-refundable") - the buyer learns this before paying, not at refund time.
+- Chargebacks are the exception by construction: Stripe returns the full
+  charge to the card and debits us, so a disputed charge cannot withhold the
+  fee. That asymmetry is another reason the dispute flow routes people to
+  refunds first.
+- An admin can still issue a full refund manually (Stripe dashboard) as a
+  goodwill override; the product default stays item-amount.
+- Counsel review flag (M7 #11): EU consumer-rights rules on withheld fees can
+  depend on who cancels and why; the ToS wording needs counsel sign-off
+  before payments GA.
 
 PCI: Stripe.js/Elements only - card data never touches our servers (SAQ-A). Webhooks: signature-verified, idempotent via the `stripe_events` table, replay-safe.
+
+## Idempotency & failure handling (M6 design)
+
+Decided 2026-07-10 (D32). Diagrams: [`diagrams/payments-idempotency.drawio`](diagrams/payments-idempotency.drawio) (the three layers), [`diagrams/payments-money-flow.drawio`](diagrams/payments-money-flow.drawio) (happy path + failure overlays).
+
+### The three idempotency layers
+
+Money moves across three unreliable boundaries; each gets its own mechanism.
+No generic idempotency-key table - the domain provides natural keys.
+
+**1. Browser -> API.** `POST /orders` is idempotent through the
+`orders_one_live_per_listing` partial unique index plus create semantics:
+a repeat create for the same listing returns the *existing* live order when
+the caller is its buyer (double-click and network-retry safe) and 409s for
+anyone else. State transitions (`mark transferred`, `confirm received`,
+`cancel`) are idempotent through the guarded update
+(`UPDATE orders SET state=$to WHERE id=$1 AND state=$from`): a replay whose
+target state already holds returns **200 with the current state** - "already
+done" is success; only a *conflicting* current state is a 409.
+
+**2. API -> Stripe (the critical layer).** Every mutating Stripe call carries
+a deterministic idempotency key derived from the order id - `pi:{order_id}`,
+`transfer:{order_id}`, `refund:{order_id}`. One PaymentIntent per order:
+Stripe PIs retry failed card attempts natively, so a decline never mints a
+new PI. Combined with invariant 4 (state row commits first, Stripe call
+second) this makes every crash window safe:
+
+- crash after commit, before the Stripe call -> the reconciler retries with
+  the same key -> the object is created exactly once;
+- crash after the call, before we store `stripe_transfer_id` -> the retry
+  returns the *same* object instead of paying the seller twice.
+
+Caveat: Stripe idempotency keys expire after ~24h, so keys are the fast path
+only. Every object we create carries `metadata.order_id` (+ the
+`transfer_group`), and reconciliation of older stragglers deduplicates by
+metadata lookup, never by key alone.
+
+Never call Stripe before committing the state row. With commit-first the
+worst case is "state says completed, transfer missing" - the reconciler
+creates it, the key prevents doubles. The reverse order can move money with
+no state row demanding it.
+
+**3. Stripe -> API (webhooks).** The handler's first statement is
+`INSERT INTO stripe_events ... ON CONFLICT (id) DO NOTHING`; zero rows means
+replay -> 200 immediately. Otherwise the event is processed **in the same
+transaction** as that insert - a processing failure rolls back the event row
+too, and Stripe's retry gets a clean second attempt. At-least-once delivery
+becomes exactly-once effect. Two hard rules: verify `amount`/`currency`
+against the order row before honoring a success event (signatures prove the
+sender, not our expectations), and treat event *order* as untrusted -
+Stripe does not guarantee ordering; the from-state guards make wrong-order
+events harmless no-ops.
+
+### Failure taxonomy
+
+| # | Failure | Handling |
+|---|---|---|
+| 1 | Card declined / SCA abandoned | Order stays `pending_payment`; same PI retryable in the UI until the reservation TTL; each attempt appends `order_events` (`payment_failed` + decline reason). `payment_intent.payment_failed` changes no state. |
+| 2 | TTL vs. late success race | The TTL job **cancels the PaymentIntent at Stripe first**, then flips the order to `cancelled`. A canceled PI cannot succeed, so the race collapses: cancel wins -> clean cancellation; Stripe answers "already succeeded" -> transition to `paid_held` instead (the money is real). True late success is reachable only through a crash mid-job -> auto-refund (item amount), `order_events` trail. Never a silently kept charge. |
+| 3 | Transfer fails at release (seller account restricted since onboarding) | Funds are still on the platform balance - nothing is lost. No new state: `completed` commits, the reconciler retries the Transfer (same key), and alerts after N attempts for manual action. Revisit with a `release_failed` state only if it turns out common. |
+| 4 | Chargeback while held | `charge.dispute.created` -> `disputed`. Low risk: nothing was paid out. Evidence pack = `order_events` + the chat confirmation trail. |
+| 5 | Chargeback after release | Transfer reversal attempt + ToS clause; what reversal does not recover, the platform eats at beta volumes. Fee cannot be withheld on chargebacks (Stripe returns the full charge). |
+| 6 | Webhook endpoint down | Stripe retries for ~3 days; the reconciler is the backstop; alert if `stripe_events` stays silent for hours while orders sit non-terminal. |
+| 7 | Any crash window | Covered by the reconciler sweep (below). |
+
+### The reconciler
+
+One `internal/platform/batchjob` job is the backstop for every partial
+failure at once: sweep orders in non-terminal states older than a few
+minutes, cross-check the PaymentIntent / Transfer / Refund at Stripe via
+`metadata.order_id`, and drive the same guarded state transitions as
+`actor: 'system:reconciler'`. It follows the identical code path as webhooks
+(state machine + `order_events`), so reconciliation can never disagree with
+the live flow. Deadline duties (reservation TTL, 3-day auto-release,
+refund-if-race-date-passed) ride the same job schedule.
+
+### Platform balance float
+
+Zero commission means no fee revenue buffering refunds and chargebacks: the
+platform account eats payout-leg fees, chargeback debits, and goodwill
+refunds. Mitigation: keep a small manual float on the platform Stripe
+balance (~ €200 at beta) and alert on low balance. Honest line item for
+investor material.
+
+## Seller onboarding lifecycle (M6 design)
+
+Decided 2026-07-10 (D34). Diagram: [`diagrams/seller-onboarding.drawio`](diagrams/seller-onboarding.drawio).
+
+Storage: a dedicated `seller_accounts` table (one row per seller - schema in
+[DATA_MODEL.md](DATA_MODEL.md#seller_accounts-m6)), not columns on `users`
+(the dead ones were dropped in migration 0013; status is multi-field and
+webhook-written, so it earns its own row). We cache only gate-keeping facts:
+the Stripe account id, `details_submitted`, `transfers_enabled`,
+`disabled_reason`. Identity documents live at Stripe, never here.
+
+Lifecycle (all updates arrive via `account.updated` on the Connect webhook
+endpoint - separate signing secret from account webhooks):
+
+1. **none** - no row. The sell flow (for `platform_sale` races) and a
+   settings "payments" section offer "set up payouts" (D33 entry points).
+2. **started** - we created the Express account (country = seller's,
+   `transfers` capability requested) and issued an Account Link. Links are
+   single-use and short-lived; the settings section re-issues one on demand
+   (`refresh_url` lands there too). Repeat clicks reuse the stored account
+   id - one Stripe account per seller, ever.
+3. **active** - `transfers_enabled` true: the only state in which (a) the
+   listing form shows the "enable secure payment" opt-in and (b) checkout
+   will create an order for that listing.
+4. **restricted** - Stripe raised requirements (`disabled_reason` set,
+   `transfers_enabled` false). Can happen *after* onboarding (periodic KYC
+   re-checks). Settings shows "action needed" + a fresh Account Link.
+
+Gating is **derived at read time** - "payment available" = seller `active`
+AND race `platform_sale` AND `listings.payment_enabled` - so an account
+going restricted instantly hides the payment CTA everywhere, with no sweep
+job and no stale flags. Consequences for in-flight money when an account
+goes restricted: new orders are refused at creation (guard re-checks);
+`pending_payment` PIs may still succeed into `paid_held` - buyer-safe,
+funds held; release attempts fail into the D32 reconciler path (retry +
+alert). The admin then waits for the seller to cure the account or refunds
+the buyer.
+
+GDPR: on account deletion the `seller_accounts` row is deleted once no
+non-terminal orders reference the seller (order rows keep their 10-year
+anonymized carve-out); the Stripe account itself belongs to the seller and
+follows Stripe's own retention.
+
+## Checkout by policy mode (M6 design)
+
+The four-mode question, answered for checkout. The buyer-side bar matches
+chat: signed-in + email-verified.
+
+| | `platform_sale`, seller active | `platform_sale`, seller not onboarded | `official_only` | `connect_only` / `unknown` |
+|---|---|---|---|---|
+| Primary CTA | Buy securely (checkout) | Message seller | Official process link | Message seller (after ack) |
+| Payment UI | Stripe.js PaymentElement, itemized fee line + "non-refundable" disclosure (D31) | none - a quiet nudge: "secure payment available if the seller enables it" | none, structurally | none, structurally |
+| Chat | available alongside | primary | available | primary, ack-gated |
+
+Rules: the nudge in the not-onboarded column never blocks chat and never
+shames the seller (payments are optional, principle 2). The disclosure line
+renders wherever the fee is itemized - checkout summary and the order
+confirmation email. No guest checkout: orders bind to accounts for the
+evidence trail and DAC7 totals.
+
+## Dispute & refund runbook (payments GA gate)
+
+Decided 2026-07-10 (D33): **buyer-favoring default, 48h first response, 7-day
+resolution.** Diagram: [`diagrams/dispute-runbook.drawio`](diagrams/dispute-runbook.drawio).
+
+Intake - any of: buyer opens a dispute in-app (`seller_marked_transferred ->
+disputed`, auto-release frozen), or a Stripe `charge.dispute.created`
+arrives (card chargeback; map the order to `disputed` wherever it stands).
+Every intake gets a first human response within **48 hours**.
+
+Evidence, in weight order: the race organiser's registration state (does
+the bib now carry the buyer's name?), the chat trail (D15 handover
+confirmations, shared proof images), `order_events` timestamps. The admin
+asks each side once, with a 72h reply window inside the 7-day budget.
+
+Resolution paths (all via the existing admin transitions, `audit_log` +
+`order_events` rows on every action):
+
+- **Transfer verified** -> resolve for seller: `disputed -> completed`,
+  Transfer with the usual key. If the buyer's card dispute is still open at
+  Stripe, submit the evidence pack instead of refunding twice.
+- **Transfer refuted or inconclusive** -> resolve for buyer (the default):
+  `disputed -> refunded`, item-amount refund (D31). Inconclusive cases lean
+  buyer-side deliberately: it protects the paying side, keeps bank
+  chargebacks (with their €15+ fees) rare, and the seller loses only the
+  sale. Sellers who accumulate inconclusive disputes get flagged for the
+  moderation queue (repeat-infringer policy, DSA section).
+- **Chargeback races the runbook**: if the bank rules first, Stripe's
+  outcome wins mechanically (funds pulled); reconcile our state to match
+  and record the delta in `order_events`.
+
+Publish the SLA numbers in help copy and ToS once counsel reviews the
+wording (M7 #11). At beta the "queue" is the founder's inbox - the runbook
+exists so decisions are consistent and every one leaves the same paper
+trail.
 
 ## Liability posture by policy mode
 
@@ -89,4 +285,4 @@ DAC7 obligations attach to facilitating relevant sales - not to profiting from t
 | Gate | Must be true |
 |---|---|
 | Public beta (chat-only) | ToS + Privacy published - contact point page - report flow works - GDPR export/delete shipped - EU hosting |
-| Payments GA | Everything above - Stripe flows + webhooks battle-tested in sandbox - refund/dispute runbook - DAC7 memo signed off - counsel has reviewed ToS responsibility split & disclaimers |
+| Payments GA | Everything above - Stripe flows + webhooks battle-tested in sandbox - [refund/dispute runbook](#dispute--refund-runbook-payments-ga-gate) (D33) - DAC7 memo signed off - counsel has reviewed ToS responsibility split, disclaimers, the D31 fee wording, and the SLA copy |

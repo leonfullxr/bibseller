@@ -64,7 +64,7 @@ Two structural guarantees follow:
 1. Find race -> listing -> Buy (or chat first).
 2. Checkout via Stripe (price + pass-through processing fee, itemized).
 3. Funds are held by the platform - not the seller - while the bib/name transfer happens.
-4. Seller marks "transferred"; buyer confirms (or auto-release after N days); seller is paid out.
+4. Seller marks "transferred"; buyer confirms (or auto-release after 3 days - D31); seller is paid out.
 5. Problems -> dispute -> manual resolution, refund path documented.
 
 ### Buyer - `official_only` race

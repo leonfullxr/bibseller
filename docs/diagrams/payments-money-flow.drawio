@@ -1,0 +1,97 @@
+<mxfile host="app.diagrams.net" agent="bibseller-docs" version="24.7.8">
+  <diagram id="money-flow" name="Checkout money flow">
+    <mxGraphModel dx="1500" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1250" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Checkout money flow - separate charges &amp; transfers (platform_sale only)" style="text;html=1;fontSize=20;fontStyle=1;fontColor=#26221c;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hBuyer" value="Buyer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f3ea;strokeColor=#26221c;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="hApi" value="Go API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faf1f2;strokeColor=#93283b;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="80" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="hPg" value="Postgres" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f1ee;strokeColor=#57524b;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="660" y="80" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="hStripe" value="Stripe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8e2f7;strokeColor=#5b21b6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="80" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="hSeller" value="Seller" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f3ea;strokeColor=#26221c;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="80" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lBuyer" style="html=1;strokeColor=#a8a29a;dashed=1;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="130" y="130" as="sourcePoint" /><mxPoint x="130" y="880" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="lApi" style="html=1;strokeColor=#a8a29a;dashed=1;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="130" as="sourcePoint" /><mxPoint x="430" y="880" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="lPg" style="html=1;strokeColor=#a8a29a;dashed=1;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="730" y="130" as="sourcePoint" /><mxPoint x="730" y="880" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="lStripe" style="html=1;strokeColor=#a8a29a;dashed=1;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1030" y="130" as="sourcePoint" /><mxPoint x="1030" y="880" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="lSeller" style="html=1;strokeColor=#a8a29a;dashed=1;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1330" y="130" as="sourcePoint" /><mxPoint x="1330" y="880" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m1" value="1. POST /orders {listing_id}" style="html=1;strokeColor=#26221c;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="130" y="180" as="sourcePoint" /><mxPoint x="430" y="180" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m2" value="2. guards: platform_sale + seller onboarded + listing active&#10;order -&gt; pending_payment, listing -&gt; reserved (30 min TTL)&#10;(repeat POST for same listing returns the existing live order)" style="html=1;strokeColor=#57524b;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="250" as="sourcePoint" /><mxPoint x="730" y="250" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m3" value="3. Create PaymentIntent - idempotency key pi:{order_id},&#10;transfer_group + metadata.order_id, amount = gross-up total" style="html=1;strokeColor=#5b21b6;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="330" as="sourcePoint" /><mxPoint x="1030" y="330" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m4" value="4. Stripe.js confirms the card - SCA/3DS (card data never touches our servers)" style="html=1;strokeColor=#26221c;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="130" y="400" as="sourcePoint" /><mxPoint x="1030" y="400" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m5" value="5. webhook payment_intent.succeeded (signed)" style="html=1;strokeColor=#5b21b6;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1030" y="470" as="sourcePoint" /><mxPoint x="430" y="470" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m6" value="6. verify signature + amount vs order row;&#10;INSERT stripe_events ON CONFLICT DO NOTHING (replay -&gt; 200);&#10;order -&gt; paid_held + order_events, same transaction" style="html=1;strokeColor=#57524b;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="545" as="sourcePoint" /><mxPoint x="730" y="545" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="noteHeld" value="Funds sit on the PLATFORM balance - the seller has not been paid, the buyer cannot lose the money" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faf1f2;strokeColor=#93283b;fontSize=11;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="480" y="575" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m7" value="7. marks bib transferred" style="html=1;strokeColor=#26221c;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1330" y="660" as="sourcePoint" /><mxPoint x="430" y="660" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m8" value="8. confirms received - or auto-release after 3 days (D31)" style="html=1;strokeColor=#26221c;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="130" y="720" as="sourcePoint" /><mxPoint x="430" y="720" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m9" value="9. order -&gt; completed (state commits FIRST)" style="html=1;strokeColor=#57524b;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="775" as="sourcePoint" /><mxPoint x="730" y="775" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m10" value="10. Create Transfer - key transfer:{order_id} (retry-safe, exactly once)" style="html=1;strokeColor=#5b21b6;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="830" as="sourcePoint" /><mxPoint x="1030" y="830" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m11" value="11. payout (standard schedule)" style="html=1;strokeColor=#047857;fontSize=12;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1030" y="875" as="sourcePoint" /><mxPoint x="1330" y="875" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="fTitle" value="Failure overlays (full taxonomy: PAYMENTS_AND_COMPLIANCE.md - Idempotency &amp; failure handling)" style="text;html=1;fontSize=14;fontStyle=1;fontColor=#93283b;align=left;" vertex="1" parent="1">
+          <mxGeometry x="60" y="930" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="f1" value="F1 - Card declined / SCA abandoned&#10;&#10;Order stays pending_payment; the SAME PaymentIntent retries until the TTL. Each attempt logged to order_events. No state change on payment_intent.payment_failed." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e6;strokeColor=#b45309;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="60" y="970" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="f2" value="F2 - Reservation TTL vs late success&#10;&#10;The TTL job cancels the PaymentIntent AT STRIPE first, then flips the order to cancelled. A cancelled PI cannot succeed. If Stripe answers &quot;already succeeded&quot; -&gt; paid_held instead. Crash mid-job -&gt; reconciler auto-refunds. Never a silently kept charge." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e6;strokeColor=#b45309;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="420" y="970" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="f3" value="F3 - Buyer disputes after seller marks&#10;&#10;-&gt; disputed: auto-release frozen, funds stay held, admin resolves with the order_events + chat trail. Stripe chargebacks map to the same state via charge.dispute.created." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e6;strokeColor=#b45309;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="780" y="970" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="f4" value="F4 - Refund (cancel / race date passed)&#10;&#10;Refund of item_amount_cents with key refund:{order_id} - the itemized processing fee is non-refundable (D31, disclosed at checkout). Trivial while funds are held: money never left the platform balance." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7e6;strokeColor=#b45309;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="970" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="f5" value="F5 - Transfer fails at release (seller account restricted since onboarding): funds are still on the platform balance - the reconciler retries with the same key and alerts after N attempts. -- F6 - Webhook outage: Stripe retries ~3 days; the reconciler sweeps non-terminal orders and drives the same guarded transitions via metadata.order_id lookup." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f1ee;strokeColor=#57524b;fontSize=11;align=left;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1120" width="1410" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
