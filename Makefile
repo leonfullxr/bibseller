@@ -19,7 +19,10 @@ SQLC  := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
         prod-backup-offsite prod-restore-drill promote
 
 help: ## list targets
-	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
+	@# -h: MAKEFILE_LIST also carries the -include'd .env, and grep prefixes
+	@# filenames when given two files - which used to shift the target-name
+	@# column into showing "Makefile" for every row.
+	@grep -hE '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-18s %s\n", $$1, $$2}'
 
 infra: ## start Postgres + MinIO + Mailpit
 	docker compose up -d --wait
