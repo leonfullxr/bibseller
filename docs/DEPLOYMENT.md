@@ -90,6 +90,24 @@ git worktree add ../bibseller-staging main    # a second dir -> staging
 Run `make prod-*` from the prod clone and `make staging-*` from
 `../bibseller-staging`.
 
+### Day-to-day: stop and start
+
+The box shares its RAM with everything else, so the stacks run only while
+wanted. A morning crontab stops both (`make prod-down` at 08:15 - it takes
+an offsite backup first - then `make staging-down` at 08:16, logged to
+`~/bibseller-cron.log`); starting is always manual:
+
+```
+make prod-up          # in the prod clone      -> https://<domain>
+make staging-up       # in ../bibseller-staging -> https://test.<domain>
+```
+
+`make help` lists every target. Both stacks bake their compose project name
+(`name: bibseller-prod` in deploy/compose.prod.yml; staging overrides it
+with `-p bibseller-staging`), so a hand-typed `docker compose -p <guess> ...`
+will silently target a project that does not exist - drive the stacks
+through make.
+
 ### Test, then deploy
 
 ```
