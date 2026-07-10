@@ -11,10 +11,10 @@
 		type I18n
 	} from '$lib/i18n';
 	// Self-hosted fonts (fontsource -> vite-bundled woff2, same-origin so the
-	// strict CSP needs no font-src). Bricolage Grotesque (variable) is the
-	// display voice; Manrope (variable) is the body workhorse.
-	import '@fontsource-variable/bricolage-grotesque/index.css';
-	import '@fontsource-variable/manrope/index.css';
+	// strict CSP needs no font-src). Bitter (variable slab) is the display
+	// voice; Source Sans 3 (variable) is the body workhorse.
+	import '@fontsource-variable/bitter/index.css';
+	import '@fontsource-variable/source-sans-3/index.css';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
@@ -196,8 +196,8 @@
 		}
 	}
 
-	/* Masthead: a floating capsule that stays with you - frosted white over
-	   the porcelain page, fully rounded ends. */
+	/* Masthead: a floating capsule that stays with you - solid white over
+	   the chalk page, fully rounded ends. */
 	header {
 		position: sticky;
 		top: 0;
@@ -222,9 +222,7 @@
 		padding-inline: 1.5rem;
 		border: 1px solid var(--slate-200);
 		border-radius: 9999px;
-		background: rgb(255 255 255 / 0.85);
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
+		background: white;
 		box-shadow: var(--shadow-hard-sm);
 	}
 
@@ -233,7 +231,7 @@
 		font-size: 1.5rem;
 		line-height: 1.75rem;
 		font-weight: 800;
-		letter-spacing: -0.02em;
+		letter-spacing: -0.01em;
 		color: var(--ink);
 	}
 
@@ -394,7 +392,7 @@
 		padding: 2.5rem 1rem;
 	}
 
-	/* Footer: a night-navy block that bookends the porcelain page. */
+	/* Footer: a warm espresso block that bookends the chalk page. */
 	footer {
 		background: var(--ink);
 		color: var(--slate-300);
@@ -423,7 +421,7 @@
 		font-family: var(--font-display);
 		font-size: 1.25rem;
 		font-weight: 800;
-		letter-spacing: -0.02em;
+		letter-spacing: -0.01em;
 		color: white;
 	}
 

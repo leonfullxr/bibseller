@@ -35,7 +35,7 @@
 		"vitest": "^4.1.9"
 	},
 	"dependencies": {
-		"@fontsource-variable/bricolage-grotesque": "^5.2.10",
-		"@fontsource-variable/manrope": "^5.2.8"
+		"@fontsource-variable/bitter": "^5.2.10",
+		"@fontsource-variable/source-sans-3": "^5.2.9"
 	}
 }

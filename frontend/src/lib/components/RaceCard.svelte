@@ -11,8 +11,8 @@
 	const bibs = $derived(plural('raceCard.bibs', race.active_listings));
 </script>
 
-<!-- Catalog card: soft rounded plate, the date as a violet chip, the race
-     name in the display grotesk. Policy badge keeps its semantic tone. -->
+<!-- Catalog card: soft rounded plate, a neutral date chip, the race name
+     in the slab display face. Policy badge keeps its semantic tone. -->
 <a href={link(resolve('/races/[slug]', { slug: race.slug }))} class="card">
 	<div class="strip">
 		<span class="date">{formatDate(race.event_date, locale)}</span>
@@ -62,15 +62,16 @@
 		padding: 1rem 1.125rem 0;
 	}
 
+	/* Neutral date chip - the policy badge is the only color on the strip. */
 	.date {
 		white-space: nowrap;
 		border-radius: 9999px;
-		background: var(--brand-50);
+		background: var(--paper-2);
 		padding: 0.125rem 0.625rem;
 		font-size: 0.75rem;
 		line-height: 1.25rem;
 		font-weight: 700;
-		color: var(--brand-700);
+		color: var(--ink-2);
 	}
 
 	.body {

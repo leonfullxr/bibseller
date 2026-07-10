@@ -1,40 +1,39 @@
 /* Global reset + design tokens. Everything else is scoped per component.
 
-   EXPLORATION BRANCH - "Negative Split": a contemporary, athletic-modern
-   alternative to the journal system (docs/DESIGN.md). Cool porcelain
-   surfaces, deep night-navy ink, violet as the only action color, Bricolage
-   Grotesque display type, pill buttons and generous radii instead of serif
-   hairlines. Token NAMES are unchanged so every page restyles through the
-   variables; the brand-* ramp holds violet here, not bordeaux. Semantic
-   tones (emerald / sky / amber / slate) keep their exact meanings across
-   all designs. */
+   EXPLORATION BRANCH - "Sunday Run": the warm, human take on the modern
+   system (docs/DESIGN.md). Chalk paper, espresso ink, poppy red as the only
+   action color (race-poster red, the track-clay family), Bitter slab
+   display type, Source Sans 3 body, pill buttons and generous radii. Token
+   NAMES are unchanged so every page restyles through the variables; the
+   brand-* ramp holds poppy here. Semantic tones (emerald / sky / amber /
+   slate) keep their exact meanings across all designs. */
 
 :root {
 	/* Core surfaces & ink. */
-	--paper: #f7f8fb; /* page background - cool porcelain */
-	--paper-2: #eef0f6; /* tinted wells (chat canvas, mats) */
-	--ink: #131629; /* night navy: text */
-	--ink-2: #363b52; /* secondary ink */
+	--paper: #faf7f2; /* page background - warm chalk */
+	--paper-2: #f1ece3; /* tinted wells (chat canvas, mats) */
+	--ink: #2b2521; /* warm espresso: text */
+	--ink-2: #4a423b; /* secondary ink */
 
-	/* Brand: violet. White text needs brand-600 or deeper (AA, 5:1+). */
-	--brand-50: #f5f3ff;
-	--brand-100: #ede9fe;
-	--brand-300: #c4b5fd;
-	--brand-500: #8b5cf6;
-	--brand-600: #7c3aed;
-	--brand-700: #6d28d9;
-	--brand-800: #5b21b6;
+	/* Brand: poppy red. White text needs brand-600 or deeper (AA, 5:1+). */
+	--brand-50: #fdf3f1;
+	--brand-100: #fbe3df;
+	--brand-300: #f2a99e;
+	--brand-500: #e2543f;
+	--brand-600: #cd3a26;
+	--brand-700: #ab2e1d;
+	--brand-800: #8a2618;
 
-	/* Neutrals: the slate-* names carry true cool slate on this design. */
-	--slate-50: #f8fafc;
-	--slate-100: #f1f5f9;
-	--slate-200: #e2e8f0;
-	--slate-300: #cbd5e1;
-	--slate-400: #94a3b8;
-	--slate-500: #64748b;
-	--slate-600: #475569;
-	--slate-700: #334155;
-	--slate-900: #0f172a;
+	/* Neutrals: the slate-* names carry warm stone on this design. */
+	--slate-50: #fafaf9;
+	--slate-100: #f5f5f4;
+	--slate-200: #e7e5e4;
+	--slate-300: #d6d3d1;
+	--slate-400: #a8a29e;
+	--slate-500: #78716c;
+	--slate-600: #57534e;
+	--slate-700: #44403c;
+	--slate-900: #1c1917;
 
 	/* Semantic greens (resale allowed / success). */
 	--emerald-50: #ecfdf5;
@@ -62,22 +61,22 @@
 	--amber-800: #92400e;
 	--amber-900: #78350f;
 
-	/* Type: Bricolage Grotesque carries the display voice; Manrope is the
+	/* Type: Bitter (slab) carries the display voice; Source Sans 3 is the
 	   workhorse. Self-hosted fontsource imports in +layout.svelte (strict CSP). */
 	--font-body:
-		'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+		'Source Sans 3 Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
 		'Helvetica Neue', Arial, sans-serif;
-	--font-display: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Bitter Variable', 'Georgia', 'Times New Roman', serif;
 
 	/* Shape: generous, contemporary radii. Buttons and chips are pills. */
 	--radius-sm: 0.5rem;
 	--radius: 0.75rem;
 	--radius-lg: 1rem;
 
-	/* Ambient depth: soft, wide shadows. The names stay so components
+	/* Ambient depth: soft, warm shadows. The names stay so components
 	   restyle through the variables. */
-	--shadow-hard: 0 1px 2px rgb(19 22 41 / 0.05), 0 12px 32px rgb(19 22 41 / 0.1);
-	--shadow-hard-sm: 0 1px 2px rgb(19 22 41 / 0.04), 0 4px 16px rgb(19 22 41 / 0.06);
+	--shadow-hard: 0 1px 2px rgb(43 37 33 / 0.05), 0 12px 32px rgb(43 37 33 / 0.1);
+	--shadow-hard-sm: 0 1px 2px rgb(43 37 33 / 0.04), 0 4px 16px rgb(43 37 33 / 0.06);
 }
 
 *,
@@ -105,12 +104,13 @@ html {
 	color: var(--ink);
 }
 
-/* Headings speak in the display grotesk, sentence case, set a touch tight. */
+/* Headings speak in the slab display face, sentence case. Slabs carry
+   their own weight; keep tracking nearly neutral. */
 h1,
 h2,
 h3 {
 	font-family: var(--font-display);
-	letter-spacing: -0.02em;
+	letter-spacing: -0.01em;
 	text-wrap: balance;
 }
 
@@ -201,7 +201,7 @@ code {
 	border-color: var(--brand-600);
 }
 
-/* Cards: white on porcelain with a cool hairline and ambient shadow. */
+/* Cards: white on chalk with a warm hairline and ambient shadow. */
 .panel {
 	border-radius: var(--radius-lg);
 	border: 1px solid var(--slate-200);

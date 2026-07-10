@@ -39,8 +39,8 @@
 	<meta name="description" content={t('home.metaDescription')} />
 </svelte:head>
 
-<!-- The opening: a dawn-gradient field (races start at first light) with the
-     headline and search left-aligned inside it. -->
+<!-- The opening: type does the work - a big slab headline straight on the
+     chalk paper, the accent words marker-underlined in poppy. -->
 <section class="hero">
 	<h1>{t('home.heroTitle')} <span>{t('home.heroTitleHighlight')}</span></h1>
 	<p class="tagline">{t('home.tagline')}</p>
@@ -133,38 +133,38 @@
 </p>
 
 <style>
-	/* Dawn field: the one gradient moment on the site. Violet first light over
-	   porcelain, everything inside left-aligned. */
+	/* Unboxed opening: no panel, no gradient - the slab headline sits
+	   straight on the paper. */
 	.hero {
-		border: 1px solid var(--brand-100);
-		border-radius: 1.25rem;
-		background:
-			radial-gradient(52rem 30rem at 92% -20%, var(--brand-300) 0%, transparent 55%),
-			linear-gradient(160deg, var(--brand-100) 0%, var(--brand-50) 40%, white 100%);
-		padding: 3.5rem 1.5rem 3rem;
+		padding: 3rem 0 3.5rem;
 	}
 
 	@media (min-width: 640px) {
 		.hero {
-			padding: 4.5rem 3.5rem 4rem;
+			padding: 4.5rem 0 4.5rem;
 		}
 	}
 
 	.hero h1 {
 		max-width: 46rem;
 		font-size: 2.75rem;
-		line-height: 1.02;
+		line-height: 1.08;
 		font-weight: 800;
 	}
 
 	@media (min-width: 640px) {
 		.hero h1 {
-			font-size: 4rem;
+			font-size: 3.75rem;
 		}
 	}
 
+	/* The accent words get a marker underline - the one hand-made device. */
 	.hero h1 span {
 		color: var(--brand-600);
+		text-decoration: underline;
+		text-decoration-thickness: 0.09em;
+		text-underline-offset: 0.08em;
+		text-decoration-color: var(--brand-300);
 	}
 
 	.tagline {
@@ -186,7 +186,7 @@
 	.search input {
 		width: 100%;
 		border-radius: 9999px;
-		border: 1px solid var(--slate-200);
+		border: 1px solid var(--slate-300);
 		background: white;
 		color: var(--ink);
 		padding: 0.6875rem 1.25rem;
@@ -515,7 +515,7 @@
 		color: var(--slate-600);
 	}
 
-	/* The closing invitation: a quiet violet-tinted panel. */
+	/* The closing invitation: a quiet poppy-tinted panel. */
 	.contact {
 		margin-top: 1rem;
 		border-radius: var(--radius-lg);
