@@ -1,0 +1,61 @@
+<mxfile host="app.diagrams.net" agent="bibseller-docs" version="24.7.8">
+  <diagram id="runbook" name="Dispute and refund runbook">
+    <mxGraphModel dx="1700" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Dispute &amp; refund runbook (D33) - buyer-favoring default, 48h first response, 7-day resolution" style="text;html=1;fontSize=20;fontStyle=1;fontColor=#26221c;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="Every action appends order_events + audit_log - the paper trail IS the product here. At beta the queue is the founder's inbox; the runbook keeps decisions consistent." style="text;html=1;fontSize=12;fontColor=#79736b;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="1300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="in1" value="INTAKE A - in-app&#10;&#10;buyer disputes during the 3-day window&#10;seller_marked_transferred -&gt; disputed&#10;auto-release frozen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#b45309;fontSize=12;align=left;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="330" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="in2" value="INTAKE B - card chargeback&#10;&#10;charge.dispute.created webhook&#10;map the order to disputed wherever it stands&#10;(Stripe freezes the funds anyway)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#b45309;fontSize=12;align=left;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="260" width="330" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="sla1" value="first human response&#10;within 48h" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faf1f2;strokeColor=#93283b;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="215" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="evidence" value="EVIDENCE, in weight order&#10;&#10;1. race organiser's registration state - does the bib now carry the buyer's name?&#10;2. chat trail: D15 handover confirmations, shared proof images&#10;3. order_events timestamps&#10;&#10;ask each side once - 72h reply window inside the 7-day budget" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#26221c;fontSize=12;align=left;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="740" y="170" width="420" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="verdict" value="transfer&#10;verified?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f7f3ea;strokeColor=#26221c;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="420" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="forSeller" value="RESOLVE FOR SELLER&#10;&#10;disputed -&gt; completed, Transfer with the usual key (transfer:{order_id}).&#10;If a card dispute is still open at Stripe: submit the evidence pack -&#10;never refund twice." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d1fae5;strokeColor=#047857;fontSize=12;align=left;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="400" width="420" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="forBuyer" value="RESOLVE FOR BUYER - the default on inconclusive&#10;&#10;disputed -&gt; refunded, item-amount refund (D31, fee non-refundable).&#10;Deliberately buyer-leaning: protects the paying side, keeps bank&#10;chargebacks (and their fees) rare; the seller loses only the sale.&#10;Repeat inconclusive disputes flag the seller for moderation (DSA)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e7e4df;strokeColor=#57524b;fontSize=12;align=left;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="560" width="420" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="cbNote" value="Chargeback races the runbook: if the bank rules first, Stripe's outcome wins mechanically (funds pulled) - reconcile our state to match and record the delta in order_events. The processing fee cannot be withheld on chargebacks." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#b45309;fontSize=11;align=left;spacing=8;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="580" width="380" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="slaNote" value="SLA budget: 48h first response - evidence window 72h per side - resolution within 7 days. Published in help copy + ToS after counsel review (M7)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faf1f2;strokeColor=#93283b;fontSize=11;align=left;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="430" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b45309;exitX=1;exitY=0.5;entryX=0;entryY=0.35;" edge="1" parent="1" source="in1" target="sla1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b45309;exitX=1;exitY=0.5;entryX=0;entryY=0.65;" edge="1" parent="1" source="in2" target="sla1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#26221c;" edge="1" parent="1" source="sla1" target="evidence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#26221c;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="evidence" target="verdict">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#047857;fontSize=11;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="verdict" target="forSeller">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" value="no / inconclusive" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#57524b;fontSize=11;exitX=0.5;exitY=1;entryX=0;entryY=0.5;" edge="1" parent="1" source="verdict" target="forBuyer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

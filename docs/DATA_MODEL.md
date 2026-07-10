@@ -224,6 +224,26 @@ CREATE TABLE stripe_events (
 );
 ```
 
+### seller_accounts (M6)
+
+One row per seller who started Stripe Connect onboarding; written by the
+`account.updated` Connect webhook, read to gate payment availability
+(derived at read time - D34). Lands as an expand migration with M6, together
+with `listings.payment_enabled boolean NOT NULL DEFAULT false` (the
+per-listing opt-in). Identity/KYC data stays at Stripe.
+
+```sql
+CREATE TABLE seller_accounts (
+    user_id            uuid PRIMARY KEY REFERENCES users(id),
+    stripe_account_id  text NOT NULL UNIQUE,                 -- 'acct_...'
+    details_submitted  boolean NOT NULL DEFAULT false,
+    transfers_enabled  boolean NOT NULL DEFAULT false,       -- the gate
+    disabled_reason    text,                                 -- set while restricted
+    created_at         timestamptz NOT NULL DEFAULT now(),
+    updated_at         timestamptz NOT NULL DEFAULT now()
+);
+```
+
 ### reports / audit_log
 
 ```sql

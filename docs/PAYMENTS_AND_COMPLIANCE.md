@@ -147,6 +147,102 @@ refunds. Mitigation: keep a small manual float on the platform Stripe
 balance (~ €200 at beta) and alert on low balance. Honest line item for
 investor material.
 
+## Seller onboarding lifecycle (M6 design)
+
+Decided 2026-07-10 (D34). Diagram: [`diagrams/seller-onboarding.drawio`](diagrams/seller-onboarding.drawio).
+
+Storage: a dedicated `seller_accounts` table (one row per seller - schema in
+[DATA_MODEL.md](DATA_MODEL.md#seller_accounts-m6)), not columns on `users`
+(the dead ones were dropped in migration 0013; status is multi-field and
+webhook-written, so it earns its own row). We cache only gate-keeping facts:
+the Stripe account id, `details_submitted`, `transfers_enabled`,
+`disabled_reason`. Identity documents live at Stripe, never here.
+
+Lifecycle (all updates arrive via `account.updated` on the Connect webhook
+endpoint - separate signing secret from account webhooks):
+
+1. **none** - no row. The sell flow (for `platform_sale` races) and a
+   settings "payments" section offer "set up payouts" (D33 entry points).
+2. **started** - we created the Express account (country = seller's,
+   `transfers` capability requested) and issued an Account Link. Links are
+   single-use and short-lived; the settings section re-issues one on demand
+   (`refresh_url` lands there too). Repeat clicks reuse the stored account
+   id - one Stripe account per seller, ever.
+3. **active** - `transfers_enabled` true: the only state in which (a) the
+   listing form shows the "enable secure payment" opt-in and (b) checkout
+   will create an order for that listing.
+4. **restricted** - Stripe raised requirements (`disabled_reason` set,
+   `transfers_enabled` false). Can happen *after* onboarding (periodic KYC
+   re-checks). Settings shows "action needed" + a fresh Account Link.
+
+Gating is **derived at read time** - "payment available" = seller `active`
+AND race `platform_sale` AND `listings.payment_enabled` - so an account
+going restricted instantly hides the payment CTA everywhere, with no sweep
+job and no stale flags. Consequences for in-flight money when an account
+goes restricted: new orders are refused at creation (guard re-checks);
+`pending_payment` PIs may still succeed into `paid_held` - buyer-safe,
+funds held; release attempts fail into the D32 reconciler path (retry +
+alert). The admin then waits for the seller to cure the account or refunds
+the buyer.
+
+GDPR: on account deletion the `seller_accounts` row is deleted once no
+non-terminal orders reference the seller (order rows keep their 10-year
+anonymized carve-out); the Stripe account itself belongs to the seller and
+follows Stripe's own retention.
+
+## Checkout by policy mode (M6 design)
+
+The four-mode question, answered for checkout. The buyer-side bar matches
+chat: signed-in + email-verified.
+
+| | `platform_sale`, seller active | `platform_sale`, seller not onboarded | `official_only` | `connect_only` / `unknown` |
+|---|---|---|---|---|
+| Primary CTA | Buy securely (checkout) | Message seller | Official process link | Message seller (after ack) |
+| Payment UI | Stripe.js PaymentElement, itemized fee line + "non-refundable" disclosure (D31) | none - a quiet nudge: "secure payment available if the seller enables it" | none, structurally | none, structurally |
+| Chat | available alongside | primary | available | primary, ack-gated |
+
+Rules: the nudge in the not-onboarded column never blocks chat and never
+shames the seller (payments are optional, principle 2). The disclosure line
+renders wherever the fee is itemized - checkout summary and the order
+confirmation email. No guest checkout: orders bind to accounts for the
+evidence trail and DAC7 totals.
+
+## Dispute & refund runbook (payments GA gate)
+
+Decided 2026-07-10 (D33): **buyer-favoring default, 48h first response, 7-day
+resolution.** Diagram: [`diagrams/dispute-runbook.drawio`](diagrams/dispute-runbook.drawio).
+
+Intake - any of: buyer opens a dispute in-app (`seller_marked_transferred ->
+disputed`, auto-release frozen), or a Stripe `charge.dispute.created`
+arrives (card chargeback; map the order to `disputed` wherever it stands).
+Every intake gets a first human response within **48 hours**.
+
+Evidence, in weight order: the race organiser's registration state (does
+the bib now carry the buyer's name?), the chat trail (D15 handover
+confirmations, shared proof images), `order_events` timestamps. The admin
+asks each side once, with a 72h reply window inside the 7-day budget.
+
+Resolution paths (all via the existing admin transitions, `audit_log` +
+`order_events` rows on every action):
+
+- **Transfer verified** -> resolve for seller: `disputed -> completed`,
+  Transfer with the usual key. If the buyer's card dispute is still open at
+  Stripe, submit the evidence pack instead of refunding twice.
+- **Transfer refuted or inconclusive** -> resolve for buyer (the default):
+  `disputed -> refunded`, item-amount refund (D31). Inconclusive cases lean
+  buyer-side deliberately: it protects the paying side, keeps bank
+  chargebacks (with their €15+ fees) rare, and the seller loses only the
+  sale. Sellers who accumulate inconclusive disputes get flagged for the
+  moderation queue (repeat-infringer policy, DSA section).
+- **Chargeback races the runbook**: if the bank rules first, Stripe's
+  outcome wins mechanically (funds pulled); reconcile our state to match
+  and record the delta in `order_events`.
+
+Publish the SLA numbers in help copy and ToS once counsel reviews the
+wording (M7 #11). At beta the "queue" is the founder's inbox - the runbook
+exists so decisions are consistent and every one leaves the same paper
+trail.
+
 ## Liability posture by policy mode
 
 | | `platform_sale` | `official_only` | `connect_only` / `unknown` |
@@ -189,4 +285,4 @@ DAC7 obligations attach to facilitating relevant sales - not to profiting from t
 | Gate | Must be true |
 |---|---|
 | Public beta (chat-only) | ToS + Privacy published - contact point page - report flow works - GDPR export/delete shipped - EU hosting |
-| Payments GA | Everything above - Stripe flows + webhooks battle-tested in sandbox - refund/dispute runbook - DAC7 memo signed off - counsel has reviewed ToS responsibility split & disclaimers |
+| Payments GA | Everything above - Stripe flows + webhooks battle-tested in sandbox - [refund/dispute runbook](#dispute--refund-runbook-payments-ga-gate) (D33) - DAC7 memo signed off - counsel has reviewed ToS responsibility split, disclaimers, the D31 fee wording, and the SLA copy |
