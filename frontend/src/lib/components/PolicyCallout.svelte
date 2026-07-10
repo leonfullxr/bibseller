@@ -30,7 +30,7 @@
 
 <style>
 	.callout {
-		border-radius: 0.5rem;
+		border-radius: var(--radius-sm);
 		border: 1px solid;
 		padding: 1rem;
 		font-size: 0.875rem;
@@ -73,7 +73,7 @@
 	.official-link {
 		margin-top: 0.75rem;
 		display: inline-block;
-		border-radius: 0.375rem;
+		border-radius: 9999px;
 		background: var(--sky-600);
 		padding: 0.375rem 0.75rem;
 		font-weight: 600;

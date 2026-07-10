@@ -11,8 +11,8 @@
 	const bibs = $derived(plural('raceCard.bibs', race.active_listings));
 </script>
 
-<!-- Catalog plate: a hairline-framed card, the date as a small-caps
-     bordeaux eyebrow, the race name in the journal serif. -->
+<!-- Catalog card: soft rounded plate, the date as a violet chip, the race
+     name in the display grotesk. Policy badge keeps its semantic tone. -->
 <a href={link(resolve('/races/[slug]', { slug: race.slug }))} class="card">
 	<div class="strip">
 		<span class="date">{formatDate(race.event_date, locale)}</span>
@@ -36,19 +36,21 @@
 <style>
 	.card {
 		display: block;
+		height: 100%;
 		border: 1px solid var(--slate-200);
-		border-radius: 0.25rem;
+		border-radius: var(--radius-lg);
 		background: white;
 		box-shadow: var(--shadow-hard-sm);
-		overflow: hidden;
 		transition:
 			box-shadow 0.15s,
-			border-color 0.15s;
+			border-color 0.15s,
+			translate 0.15s;
 	}
 
 	.card:hover {
-		border-color: var(--slate-400);
+		border-color: var(--slate-300);
 		box-shadow: var(--shadow-hard);
+		translate: 0 -2px;
 	}
 
 	.strip {
@@ -56,28 +58,28 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.5rem;
-		border-bottom: 1px solid var(--slate-200);
-		padding: 0.5rem 1.125rem;
+		padding: 1rem 1.125rem 0;
 	}
 
 	.date {
-		font-size: 0.6875rem;
+		border-radius: 9999px;
+		background: var(--brand-50);
+		padding: 0.125rem 0.625rem;
+		font-size: 0.75rem;
 		line-height: 1.25rem;
 		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
 		color: var(--brand-700);
 	}
 
 	.body {
-		padding: 0.875rem 1.125rem 1.125rem;
+		padding: 0.75rem 1.125rem 1.125rem;
 	}
 
 	h3 {
 		font-family: var(--font-display);
-		font-size: 1.375rem;
-		line-height: 1.75rem;
-		font-weight: 600;
+		font-size: 1.25rem;
+		line-height: 1.625rem;
+		font-weight: 700;
 		color: var(--ink);
 	}
 
@@ -85,7 +87,7 @@
 		margin-top: 0.25rem;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
-		color: var(--slate-600);
+		color: var(--slate-500);
 	}
 
 	.tags {
@@ -99,11 +101,10 @@
 	}
 
 	.tag {
-		border-radius: 0.125rem;
+		border-radius: 9999px;
 		background: var(--slate-100);
-		border: 1px solid var(--slate-200);
-		padding: 0.125rem 0.375rem;
-		font-weight: 500;
+		padding: 0.125rem 0.5rem;
+		font-weight: 600;
 	}
 
 	.sport {
@@ -112,7 +113,7 @@
 
 	.count {
 		margin-left: auto;
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	.count.active {

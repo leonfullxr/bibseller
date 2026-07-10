@@ -193,7 +193,7 @@
 
 	.rail a {
 		padding: 0.5rem 0.75rem;
-		border-radius: 0.375rem;
+		border-radius: var(--radius-sm);
 		border-left: 2px solid transparent;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
@@ -296,7 +296,7 @@
 			white-space: nowrap;
 			border-left: none;
 			border-bottom: 2px solid transparent;
-			border-radius: 0.375rem 0.375rem 0 0;
+			border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 		}
 
 		.rail a.active {

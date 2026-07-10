@@ -26,10 +26,11 @@
 		{ n: 6, who: 'buyer', icon: 'medal', label: t('home.j6Title') }
 	]);
 
+	// Modes carry their policy tone (semantic colors, not brand).
 	const modes = $derived([
-		{ name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
-		{ name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
-		{ name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
+		{ tone: 'allowed', name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
+		{ tone: 'official', name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
+		{ tone: 'connect', name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
 	]);
 </script>
 
@@ -38,6 +39,8 @@
 	<meta name="description" content={t('home.metaDescription')} />
 </svelte:head>
 
+<!-- The opening: a dawn-gradient field (races start at first light) with the
+     headline and search left-aligned inside it. -->
 <section class="hero">
 	<h1>{t('home.heroTitle')} <span>{t('home.heroTitleHighlight')}</span></h1>
 	<p class="tagline">{t('home.tagline')}</p>
@@ -61,30 +64,24 @@
 {#if data.upcoming.length > 0}
 	<section class="upcoming">
 		<h2 class="upcoming-title">{t('home.upcoming')}</h2>
-		<div class="marquee">
-			<div class="marquee-track" style="--marquee-duration: {data.upcoming.length * 6}s">
-				{#each data.upcoming as race (race.id)}
-					<div class="marquee-item"><RaceCard {race} /></div>
-				{/each}
-				{#each data.upcoming as race (race.id + '-dup')}
-					<div class="marquee-item dup" inert aria-hidden="true"><RaceCard {race} /></div>
-				{/each}
-			</div>
+		<div class="rail">
+			{#each data.upcoming as race (race.id)}
+				<div class="rail-item"><RaceCard {race} /></div>
+			{/each}
 		</div>
-		<a class="browse-btn" href={link(resolve('/races'))}>{t('home.browseAllRaces')}</a>
+		<a class="browse-btn btn btn-outline" href={link(resolve('/races'))}
+			>{t('home.browseAllRaces')}</a
+		>
 	</section>
 {/if}
 
-<!-- The four steps as checkpoints along a race course: a track line with
-     numbered markers, checkered flag at the finish. -->
+<!-- The four steps: a real sequence, numbered cards. -->
 <section class="how" aria-labelledby="how-title">
 	<h2 id="how-title">{t('home.howTitle')}</h2>
-	<ol class="course">
+	<ol class="steps">
 		{#each steps as step, i (step.icon)}
-			<li class="checkpoint">
-				<span class="marker" class:finish={i === steps.length - 1} aria-hidden="true"
-					>{#if i < steps.length - 1}{i + 1}{/if}</span
-				>
+			<li class="step">
+				<span class="step-n" aria-hidden="true">{i + 1}</span>
 				<h3>{step.title}</h3>
 				<p>{step.desc}</p>
 			</li>
@@ -116,7 +113,7 @@
 
 <section class="modes">
 	{#each modes as mode (mode.name)}
-		<div class="mode">
+		<div class="mode {mode.tone}">
 			<h2>{mode.name}</h2>
 			<p>{mode.desc}</p>
 		</div>
@@ -126,7 +123,7 @@
 <section class="contact" aria-labelledby="contact-title">
 	<h2 id="contact-title">{t('home.contactTitle')}</h2>
 	<p class="contact-lead">{t('home.contactLead')}</p>
-	<a class="contact-cta" href={link(resolve('/contact'))}>{t('home.contactCta')}</a>
+	<a class="contact-cta btn btn-primary" href={link(resolve('/contact'))}>{t('home.contactCta')}</a>
 </section>
 
 <p class="construction">
@@ -136,58 +133,66 @@
 </p>
 
 <style>
-	/* Masthead hero: a quiet ivory opening framed by a hairline below, the
-	   headline in the journal's serif with an italic bordeaux accent. */
+	/* Dawn field: the one gradient moment on the site. Violet first light over
+	   porcelain, everything inside left-aligned. */
 	.hero {
-		padding: 3rem 0 3.5rem;
-		text-align: center;
-		border-bottom: 1px solid var(--ink);
+		border: 1px solid var(--brand-100);
+		border-radius: 1.25rem;
+		background:
+			radial-gradient(52rem 30rem at 92% -20%, var(--brand-300) 0%, transparent 55%),
+			linear-gradient(160deg, var(--brand-100) 0%, var(--brand-50) 40%, white 100%);
+		padding: 3.5rem 1.5rem 3rem;
+	}
+
+	@media (min-width: 640px) {
+		.hero {
+			padding: 4.5rem 3.5rem 4rem;
+		}
 	}
 
 	.hero h1 {
-		margin-inline: auto;
-		max-width: 52rem;
-		font-size: 3rem;
-		line-height: 1.05;
-		font-weight: 550;
+		max-width: 46rem;
+		font-size: 2.75rem;
+		line-height: 1.02;
+		font-weight: 800;
 	}
 
 	@media (min-width: 640px) {
 		.hero h1 {
-			font-size: 4.25rem;
+			font-size: 4rem;
 		}
 	}
 
 	.hero h1 span {
 		color: var(--brand-600);
-		font-style: italic;
 	}
 
 	.tagline {
-		margin: 1.5rem auto 0;
-		max-width: 40rem;
+		margin-top: 1.25rem;
+		max-width: 38rem;
 		font-size: 1.0625rem;
 		line-height: 1.75rem;
-		color: var(--slate-600);
+		color: var(--ink-2);
 	}
 
 	.search {
-		margin: 2.25rem auto 0;
+		margin-top: 2rem;
 		display: flex;
-		max-width: 30rem;
+		max-width: 32rem;
 		align-items: stretch;
 		gap: 0.5rem;
 	}
 
 	.search input {
 		width: 100%;
-		border-radius: 0.125rem;
-		border: 1px solid var(--slate-400);
+		border-radius: 9999px;
+		border: 1px solid var(--slate-200);
 		background: white;
 		color: var(--ink);
-		padding: 0.6875rem 1rem;
+		padding: 0.6875rem 1.25rem;
 		font-size: 1rem;
 		line-height: 1.5rem;
+		box-shadow: var(--shadow-hard-sm);
 	}
 
 	/* Border swap for any focus; the global :focus-visible ring still applies
@@ -197,27 +202,27 @@
 	}
 
 	.search button {
-		border-radius: 0.125rem;
-		background: var(--brand-700);
-		padding: 0.6875rem 1.5rem;
+		border-radius: 9999px;
+		background: var(--brand-600);
+		padding: 0.6875rem 1.625rem;
 		font-size: 0.9375rem;
 		line-height: 1.5rem;
-		font-weight: 600;
-		letter-spacing: 0.01em;
+		font-weight: 700;
 		white-space: nowrap;
 		color: white;
 		transition: background-color 0.15s;
 	}
 
 	.search button:hover {
-		background: var(--brand-800);
+		background: var(--brand-700);
 	}
 
 	.browse-all {
-		margin-top: 1rem;
+		margin-top: 1.125rem;
 		display: inline-block;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
+		font-weight: 600;
 		color: var(--brand-700);
 		text-decoration: underline;
 	}
@@ -230,7 +235,6 @@
 		margin-top: 1.5rem;
 		display: flex;
 		align-items: center;
-		justify-content: center;
 		gap: 0.5rem;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
@@ -255,217 +259,91 @@
 	}
 
 	.upcoming {
-		padding-block: 2.5rem 2rem;
-		text-align: center;
+		padding-block: 3rem 1.5rem;
 	}
 
-	/* Section headings share one device: the journal serif over a short
-	   hairline rule. */
+	/* Section headings: chunky display grotesk, left-aligned. */
 	.upcoming-title,
 	.how h2,
 	.journey h2,
 	.contact h2 {
-		font-size: 1.875rem;
-		line-height: 2.375rem;
-		font-weight: 550;
+		font-size: 1.75rem;
+		line-height: 2.25rem;
+		font-weight: 700;
 	}
 
-	.upcoming-title::after,
-	.how h2::after,
-	.journey h2::after {
-		content: '';
-		display: block;
-		margin: 0.75rem auto 0;
-		width: 4rem;
-		height: 1px;
-		background: var(--ink);
-	}
-
-	/* Auto-scrolling "roulette" of a few races. The list is rendered twice (the
-	   copy is inert + aria-hidden) so the translateX(-50%) loop is seamless. */
-	.marquee {
-		margin-top: 1.5rem;
-		overflow: hidden;
-		-webkit-mask-image: linear-gradient(
-			to right,
-			transparent,
-			#000 3rem,
-			#000 calc(100% - 3rem),
-			transparent
-		);
-		mask-image: linear-gradient(
-			to right,
-			transparent,
-			#000 3rem,
-			#000 calc(100% - 3rem),
-			transparent
-		);
-	}
-
-	.marquee-track {
+	/* A hand-scrolled rail of upcoming races; cards snap into place. */
+	.rail {
+		margin-top: 1.25rem;
 		display: flex;
-		align-items: stretch;
-		width: max-content;
-		animation: marquee var(--marquee-duration, 36s) linear infinite;
+		gap: 1rem;
+		overflow-x: auto;
+		scroll-snap-type: x proximity;
+		padding: 0.25rem 0.25rem 1rem;
 	}
 
-	.marquee:hover .marquee-track,
-	.marquee:focus-within .marquee-track {
-		animation-play-state: paused;
-	}
-
-	.marquee-item {
+	.rail-item {
 		flex: 0 0 17rem;
 		max-width: 80vw;
-		margin-right: 1.25rem;
-		/* room for the bib cards' hard shadows inside the overflow clip */
-		padding: 2px 6px 6px 2px;
-		text-align: left;
-	}
-
-	@keyframes marquee {
-		from {
-			transform: translateX(0);
-		}
-		to {
-			transform: translateX(-50%);
-		}
-	}
-
-	/* No auto-motion when the user prefers reduced motion; allow manual scroll. */
-	@media (prefers-reduced-motion: reduce) {
-		.marquee {
-			overflow-x: auto;
-		}
-
-		.marquee-track {
-			animation: none;
-		}
-
-		/* The duplicate half exists only to loop the animation seamlessly. With the
-		   animation stopped it would just be inert, unclickable copies that a manual
-		   scroll could reach (reads as broken links), so drop it from layout (#92). */
-		.marquee-item.dup {
-			display: none;
-		}
+		scroll-snap-align: start;
 	}
 
 	.browse-btn {
-		margin-top: 1.75rem;
-		display: inline-block;
-		border-radius: 0.125rem;
-		border: 1px solid var(--ink);
-		padding: 0.5625rem 1.5rem;
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: var(--ink);
-		transition: background-color 0.15s;
+		margin-top: 0.75rem;
 	}
 
-	.browse-btn:hover {
-		background: var(--paper-2);
-	}
-
-	/* How it works: icon cards joined by arrows that scale with the viewport. */
 	.how {
 		padding-block: 2rem;
-		text-align: center;
 	}
 
-	/* The course: a track line through numbered checkpoint markers. */
-	.course {
+	/* The four steps as a numbered card row. */
+	.steps {
 		list-style: none;
-		margin: 2.25rem 0 0;
+		margin: 1.5rem 0 0;
 		padding: 0;
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		gap: 1.75rem;
-		text-align: left;
-	}
-
-	.course::before {
-		content: '';
-		position: absolute;
-		left: 1.25rem;
-		top: 1rem;
-		bottom: 1rem;
-		width: 1px;
-		background: var(--ink);
-	}
-
-	.checkpoint {
-		position: relative;
-		padding-left: 3.75rem;
-	}
-
-	.marker {
-		position: absolute;
-		left: 0;
-		top: 0;
 		display: grid;
-		place-items: center;
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 9999px;
-		background: var(--paper);
-		border: 1px solid var(--ink);
-		color: var(--ink);
-		font-family: var(--font-display);
-		font-size: 1.25rem;
-		font-weight: 550;
-	}
-
-	/* The last checkpoint is the finish: the checkered flag in a roundel. */
-	.marker.finish {
-		background: repeating-conic-gradient(var(--ink) 0% 25%, white 0% 50%) 50% / 0.625rem 0.625rem;
-	}
-
-	.checkpoint h3 {
-		font-size: 1.375rem;
-		line-height: 1.75rem;
-		font-weight: 600;
-	}
-
-	.checkpoint p {
-		margin-top: 0.25rem;
-		max-width: 34rem;
-		font-size: 0.9rem;
-		line-height: 1.4rem;
-		color: var(--slate-600);
+		gap: 1rem;
 	}
 
 	@media (min-width: 720px) {
-		.course {
-			flex-direction: row;
-			gap: 1.5rem;
-			text-align: center;
-		}
-
-		.course::before {
-			left: 3rem;
-			right: 3rem;
-			top: 1.25rem;
-			bottom: auto;
-			width: auto;
-			height: 1px;
-		}
-
-		.checkpoint {
-			flex: 1 1 0;
-			padding-left: 0;
-			padding-top: 3.5rem;
-		}
-
-		.marker {
-			left: 50%;
-			translate: -50%;
+		.steps {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 		}
 	}
 
+	.step {
+		border: 1px solid var(--slate-200);
+		border-radius: var(--radius-lg);
+		background: white;
+		box-shadow: var(--shadow-hard-sm);
+		padding: 1.375rem 1.25rem;
+	}
+
+	.step-n {
+		font-family: var(--font-display);
+		font-size: 2rem;
+		line-height: 2.25rem;
+		font-weight: 800;
+		color: var(--brand-600);
+	}
+
+	.step h3 {
+		margin-top: 0.5rem;
+		font-size: 1.125rem;
+		line-height: 1.5rem;
+		font-weight: 700;
+	}
+
+	.step p {
+		margin-top: 0.375rem;
+		font-size: 0.875rem;
+		line-height: 1.375rem;
+		color: var(--slate-600);
+	}
+
 	.how-note {
-		margin: 1.5rem auto 0;
-		max-width: 32rem;
+		margin-top: 1.25rem;
+		max-width: 36rem;
 		font-size: 0.8125rem;
 		line-height: 1.25rem;
 		color: var(--slate-500);
@@ -473,13 +351,12 @@
 
 	.journey {
 		padding-block: 2rem;
-		text-align: center;
 	}
 
 	.journey-lead {
-		margin: 0.5rem auto 0;
-		max-width: 34rem;
-		font-size: 0.95rem;
+		margin-top: 0.5rem;
+		max-width: 36rem;
+		font-size: 0.9375rem;
 		line-height: 1.5rem;
 		color: var(--slate-600);
 	}
@@ -488,23 +365,19 @@
 	   odd steps (seller) left and even (buyer) right, so the numbered zigzag
 	   reads spatially. Mobile stacks 1-6 with the number carrying order. */
 	.duet {
-		margin: 2rem auto 0;
-		max-width: 46rem;
+		margin-top: 1.75rem;
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.875rem 1.5rem;
-		text-align: left;
+		gap: 0.875rem 1.25rem;
 	}
 
 	.col-head {
-		font-size: 0.6875rem;
+		font-size: 0.75rem;
 		line-height: 1.25rem;
-		font-weight: 700;
-		letter-spacing: 0.1em;
+		font-weight: 800;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		text-align: center;
-		border-bottom: 1px solid var(--ink);
-		padding-bottom: 0.375rem;
+		padding-bottom: 0.25rem;
 	}
 
 	.col-head:first-child {
@@ -520,25 +393,26 @@
 		align-items: center;
 		gap: 0.875rem;
 		border: 1px solid var(--slate-200);
-		border-radius: 0.25rem;
+		border-left-width: 3px;
+		border-radius: var(--radius);
 		background: white;
 		box-shadow: var(--shadow-hard-sm);
 		padding: 1rem 1.125rem;
 	}
 
 	.move.seller {
-		border-left: 2px solid var(--brand-700);
+		border-left-color: var(--brand-600);
 	}
 
 	.move.buyer {
-		border-left: 2px solid var(--sky-600);
+		border-left-color: var(--sky-600);
 	}
 
 	.move-n {
 		font-family: var(--font-display);
 		font-size: 1.5rem;
 		line-height: 1.75rem;
-		font-weight: 550;
+		font-weight: 800;
 		color: var(--brand-600);
 		min-width: 1.25ch;
 	}
@@ -563,7 +437,7 @@
 		min-width: 0;
 		font-size: 1rem;
 		line-height: 1.375rem;
-		font-weight: 500;
+		font-weight: 600;
 	}
 
 	/* The columns already name the lane on wide screens. */
@@ -572,8 +446,8 @@
 		margin-left: auto;
 		font-size: 0.6875rem;
 		line-height: 1.25rem;
-		font-weight: 700;
-		letter-spacing: 0.1em;
+		font-weight: 800;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--slate-500);
 	}
@@ -605,33 +479,46 @@
 		}
 	}
 
+	/* Each mode wears its policy tone (semantic, never brand). */
 	.mode {
-		border-radius: 0.25rem;
 		border: 1px solid var(--slate-200);
-		border-top: 2px solid var(--ink);
+		border-top-width: 3px;
+		border-radius: var(--radius-lg);
 		background: white;
 		padding: 1.25rem;
 		box-shadow: var(--shadow-hard-sm);
 	}
 
+	.mode.allowed {
+		border-top-color: var(--emerald-600);
+	}
+
+	.mode.official {
+		border-top-color: var(--sky-600);
+	}
+
+	.mode.connect {
+		border-top-color: var(--amber-500);
+	}
+
 	.mode h2 {
-		font-size: 1.25rem;
-		font-weight: 600;
+		font-size: 1.1875rem;
+		font-weight: 700;
 	}
 
 	.mode p {
 		margin-top: 0.5rem;
 		font-size: 0.875rem;
-		line-height: 1.25rem;
+		line-height: 1.375rem;
 		color: var(--slate-600);
 	}
 
-	/* The closing note: a mat panel with a bordeaux invitation. */
+	/* The closing invitation: a quiet violet-tinted panel. */
 	.contact {
 		margin-top: 1rem;
-		border-radius: 0.25rem;
-		border: 1px solid var(--slate-200);
-		background: var(--paper-2);
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--brand-100);
+		background: var(--brand-50);
 		padding: 2.5rem 1.5rem;
 		text-align: center;
 	}
@@ -639,29 +526,17 @@
 	.contact-lead {
 		margin: 0.5rem auto 0;
 		max-width: 32rem;
-		font-size: 0.95rem;
+		font-size: 0.9375rem;
 		line-height: 1.5rem;
-		color: var(--slate-600);
+		color: var(--ink-2);
 	}
 
 	.contact-cta {
 		margin-top: 1.25rem;
-		display: inline-block;
-		border-radius: 0.125rem;
-		background: var(--brand-700);
-		padding: 0.5625rem 1.5rem;
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: white;
-		transition: background-color 0.15s;
-	}
-
-	.contact-cta:hover {
-		background: var(--brand-800);
 	}
 
 	.construction {
-		padding-block: 1rem;
+		padding-block: 1.5rem 0.5rem;
 		text-align: center;
 		font-size: 0.875rem;
 		line-height: 1.25rem;

@@ -58,7 +58,7 @@
 	.home {
 		margin-top: 1.5rem;
 		display: inline-block;
-		border-radius: 0.375rem;
+		border-radius: 9999px;
 		background: var(--slate-900);
 		padding: 0.5rem 1rem;
 		font-size: 0.875rem;

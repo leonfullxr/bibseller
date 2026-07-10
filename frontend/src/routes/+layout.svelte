@@ -11,13 +11,10 @@
 		type I18n
 	} from '$lib/i18n';
 	// Self-hosted fonts (fontsource -> vite-bundled woff2, same-origin so the
-	// strict CSP needs no font-src). Fraunces (variable) is the journal's
-	// display serif; Barlow stays the body workhorse.
-	import '@fontsource-variable/fraunces/index.css';
-	import '@fontsource/barlow/400.css';
-	import '@fontsource/barlow/500.css';
-	import '@fontsource/barlow/600.css';
-	import '@fontsource/barlow/700.css';
+	// strict CSP needs no font-src). Bricolage Grotesque (variable) is the
+	// display voice; Manrope (variable) is the body workhorse.
+	import '@fontsource-variable/bricolage-grotesque/index.css';
+	import '@fontsource-variable/manrope/index.css';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
@@ -136,7 +133,10 @@
 
 	<footer>
 		<div class="bar foot">
-			<span>{t('footer.tagline')}</span>
+			<div class="foot-brand">
+				<a href={link(resolve('/'))} class="foot-mark">bib<span>seller</span></a>
+				<span class="foot-tagline">{t('footer.tagline')}</span>
+			</div>
 			<nav class="foot-links">
 				<a href={link(resolve('/terms'))}>{t('footer.terms')}</a>
 				<a href={link(resolve('/privacy'))}>{t('footer.privacy')}</a>
@@ -196,10 +196,13 @@
 		}
 	}
 
-	/* Masthead: ivory with a single hairline rule - a journal, not a toolbar. */
+	/* Masthead: a floating capsule that stays with you - frosted white over
+	   the porcelain page, fully rounded ends. */
 	header {
-		background: var(--paper);
-		border-bottom: 1px solid var(--ink);
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		padding: 0.75rem 1rem 0;
 	}
 
 	.bar {
@@ -216,27 +219,33 @@
 	header .bar {
 		min-height: 3.5rem;
 		padding-block: 0.5rem;
+		padding-inline: 1.5rem;
+		border: 1px solid var(--slate-200);
+		border-radius: 9999px;
+		background: rgb(255 255 255 / 0.85);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		box-shadow: var(--shadow-hard-sm);
 	}
 
 	.brand {
 		font-family: var(--font-display);
-		font-size: 1.625rem;
+		font-size: 1.5rem;
 		line-height: 1.75rem;
-		font-weight: 600;
-		letter-spacing: -0.01em;
+		font-weight: 800;
+		letter-spacing: -0.02em;
 		color: var(--ink);
 	}
 
 	.brand span {
 		color: var(--brand-600);
-		font-style: italic;
 	}
 
 	nav {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 1rem;
+		gap: 1.125rem;
 		row-gap: 0.25rem;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
@@ -244,17 +253,15 @@
 
 	nav a,
 	nav button {
-		font-size: 0.75rem;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
+		font-size: 0.875rem;
+		font-weight: 700;
 		color: var(--slate-600);
 		transition: color 0.15s;
 	}
 
 	nav a:hover,
 	nav button:hover {
-		color: var(--brand-700);
+		color: var(--ink);
 	}
 
 	nav form {
@@ -267,22 +274,24 @@
 	}
 
 	/* The two actions (log out, language) are chips, not nav links - same
-	   type as the nav, just framed. */
+	   type as the nav, just framed as pills. */
 	nav form button {
-		border: 1px solid var(--slate-300);
+		border: 1px solid var(--slate-200);
 		border-radius: 9999px;
-		background: white;
-		padding: 0.125rem 0.625rem;
-		font-size: 0.875rem;
+		background: transparent;
+		padding: 0.125rem 0.75rem;
+		font-size: 0.8125rem;
 		line-height: 1.25rem;
-		font-weight: 500;
+		font-weight: 600;
 		transition:
 			border-color 0.15s,
+			background-color 0.15s,
 			color 0.15s;
 	}
 
 	nav form button:hover {
-		border-color: var(--ink);
+		border-color: var(--slate-300);
+		background: var(--slate-100);
 		color: var(--ink);
 	}
 
@@ -292,7 +301,7 @@
 		justify-content: center;
 		vertical-align: text-top;
 		border-radius: 9999px;
-		background: var(--brand-700);
+		background: var(--brand-600);
 		padding: 0.0625rem 0.3125rem;
 		font-size: 0.6875rem;
 		line-height: 1rem;
@@ -309,6 +318,7 @@
 		background: var(--amber-50);
 		border-bottom: 1px solid var(--amber-300);
 		padding: 0.5rem 1rem;
+		margin-top: 0.75rem;
 		font-size: 0.875rem;
 		color: var(--amber-900);
 	}
@@ -320,9 +330,9 @@
 	.verify-banner button {
 		cursor: pointer;
 		border: 1px solid var(--amber-300);
-		border-radius: 0.375rem;
+		border-radius: 9999px;
 		background: white;
-		padding: 0.25rem 0.625rem;
+		padding: 0.25rem 0.75rem;
 		font: inherit;
 		font-weight: 600;
 		color: var(--amber-900);
@@ -341,6 +351,7 @@
 		background: var(--brand-50);
 		border-bottom: 1px solid var(--brand-300);
 		padding: 0.5rem 1rem;
+		margin-top: 0.75rem;
 		font-size: 0.875rem;
 		color: var(--brand-800);
 	}
@@ -351,17 +362,18 @@
 
 	.suggest-banner button {
 		cursor: pointer;
-		border-radius: 0.25rem;
-		border: 1px solid var(--brand-700);
-		background: var(--brand-700);
-		padding: 0.25rem 0.625rem;
+		border-radius: 9999px;
+		border: 1px solid var(--brand-600);
+		background: var(--brand-600);
+		padding: 0.25rem 0.75rem;
 		font: inherit;
 		font-weight: 600;
 		color: white;
 	}
 
 	.suggest-banner button:hover {
-		background: var(--brand-800);
+		background: var(--brand-700);
+		border-color: var(--brand-700);
 	}
 
 	.suggest-banner button.ghost {
@@ -382,26 +394,55 @@
 		padding: 2.5rem 1rem;
 	}
 
-	/* Colophon: a hairline rule and quiet small text. */
+	/* Footer: a night-navy block that bookends the porcelain page. */
 	footer {
-		border-top: 1px solid var(--ink);
-		background: var(--paper);
-		color: var(--slate-500);
-		margin-top: 2rem;
+		background: var(--ink);
+		color: var(--slate-300);
+		margin-top: 3rem;
 	}
 
 	.foot {
-		padding-block: 1.25rem;
-		font-size: 0.75rem;
-		line-height: 1rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding-block: 2rem;
+		font-size: 0.8125rem;
+		line-height: 1.25rem;
+	}
+
+	.foot-brand {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.75rem;
+	}
+
+	.foot-mark {
+		font-family: var(--font-display);
+		font-size: 1.25rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		color: white;
+	}
+
+	.foot-mark span {
+		color: var(--brand-300);
+	}
+
+	.foot-tagline {
+		color: var(--slate-400);
 	}
 
 	.foot-links {
 		display: flex;
-		gap: 1rem;
+		flex-wrap: wrap;
+		gap: 1.25rem;
+		font-weight: 600;
 	}
 
 	.foot a:hover {
-		color: var(--brand-700);
+		color: white;
 	}
 </style>

@@ -21,7 +21,7 @@
 
 	.draft {
 		margin-bottom: 1.5rem;
-		border-radius: 0.375rem;
+		border-radius: var(--radius-sm);
 		border: 1px solid var(--amber-300);
 		background: var(--amber-50);
 		padding: 0.5rem 0.75rem;

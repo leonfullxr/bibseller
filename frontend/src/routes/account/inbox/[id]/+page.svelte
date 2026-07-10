@@ -468,7 +468,7 @@
 	.chat {
 		margin-top: 1rem;
 		border: 1px solid var(--slate-200);
-		border-radius: 0.75rem;
+		border-radius: var(--radius-lg);
 		background: white;
 		overflow: hidden;
 	}
@@ -569,7 +569,7 @@
 	}
 
 	.safety button {
-		border-radius: 0.375rem;
+		border-radius: 9999px;
 		background: none;
 		color: var(--slate-600);
 		border: 1px solid var(--slate-300);
@@ -655,8 +655,8 @@
 		color: var(--slate-600);
 	}
 
-	/* Bubbles: theirs = white on the left, mine = solid brand orange on the
-	   right (white text on brand-700 is 5.2:1). Same-sender runs group tightly;
+	/* Bubbles: theirs = white on the left, mine = solid brand on the right
+	   (white text on brand-700 stays 7:1+). Same-sender runs group tightly;
 	   the last bubble of a group gets the tail corner. */
 	.msg {
 		max-width: 75%;

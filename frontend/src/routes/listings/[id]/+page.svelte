@@ -251,7 +251,7 @@
 
 	.gone {
 		margin-top: 1rem;
-		border-radius: 0.375rem;
+		border-radius: var(--radius-sm);
 		background: var(--slate-100);
 		padding: 0.75rem;
 		font-size: 0.875rem;
@@ -267,13 +267,13 @@
 		gap: 0.75rem;
 	}
 
-	/* Bib-number price: condensed, heavy, ink. */
+	/* Bib-number price: big, chunky, tabular ink. */
 	.price {
 		font-family: var(--font-display);
 		font-size: 2.25rem;
 		line-height: 2.5rem;
-		font-weight: 600;
-		letter-spacing: -0.01em;
+		font-weight: 700;
+		letter-spacing: -0.02em;
 		color: var(--ink);
 	}
 

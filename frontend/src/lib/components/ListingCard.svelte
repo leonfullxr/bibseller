@@ -33,23 +33,24 @@
 </a>
 
 <style>
-	/* Same bib-tag family as RaceCard: hard ink border, poster shadow that
-	   flattens a step on hover. */
+	/* Same card family as RaceCard: rounded plate that lifts on hover. */
 	.card {
 		display: block;
 		border: 1px solid var(--slate-200);
-		border-radius: 0.5rem;
+		border-radius: var(--radius-lg);
 		background: white;
-		padding: 1rem;
+		padding: 1.125rem;
 		box-shadow: var(--shadow-hard-sm);
 		transition:
-			translate 0.1s,
-			box-shadow 0.1s;
+			translate 0.15s,
+			border-color 0.15s,
+			box-shadow 0.15s;
 	}
 
 	.card:hover {
-		translate: 1px 1px;
-		box-shadow: 2px 2px 0 var(--ink);
+		border-color: var(--slate-300);
+		box-shadow: var(--shadow-hard);
+		translate: 0 -2px;
 	}
 
 	.price-row {
@@ -59,12 +60,12 @@
 		gap: 0.5rem;
 	}
 
-	/* The price is the bib number: condensed, heavy, ink. */
+	/* The price is the bib number: big, chunky, tabular. */
 	.price {
 		font-family: var(--font-display);
 		font-size: 1.5rem;
 		line-height: 1.75rem;
-		font-weight: 600;
+		font-weight: 700;
 		color: var(--ink);
 	}
 
