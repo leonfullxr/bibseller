@@ -26,10 +26,12 @@
 		{ n: 6, who: 'buyer', icon: 'medal', label: t('home.j6Title') }
 	]);
 
+	// Modes carry their policy tone (semantic colors, not brand) - kept from
+	// the design trial.
 	const modes = $derived([
-		{ name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
-		{ name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
-		{ name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
+		{ tone: 'allowed', name: t('home.modePlatformSaleName'), desc: t('home.modePlatformSaleDesc') },
+		{ tone: 'official', name: t('home.modeOfficialName'), desc: t('home.modeOfficialDesc') },
+		{ tone: 'connect', name: t('home.modeConnectName'), desc: t('home.modeConnectDesc') }
 	]);
 </script>
 
@@ -116,7 +118,7 @@
 
 <section class="modes">
 	{#each modes as mode (mode.name)}
-		<div class="mode">
+		<div class="mode {mode.tone}">
 			<h2>{mode.name}</h2>
 			<p>{mode.desc}</p>
 		</div>
@@ -605,6 +607,8 @@
 		}
 	}
 
+	/* Each mode wears its policy tone on the top rule (semantic, never
+	   brand): platform_sale emerald, official_only sky, connect_only amber. */
 	.mode {
 		border-radius: 0.25rem;
 		border: 1px solid var(--slate-200);
@@ -612,6 +616,18 @@
 		background: white;
 		padding: 1.25rem;
 		box-shadow: var(--shadow-hard-sm);
+	}
+
+	.mode.allowed {
+		border-top-color: var(--emerald-600);
+	}
+
+	.mode.official {
+		border-top-color: var(--sky-600);
+	}
+
+	.mode.connect {
+		border-top-color: var(--amber-500);
 	}
 
 	.mode h2 {

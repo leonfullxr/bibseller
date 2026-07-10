@@ -136,7 +136,10 @@
 
 	<footer>
 		<div class="bar foot">
-			<span>{t('footer.tagline')}</span>
+			<div class="foot-brand">
+				<a href={link(resolve('/'))} class="foot-mark">bib<span>seller</span></a>
+				<span class="foot-tagline">{t('footer.tagline')}</span>
+			</div>
 			<nav class="foot-links">
 				<a href={link(resolve('/terms'))}>{t('footer.terms')}</a>
 				<a href={link(resolve('/privacy'))}>{t('footer.privacy')}</a>
@@ -196,10 +199,14 @@
 		}
 	}
 
-	/* Masthead: ivory with a single hairline rule - a journal, not a toolbar. */
+	/* Masthead: the journal's plate as a floating capsule - white on ivory,
+	   hairline frame, soft shadow, fully rounded ends (kept from the
+	   design-trial header). */
 	header {
-		background: var(--paper);
-		border-bottom: 1px solid var(--ink);
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		padding: 0.75rem 1rem 0;
 	}
 
 	.bar {
@@ -216,6 +223,11 @@
 	header .bar {
 		min-height: 3.5rem;
 		padding-block: 0.5rem;
+		padding-inline: 1.5rem;
+		border: 1px solid var(--slate-200);
+		border-radius: 9999px;
+		background: white;
+		box-shadow: var(--shadow-hard-sm);
 	}
 
 	.brand {
@@ -309,6 +321,7 @@
 		background: var(--amber-50);
 		border-bottom: 1px solid var(--amber-300);
 		padding: 0.5rem 1rem;
+		margin-top: 0.75rem;
 		font-size: 0.875rem;
 		color: var(--amber-900);
 	}
@@ -341,6 +354,7 @@
 		background: var(--brand-50);
 		border-bottom: 1px solid var(--brand-300);
 		padding: 0.5rem 1rem;
+		margin-top: 0.75rem;
 		font-size: 0.875rem;
 		color: var(--brand-800);
 	}
@@ -382,7 +396,7 @@
 		padding: 2.5rem 1rem;
 	}
 
-	/* Colophon: a hairline rule and quiet small text. */
+	/* Colophon: a hairline rule, the wordmark, and quiet small text. */
 	footer {
 		border-top: 1px solid var(--ink);
 		background: var(--paper);
@@ -396,8 +410,32 @@
 		line-height: 1rem;
 	}
 
+	.foot-brand {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.75rem;
+	}
+
+	/* The wordmark repeats the masthead's voice: journal serif, italic
+	   bordeaux suffix. */
+	.foot-mark {
+		font-family: var(--font-display);
+		font-size: 1.25rem;
+		line-height: 1.5rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--ink);
+	}
+
+	.foot-mark span {
+		color: var(--brand-600);
+		font-style: italic;
+	}
+
 	.foot-links {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 1rem;
 	}
 
