@@ -134,9 +134,10 @@
 
 <style>
 	/* Unboxed opening: no panel, no gradient - the slab headline sits
-	   straight on the paper. */
+	   straight on the paper, centered. */
 	.hero {
 		padding: 3rem 0 3.5rem;
+		text-align: center;
 	}
 
 	@media (min-width: 640px) {
@@ -146,6 +147,7 @@
 	}
 
 	.hero h1 {
+		margin-inline: auto;
 		max-width: 46rem;
 		font-size: 2.75rem;
 		line-height: 1.08;
@@ -168,7 +170,7 @@
 	}
 
 	.tagline {
-		margin-top: 1.25rem;
+		margin: 1.25rem auto 0;
 		max-width: 38rem;
 		font-size: 1.0625rem;
 		line-height: 1.75rem;
@@ -176,7 +178,7 @@
 	}
 
 	.search {
-		margin-top: 2rem;
+		margin: 2rem auto 0;
 		display: flex;
 		max-width: 32rem;
 		align-items: stretch;
@@ -235,6 +237,7 @@
 		margin-top: 1.5rem;
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		gap: 0.5rem;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
