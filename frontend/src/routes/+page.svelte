@@ -280,6 +280,8 @@
 		overflow-x: auto;
 		scroll-snap-type: x proximity;
 		padding: 0.25rem 0.25rem 1rem;
+		scrollbar-width: thin;
+		scrollbar-color: var(--slate-300) transparent;
 	}
 
 	.rail-item {

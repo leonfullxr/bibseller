@@ -55,13 +55,15 @@
 
 	.strip {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.5rem;
+		gap: 0.375rem 0.5rem;
 		padding: 1rem 1.125rem 0;
 	}
 
 	.date {
+		white-space: nowrap;
 		border-radius: 9999px;
 		background: var(--brand-50);
 		padding: 0.125rem 0.625rem;
