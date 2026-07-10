@@ -278,10 +278,10 @@ CREATE TABLE audit_log (
 stateDiagram-v2
     [*] --> pending_payment: checkout starts (listing -> reserved)
     pending_payment --> paid_held: webhook payment_intent.succeeded
-    pending_payment --> cancelled: TTL expires / buyer aborts / payment fails
+    pending_payment --> cancelled: TTL expires / buyer aborts (failed payments retry in place)
     paid_held --> seller_marked_transferred: seller marks bib transferred
     paid_held --> refunded: either party cancels / race date passes
-    seller_marked_transferred --> completed: buyer confirms OR auto-release after N days
+    seller_marked_transferred --> completed: buyer confirms OR auto-release after 3 days (D31)
     seller_marked_transferred --> disputed: buyer reports a problem
     disputed --> completed: admin resolves for seller
     disputed --> refunded: admin resolves for buyer

@@ -38,10 +38,10 @@
           <mxGeometry x="70" y="570" width="560" height="120" as="geometry" />
         </mxCell>
         <mxCell id="b3b" value="Trust rules&#10;&#10;1. Verify the signature (proves the sender).&#10;2. Verify amount/currency against the ORDER ROW before honoring success (proves our expectations).&#10;3. Treat event ORDER as untrusted - the from-state guards make wrong-order events harmless no-ops." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#5b21b6;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="660" y="570" width="670 " height="120" as="geometry" />
+          <mxGeometry x="660" y="570" width="670" height="120" as="geometry" />
         </mxCell>
         <mxCell id="band4" value="THE RECONCILER - one batchjob backstops every crash window" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#047857;verticalAlign=top;fontSize=13;fontStyle=1;align=left;spacingLeft=12;spacingTop=6;" vertex="1" parent="1">
-          <mxGeometry x="40" y="740" width="1320" height="200 " as="geometry" />
+          <mxGeometry x="40" y="740" width="1320" height="200" as="geometry" />
         </mxCell>
         <mxCell id="b4a" value="Sweep&#10;&#10;Every few minutes: orders in non-terminal states older than a threshold." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#047857;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
           <mxGeometry x="70" y="780" width="290" height="130" as="geometry" />

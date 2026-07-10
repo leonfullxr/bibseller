@@ -19,7 +19,7 @@ sequenceDiagram
     participant API as Go API
     participant S as Stripe
     participant SL as Seller
-    B->>API: POST /orders (Idempotency-Key)
+    B->>API: POST /orders (idempotent per listing - D32)
     API->>API: race=platform_sale? seller onboarded? listing->reserved (30min TTL)
     API->>S: Create PaymentIntent (transfer_group)
     B->>S: confirm card (Stripe.js, SCA)
